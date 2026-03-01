@@ -1,0 +1,1791 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<meta name="theme-color" content="#080810"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Mi Plata"/>
+<title>Mi Plata</title>
+<link rel="apple-touch-icon" href="data:image/png;base64,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"/>
+<link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEgAAABICAYAAABV7bNHAAAFEklEQVR4nO2cTWgcZRjH/zOZibtTbTRoTRQkrbREYk8F00MPlahRImku1ogfIKVgQJBKKUhPoqKo6MFDpKJQFL9QTKQ5BOxBItIUFERDArWVtoeuUTAxZHa7me54SGeYnX0/550ZZ3b3B0t23q/nmf8+z/NONjPRcMrtQz0OGiG1yfQDgBGhP9zGPLYO9i7ynLDtksYbE0QPHcuI4wReIvDGi9hmHttfXrmH54Rl9bjeizcWqBeIZJzmtKgoNGTWjl0kDxGhPIF4TnhtItFEe7HmkdpVjqVgiaQLGmMJFkeKxSGSj0wUedBE4tUgWsgnkWJR0ku0TwiSSLwaJOOEbHqJ2ogkSpQoAhpFCkcQy7BKmqmmF6vPYfRFIigSrUiLOBXVGZFUErHPJWoUBREp0rHuGAp2ZDYDZbwoEinSsRuPyV7sqUWCVoNIRpNyItGdSjXNaLtYWuKI2IuSWrGlGSuCYjUWo51UUsuDtIulJQiPTPjEi6C0HcvKh+MjkmJZhxZp/nuVQh2+DsraJ8g9+aSR2ebTIlMfUjOkWKJoOOXeGjgmh/Gl+bXUPEoZ6+gYs58fQU0sDgDYb08x+9spxoH3p5g63InBmaQcEUGbnB9J22Y7gjiwBJKKrmZFR70QbVFCtFOMg9Tfy/+PIikC71rGg7elk/AiKLdpJiqO7FiPXKdYlBOWnROOHIfw3sedGHxJ2qMA2uT86yrzg0QRJzhXNN1yuc2riCO7BumGJIfRn3l++rCEvh1AoQhs2dujvJ4BsiiZ+k5GhC2FGqZfWcaF34Hz54CeO4D1MyVlkUi7WD27+5UMpMUvny5jZQXYdjtw/4PAnvs229fPlNgTOedHE6Y+iq4vov2wqlZkExT7lm6gWAT+LAF/LQN3bQcGdqv7EyzSvBsmM02hAOx/AOjbAfTeCVz8I551m6ZIP3yoCy8cWIXrAh0GcPfOzXbVGtQ0RXpuoYi5hWIiu5j3M/ciAcCeQ+qiBOHVoNykWFKEr6RzIYg9u5TaGuEvzEA4ziQqIsnMpV0o5iK9oogkO4dVg2htmULmhKMIyrsOygVx1CQatBqU+chJC9Yvq22R0AQ1KGlI10EtL0oQnfIYY1uo6+gA81lPA6tdys87ZBlrmP2dkJ9i1sHeRZGHYlsNjfakHfHO0K7VphGQFzkeVIE84nikSJQsRjBXoCBJiJVFUYJICURCRrTOk0cWnUfHUZgYY45zRsYhMi4NlLfycAQ4Q6OoHnsT5hcnYH70DqoTx+GMPY0bXn4eHT9+B2Pmc5DGA4D2z98wP3iLae/a4H5Uj76B4mN7VV0XIpGbF7T1NThDB+B234Zr+x4CKmUAm5FRmZxqnFApwxq5F/q5BThjT/nNztAo7Nkl2FM/Y+PZFwEA1SOvwd16M+zZJWw88VxDf9zosv/LQoiyjY6z3+PqqyfQMTcLrXqVPb5QhD3zG2o7B2BMfeI3G6e/hTXcj8KxZ7Dx+GG4N25F57vHof27Amu4H+Zn7zf0x4ltl7TEbn8xvjmJ2vZdMKc/5g+ulGEN96M4vg/G6Wm/2Rl9EuWvz6Ly3leApsHt3gbUaoBpAoZJ7o+ZxATSL52H9cgAtCuXoy9idsItFAOLatAvLAHra7BnfoV7U1dDf9z4K6ruZs2GV3pyfYdZGvgCJVKsc0pQC53W0aqENWhIsVYWiXTuxBrUiiLRzplapFtJJNa5ConQrJcAIkEgHSV5F0s2M/4DG/0JGW8uiMEAAAAASUVORK5CYII="/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<script>
+(function(){
+  var ic192="data:image/png;base64,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",ic72="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEgAAABICAYAAABV7bNHAAAFEklEQVR4nO2cTWgcZRjH/zOZibtTbTRoTRQkrbREYk8F00MPlahRImku1ogfIKVgQJBKKUhPoqKo6MFDpKJQFL9QTKQ5BOxBItIUFERDArWVtoeuUTAxZHa7me54SGeYnX0/550ZZ3b3B0t23q/nmf8+z/NONjPRcMrtQz0OGiG1yfQDgBGhP9zGPLYO9i7ynLDtksYbE0QPHcuI4wReIvDGi9hmHttfXrmH54Rl9bjeizcWqBeIZJzmtKgoNGTWjl0kDxGhPIF4TnhtItFEe7HmkdpVjqVgiaQLGmMJFkeKxSGSj0wUedBE4tUgWsgnkWJR0ku0TwiSSLwaJOOEbHqJ2ogkSpQoAhpFCkcQy7BKmqmmF6vPYfRFIigSrUiLOBXVGZFUErHPJWoUBREp0rHuGAp2ZDYDZbwoEinSsRuPyV7sqUWCVoNIRpNyItGdSjXNaLtYWuKI2IuSWrGlGSuCYjUWo51UUsuDtIulJQiPTPjEi6C0HcvKh+MjkmJZhxZp/nuVQh2+DsraJ8g9+aSR2ebTIlMfUjOkWKJoOOXeGjgmh/Gl+bXUPEoZ6+gYs58fQU0sDgDYb08x+9spxoH3p5g63InBmaQcEUGbnB9J22Y7gjiwBJKKrmZFR70QbVFCtFOMg9Tfy/+PIikC71rGg7elk/AiKLdpJiqO7FiPXKdYlBOWnROOHIfw3sedGHxJ2qMA2uT86yrzg0QRJzhXNN1yuc2riCO7BumGJIfRn3l++rCEvh1AoQhs2dujvJ4BsiiZ+k5GhC2FGqZfWcaF34Hz54CeO4D1MyVlkUi7WD27+5UMpMUvny5jZQXYdjtw/4PAnvs229fPlNgTOedHE6Y+iq4vov2wqlZkExT7lm6gWAT+LAF/LQN3bQcGdqv7EyzSvBsmM02hAOx/AOjbAfTeCVz8I551m6ZIP3yoCy8cWIXrAh0GcPfOzXbVGtQ0RXpuoYi5hWIiu5j3M/ciAcCeQ+qiBOHVoNykWFKEr6RzIYg9u5TaGuEvzEA4ziQqIsnMpV0o5iK9oogkO4dVg2htmULmhKMIyrsOygVx1CQatBqU+chJC9Yvq22R0AQ1KGlI10EtL0oQnfIYY1uo6+gA81lPA6tdys87ZBlrmP2dkJ9i1sHeRZGHYlsNjfakHfHO0K7VphGQFzkeVIE84nikSJQsRjBXoCBJiJVFUYJICURCRrTOk0cWnUfHUZgYY45zRsYhMi4NlLfycAQ4Q6OoHnsT5hcnYH70DqoTx+GMPY0bXn4eHT9+B2Pmc5DGA4D2z98wP3iLae/a4H5Uj76B4mN7VV0XIpGbF7T1NThDB+B234Zr+x4CKmUAm5FRmZxqnFApwxq5F/q5BThjT/nNztAo7Nkl2FM/Y+PZFwEA1SOvwd16M+zZJWw88VxDf9zosv/LQoiyjY6z3+PqqyfQMTcLrXqVPb5QhD3zG2o7B2BMfeI3G6e/hTXcj8KxZ7Dx+GG4N25F57vHof27Amu4H+Zn7zf0x4ltl7TEbn8xvjmJ2vZdMKc/5g+ulGEN96M4vg/G6Wm/2Rl9EuWvz6Ly3leApsHt3gbUaoBpAoZJ7o+ZxATSL52H9cgAtCuXoy9idsItFAOLatAvLAHra7BnfoV7U1dDf9z4K6ruZs2GV3pyfYdZGvgCJVKsc0pQC53W0aqENWhIsVYWiXTuxBrUiiLRzplapFtJJNa5ConQrJcAIkEgHSV5F0s2M/4DG/0JGW8uiMEAAAAASUVORK5CYII=",ic512="data:image/png;base64,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";
+  var m={name:"Mi Plata",short_name:"Mi Plata",start_url:"./",display:"standalone",background_color:"#080810",theme_color:"#080810",orientation:"portrait",icons:[{src:ic192,sizes:"192x192",type:"image/png",purpose:"any maskable"},{src:ic512,sizes:"512x512",type:"image/png",purpose:"any maskable"}]};
+  var b=new Blob([JSON.stringify(m)],{type:"application/json"});
+  var l=document.createElement("link");l.rel="manifest";l.href=URL.createObjectURL(b);document.head.appendChild(l);
+  var sw="self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));self.addEventListener('fetch',()=>{});";
+  if("serviceWorker"in navigator){var sb=new Blob([sw],{type:"text/javascript"});navigator.serviceWorker.register(URL.createObjectURL(sb)).catch(function(){});}
+  window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();window._iPrompt=e;window.dispatchEvent(new Event("pwaready"));});
+})();
+</script>
+</head>
+<body style="margin:0;background:#080810;font-family:'Plus Jakarta Sans',system-ui,sans-serif">
+<div id="root"><div style="color:#666;padding:60px;text-align:center;font-family:sans-serif;font-size:14px">⏳ Cargando...</div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js" crossorigin="anonymous"></script>
+<script>
+// Intercept Babel compilation errors for debugging
+window.addEventListener('error', function(e) {
+  var msg = e.message || 'Error desconocido';
+  var line = e.lineno || 0;
+  var col = e.colno || 0;
+  var src = e.filename || '';
+  document.getElementById('root').innerHTML = 
+    '<div style="padding:20px;color:#e74c3c;background:#080810;min-height:100vh;font-family:monospace">' +
+    '<h2 style="color:#e74c3c">❌ Error JS</h2>' +
+    '<p><b>Mensaje:</b> ' + msg + '</p>' +
+    '<p><b>Línea:</b> ' + line + ' Col: ' + col + '</p>' +
+    '<p><b>Fuente:</b> ' + src + '</p>' +
+    (e.error ? '<pre style="background:#222;padding:10px;border-radius:8px;font-size:11px;overflow:auto;color:#ff6b6b">' + (e.error.stack||'sin stack') + '</pre>' : '') +
+    '</div>';
+});
+</script>
+<script type="text/babel">
+const {useState,useEffect,useRef,useMemo} = React;
+
+// ─── STORAGE ─────────────────────────────────────
+const DB = {
+  get: k => { try { const v=localStorage.getItem(k); return v?JSON.parse(v):null; } catch { return null; } },
+  set: (k,v) => { try { localStorage.setItem(k,JSON.stringify(v)); } catch {} }
+};
+
+// ─── TRIAL / SUBSCRIPTION ────────────────────────
+const TRIAL=30, PRICE=10000;
+function initTrial(){ if(!DB.get("mp_install")) DB.set("mp_install", new Date().toISOString().split("T")[0]); }
+function daysLeft(){
+  const inst=DB.get("mp_install")||new Date().toISOString().split("T")[0];
+  const diff=Math.floor((new Date()-new Date(inst))/86400000);
+  return Math.max(0,TRIAL-diff);
+}
+function checkPro(){
+  if(daysLeft()>0) return true;
+  const s=DB.get("mp_sub");
+  return s&&s.status==="active"&&new Date(s.expiry)>=new Date();
+}
+function activateSub(){
+  const exp=new Date(); exp.setMonth(exp.getMonth()+1);
+  DB.set("mp_sub",{status:"active",expiry:exp.toISOString().split("T")[0]});
+}
+
+// ─── CONSTANTS ───────────────────────────────────
+const MONTHS=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+const fmt=n=>new Intl.NumberFormat("es-CO",{style:"currency",currency:"COP",maximumFractionDigits:0}).format(n||0);
+const tod=()=>new Date().toISOString().split("T")[0];
+const curM=()=>tod().slice(0,7);
+const mLbl=m=>{const[y,mo]=m.split("-").map(Number);return MONTHS[mo-1]+" "+y;};
+const pM=m=>{const[y,mo]=m.split("-").map(Number);const d=new Date(y,mo-2);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");};
+const nM=m=>{const[y,mo]=m.split("-").map(Number);const d=new Date(y,mo);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");};
+
+const BANKS=[
+  {id:"efectivo",label:"Efectivo",color:"#f7c94f",emoji:"💵"},
+  {id:"bancolombia",label:"Bancolombia",color:"#FFCC00",emoji:"🏦"},
+  {id:"nequi",label:"Nequi",color:"#7B2FF7",emoji:"📱"},
+  {id:"daviplata",label:"Daviplata",color:"#E8000D",emoji:"📲"},
+];
+const CATS=[
+  {id:"alimentacion",label:"🍔 Comida",color:"#f7914f"},
+  {id:"mercado",label:"🛒 Mercado",color:"#f7d44f"},
+  {id:"transporte",label:"🚗 Transporte",color:"#4ff7a0"},
+  {id:"servicios",label:"💡 Servicios",color:"#f7c94f"},
+  {id:"salud",label:"🏥 Salud",color:"#c44ff7"},
+  {id:"vivienda",label:"🏠 Vivienda",color:"#4f8ef7"},
+  {id:"ropa",label:"👕 Ropa",color:"#ff6eb4"},
+  {id:"tecnologia",label:"📱 Tecno",color:"#a0f74f"},
+  {id:"entretenimiento",label:"🎬 Ocio",color:"#4ff7f0"},
+  {id:"deudas",label:"💳 Deudas",color:"#f74f4f"},
+  {id:"mascotas",label:"🐾 Mascotas",color:"#ff9f6b"},
+  {id:"colegio",label:"🎓 Colegio",color:"#3498db"},
+  {id:"deporte",label:"⚽ Deporte",color:"#1abc9c"},
+  {id:"vehiculo",label:"🚗 Vehículo",color:"#e67e22"},
+  {id:"otros",label:"📦 Otros",color:"#aaa"},
+];
+const ACTS=["Vitrina 360","Publicidad","Freelance","Negocio","Otro"];
+const AIS=[
+  {id:"groq",label:"Groq (Llama 4)",emoji:"⚡",color:"#f55036",desc:"Groq · GRATIS · Sin tarjeta",hint:"gsk_...",url:"https://console.groq.com/keys"},
+  {id:"gemini",label:"Gemini 2.5 Flash",emoji:"🔵",color:"#4285f4",desc:"Google · GRATIS",hint:"AIzaSy...",url:"https://aistudio.google.com/apikey"},
+  {id:"claude",label:"Claude",emoji:"🟠",color:"#ff6b35",desc:"Anthropic · De pago",hint:"sk-ant-..."},
+  {id:"openai",label:"ChatGPT",emoji:"🟢",color:"#10a37f",desc:"OpenAI · De pago",hint:"sk-..."},
+];
+
+// ─── AI CALL ─────────────────────────────────────
+async function callAI(prov,key,b64){
+  const scanPrompt=`Analiza esta imagen de factura/recibo colombiano. Responde SOLO con JSON válido sin markdown.
+Categorías: alimentacion, mercado, transporte, servicios, salud, vivienda, ropa, tecnologia, entretenimiento, deudas, mascotas, colegio, deporte, vehiculo, otros.
+JSON requerido: {"description":"nombre del lugar/servicio","amount":NUMERO_ENTERO_SIN_PUNTOS,"category":"categoria","date":"${tod()}","notes":""}
+Si no lees el monto pon 0. Solo JSON, sin texto extra.`;
+
+  // ── GROQ (gratis, sin tarjeta) ───────────────────
+  if(prov==="groq"&&key){
+    const r=await fetch("https://api.groq.com/openai/v1/chat/completions",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},
+      body:JSON.stringify({
+        model:"meta-llama/llama-4-scout-17b-16e-instruct",
+        max_tokens:500,
+        messages:[{role:"user",content:[
+          {type:"image_url",image_url:{url:"data:image/jpeg;base64,"+b64}},
+          {type:"text",text:scanPrompt}
+        ]}]
+      })
+    });
+    const d=await r.json();
+    if(d.error) throw new Error(d.error.message);
+    const txt=(d.choices?.[0]?.message?.content||"").replace(/```json|```/g,"").trim();
+    const match=txt.match(/\{[\s\S]*\}/);
+    if(!match) throw new Error("Respuesta inválida de Groq");
+    return JSON.parse(match[0]);
+  }
+
+  // ── GEMINI (gratis con API key) ──────────────────
+  if(prov==="gemini"&&key){
+    const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`,{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({contents:[{parts:[{inline_data:{mime_type:"image/jpeg",data:b64}},{text:scanPrompt}]}],generationConfig:{temperature:0,maxOutputTokens:500}})
+    });
+    const d=await r.json();
+    if(d.error) throw new Error(d.error.message);
+    const txt=(d.candidates?.[0]?.content?.parts?.[0]?.text||"").replace(/```json|```/g,"").trim();
+    const match=txt.match(/\{[\s\S]*\}/);
+    if(!match) throw new Error("Respuesta inválida de Gemini");
+    return JSON.parse(match[0]);
+  }
+
+  // ── CLAUDE ───────────────────────────────────────
+  if(prov==="claude"&&key){
+    const r=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",headers:{"Content-Type":"application/json","x-api-key":key},
+      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:300,messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:"image/jpeg",data:b64}},{type:"text",text:scanPrompt}]}]})
+    });
+    const d=await r.json();
+    return JSON.parse((d.content?.find(x=>x.type==="text")?.text||"").replace(/```json|```/g,"").trim());
+  }
+
+  // ── OPENAI ───────────────────────────────────────
+  if(prov==="openai"&&key){
+    const r=await fetch("https://api.openai.com/v1/chat/completions",{
+      method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},
+      body:JSON.stringify({model:"gpt-4o-mini",max_tokens:300,messages:[{role:"user",content:[{type:"image_url",image_url:{url:"data:image/jpeg;base64,"+b64}},{type:"text",text:scanPrompt}]}]})
+    });
+    const d=await r.json();
+    return JSON.parse((d.choices?.[0]?.message?.content||"").replace(/```json|```/g,"").trim());
+  }
+
+  throw new Error("Configura tu API Key en la pestaña Escanear ⚙️");
+}
+
+
+// ─── ICONS ───────────────────────────────────────
+const IC = ({n,s=18,c="currentColor"}) => {
+  const P = {
+    plus:   <path d="M12 5v14M5 12h14" strokeWidth="2" strokeLinecap="round"/>,
+    trash:  <><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2"/></>,
+    check:  <path d="M20 6L9 17l-5-5" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>,
+    x:      <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>,
+    back:   <path d="M15 18l-6-6 6-6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>,
+    arrow:  <path d="M9 18l6-6-6-6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>,
+    edit:   <><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></>,
+    up:     <path d="M12 19V5M5 12l7-7 7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>,
+    down:   <path d="M12 5v14M5 12l7 7 7-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>,
+    wallet: <><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8L2 7h20z"/><circle cx="16" cy="14" r="1" fill="currentColor"/></>,
+    bell:   <><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></>,
+    chart:  <><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></>,
+    list:   <><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/></>,
+    box:    <><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></>,
+    camera: <><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></>,
+    mute:   <><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 005.12 2.12M15 9.34V4a3 3 0 00-5.94-.6"/><path d="M17 16.95A7 7 0 015 12v-2m14 0v2a7 7 0 01-.11 1.23M12 19v4M8 23h8"/></>,
+    share:  <><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></>,
+    star:   <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" strokeWidth="1.5"/>,
+    calendar: <><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></>,
+    mic:    <><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></>,
+    bot:    <><rect x="3" y="11" width="18" height="10" rx="2" ry="2"/><circle cx="12" cy="5" r="2"/><line x1="12" y1="7" x2="12" y2="11"/><line x1="8" y1="15" x2="8" y2="17"/><line x1="16" y1="15" x2="16" y2="17"/></>,
+    send:   <><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></>,
+  };
+  return <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8">{P[n]}</svg>;
+};
+
+// ─── PRIMITIVES ──────────────────────────────────
+const Btn = ({onClick,children,style={},disabled}) => (
+  <button onClick={onClick} disabled={disabled}
+    style={{background:"linear-gradient(135deg,#00d2ff,#7b2ff7)",border:"none",borderRadius:13,color:"#fff",padding:"13px",cursor:disabled?"not-allowed":"pointer",fontSize:15,fontWeight:800,fontFamily:"inherit",width:"100%",opacity:disabled?.6:1,...style}}>
+    {children}
+  </button>
+);
+const Inp = ({placeholder,type="text",value,onChange,style={}}) => (
+  <input placeholder={placeholder} type={type} value={value} onChange={onChange}
+    style={{background:"#0c0c18",border:"1px solid #1a1a2e",borderRadius:12,padding:"12px 14px",color:"#e8e8f4",fontSize:14,outline:"none",width:"100%",boxSizing:"border-box",fontFamily:"inherit",...style}}/>
+);
+const Sel = ({value,onChange,children}) => (
+  <select value={value} onChange={onChange}
+    style={{background:"#0c0c18",border:"1px solid #1a1a2e",borderRadius:12,padding:"12px 14px",color:"#e8e8f4",fontSize:14,outline:"none",width:"100%",boxSizing:"border-box",fontFamily:"inherit"}}>
+    {children}
+  </select>
+);
+const Card = ({label,value,color,icon}) => (
+  <div style={{background:"#111120",borderRadius:14,padding:"13px 8px",textAlign:"center",borderTop:`3px solid ${color}`}}>
+    <div style={{color,marginBottom:5}}><IC n={icon} s={16}/></div>
+    <div style={{fontWeight:800,fontSize:12,marginBottom:2}}>{value}</div>
+    <div style={{fontSize:10,color:"#555"}}>{label}</div>
+  </div>
+);
+const BankBadge = ({id}) => {
+  const b=BANKS.find(x=>x.id===id)||BANKS[0];
+  return <span style={{background:`${b.color}22`,color:b.color,border:`1px solid ${b.color}44`,borderRadius:6,padding:"2px 7px",fontSize:11,fontWeight:700}}>{b.emoji} {b.label}</span>;
+};
+const CatGrid = ({value,onChange}) => (
+  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
+    {CATS.map(c=>(
+      <button key={c.id} onClick={()=>onChange(c.id)}
+        style={{border:`1px solid ${value===c.id?c.color:"#1a1a2e"}`,borderRadius:9,padding:"7px 3px",background:value===c.id?`${c.color}20`:"#0c0c18",color:value===c.id?c.color:"#888",cursor:"pointer",fontSize:11,fontFamily:"inherit",fontWeight:700}}>
+        {c.label}
+      </button>
+    ))}
+  </div>
+);
+const BankGrid = ({value,onChange}) => (
+  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
+    {BANKS.map(b=>(
+      <button key={b.id} onClick={()=>onChange(b.id)}
+        style={{border:`2px solid ${value===b.id?b.color:"#1a1a2e"}`,borderRadius:10,padding:"9px",background:value===b.id?`${b.color}18`:"#0c0c18",color:value===b.id?b.color:"#888",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700}}>
+        {b.emoji} {b.label}
+      </button>
+    ))}
+  </div>
+);
+const Modal = ({title,onClose,children}) => (
+  <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200,backdropFilter:"blur(4px)"}}
+    onClick={e=>e.target===e.currentTarget&&onClose()}>
+    <div style={{background:"#111120",borderRadius:"24px 24px 0 0",width:"100%",maxWidth:480,maxHeight:"90vh",overflowY:"auto",animation:"slideUp .2s ease"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"18px 20px 0"}}>
+        <h3 style={{margin:0,fontSize:16,fontWeight:800}}>{title}</h3>
+        <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:"#666",padding:4}}><IC n="x" s={18}/></button>
+      </div>
+      <div style={{padding:"14px 20px 36px"}}>{children}</div>
+    </div>
+  </div>
+);
+
+// ─── FORMS ───────────────────────────────────────
+function TxForm({initial,onSave}){
+  const[type,setType]=useState(initial?.type||"expense");
+  const[desc,setDesc]=useState(initial?.description||"");
+  const[amt,setAmt]=useState(initial?.amount||"");
+  const[cat,setCat]=useState(initial?.category||"otros");
+  const[act,setAct]=useState(initial?.activity||ACTS[0]);
+  const[bank,setBank]=useState(initial?.bank||"efectivo");
+  const[date,setDate]=useState(initial?.date||tod());
+  const[notes,setNotes]=useState(initial?.notes||"");
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:11}}>
+      <div style={{display:"flex",background:"#0c0c18",borderRadius:12,padding:4,gap:4}}>
+        {[["expense","📤 Gasto","#c0392b"],["income","💰 Ingreso","#27ae60"]].map(([t,l,col])=>(
+          <button key={t} onClick={()=>setType(t)} style={{flex:1,border:"none",borderRadius:9,padding:"9px",cursor:"pointer",color:type===t?"#fff":"#888",fontWeight:800,fontSize:13,fontFamily:"inherit",background:type===t?col:"transparent"}}>{l}</button>
+        ))}
+      </div>
+      <Inp placeholder="Descripción *" value={desc} onChange={e=>setDesc(e.target.value)}/>
+      <Inp placeholder="Monto (COP) *" type="number" value={amt} onChange={e=>setAmt(e.target.value)}/>
+      <div><div style={{fontSize:12,color:"#888",marginBottom:7,fontWeight:700}}>Medio de pago</div><BankGrid value={bank} onChange={setBank}/></div>
+      {type==="income"
+        ?<Sel value={act} onChange={e=>setAct(e.target.value)}>{ACTS.map(a=><option key={a} value={a}>{a}</option>)}</Sel>
+        :<div><div style={{fontSize:12,color:"#888",marginBottom:7,fontWeight:700}}>Categoría</div><CatGrid value={cat} onChange={setCat}/></div>
+      }
+      <Inp type="date" value={date} onChange={e=>setDate(e.target.value)}/>
+      <Inp placeholder="Notas (opcional)" value={notes} onChange={e=>setNotes(e.target.value)}/>
+      <Btn onClick={()=>{if(desc&&amt)onSave({...initial,type,description:desc,amount:Number(amt),category:cat,activity:act,bank,date,notes});}}>
+        {initial?.id?"Actualizar":"Guardar"}
+      </Btn>
+    </div>
+  );
+}
+function BillForm({onSave}){
+  const[name,setName]=useState(""); const[amt,setAmt]=useState("");
+  const[cat,setCat]=useState("servicios"); const[day,setDay]=useState(String(new Date().getDate()));
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:11}}>
+      <Inp placeholder="Nombre del pago *" value={name} onChange={e=>setName(e.target.value)}/>
+      <Inp placeholder="Monto (COP) *" type="number" value={amt} onChange={e=>setAmt(e.target.value)}/>
+      <div><div style={{fontSize:12,color:"#888",marginBottom:7,fontWeight:700}}>Categoría</div><CatGrid value={cat} onChange={setCat}/></div>
+      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+        <span style={{color:"#999",fontSize:13,flexShrink:0}}>Vence día:</span>
+        <Inp type="number" value={day} onChange={e=>setDay(e.target.value)} style={{}} />
+      </div>
+      <Btn onClick={()=>{if(name&&amt)onSave({name,amount:Number(amt),category:cat,dueDay:Number(day),paidMonths:[]});}}>Programar pago</Btn>
+    </div>
+  );
+}
+
+// ─── CAJA DETAIL ─────────────────────────────────
+function CajaDetail({caja,month,onAddE,onAddW,onDelE,onDelW,onDelete,setModal}){
+  const[view,setView]=useState("all");
+  const entries=caja.entries||[], wds=caja.withdrawals||[];
+  const tR=entries.reduce((s,e)=>s+e.amount,0);
+  const tG=wds.reduce((s,w)=>s+w.amount,0);
+  const mG=wds.filter(w=>w.date?.startsWith(month)).reduce((s,w)=>s+w.amount,0);
+  const all=[
+    ...entries.map(e=>({...e,_t:"e"})),
+    ...wds.map(w=>({...w,_t:"w"}))
+  ].sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  const list=view==="all"?all:view==="e"?all.filter(x=>x._t==="e"):all.filter(x=>x._t==="w");
+  return(
+    <div style={{padding:"18px 16px 100px"}}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:14}}>
+        <Card label="Recibido" value={fmt(tR)} color="#2ecc71" icon="up"/>
+        <Card label="Gastado" value={fmt(tG)} color="#e74c3c" icon="down"/>
+        <Card label="Disponible" value={fmt(tR-tG)} color={tR-tG>=0?"#4f8ef7":"#e74c3c"} icon="wallet"/>
+      </div>
+      <div style={{background:"#111120",borderRadius:12,padding:"10px 16px",marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <span style={{fontSize:13,color:"#888"}}>Gastado este mes</span>
+        <span style={{fontWeight:800,color:"#e74c3c",fontSize:17}}>{fmt(mG)}</span>
+      </div>
+      <div style={{display:"flex",gap:8,marginBottom:16}}>
+        <button onClick={()=>setModal({type:"entry",cid:caja.id})} style={{flex:1,background:"linear-gradient(135deg,#27ae60,#2ecc71)",border:"none",borderRadius:12,color:"#fff",padding:"11px",cursor:"pointer",fontSize:13,fontWeight:800,fontFamily:"inherit"}}>💵 Entrega</button>
+        <button onClick={()=>setModal({type:"withdrawal",cid:caja.id})} style={{flex:1,background:"linear-gradient(135deg,#c0392b,#e74c3c)",border:"none",borderRadius:12,color:"#fff",padding:"11px",cursor:"pointer",fontSize:13,fontWeight:800,fontFamily:"inherit"}}>📤 Retiro</button>
+      </div>
+      <div style={{display:"flex",gap:6,marginBottom:14}}>
+        {[["all","Todo"],["e","Entregas"],["w","Retiros"]].map(([v,l])=>(
+          <button key={v} onClick={()=>setView(v)} style={{flex:1,padding:"7px",borderRadius:9,border:`1px solid ${view===v?"#00d2ff":"#1a1a2e"}`,background:view===v?"rgba(0,210,255,0.08)":"#111120",color:view===v?"#00d2ff":"#666",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>{l}</button>
+        ))}
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:7}}>
+        {list.map(item=>(
+          <div key={item.id} style={{background:"#111120",borderRadius:11,padding:"11px 13px",display:"flex",gap:10,alignItems:"center"}}>
+            <div style={{width:9,height:9,borderRadius:"50%",flexShrink:0,background:item._t==="e"?"#2ecc71":"#e74c3c"}}/>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontWeight:600,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item._t==="e"?(item.notes||"Entrega"):item.name}</div>
+              <div style={{fontSize:11,color:"#555"}}>{item.date}</div>
+            </div>
+            <span style={{fontWeight:800,fontSize:14,color:item._t==="e"?"#2ecc71":"#e74c3c"}}>{item._t==="e"?"+":"-"}{fmt(item.amount)}</span>
+            <button onClick={()=>item._t==="e"?onDelE(item.id):onDelW(item.id)} style={{background:"none",border:"none",cursor:"pointer",color:"#e74c3c",padding:2}}><IC n="trash" s={13}/></button>
+          </div>
+        ))}
+        {!list.length&&<div style={{textAlign:"center",padding:"40px 0",color:"#444"}}>📭 Sin registros</div>}
+      </div>
+      <button onClick={onDelete} style={{width:"100%",marginTop:22,padding:"11px",background:"rgba(231,76,60,0.1)",border:"1px solid rgba(231,76,60,0.25)",borderRadius:10,color:"#e74c3c",cursor:"pointer",fontSize:13,fontFamily:"inherit"}}>🗑️ Eliminar caja</button>
+    </div>
+  );
+}
+
+// ─── SUBSCRIPTION SCREEN ─────────────────────────
+function SubScreen({onClose,onDone}){
+  const[step,setStep]=useState("info");
+  const[loading,setLoading]=useState(false);
+  const dl=daysLeft();
+  const pay=async()=>{
+    setLoading(true);
+    await new Promise(r=>setTimeout(r,1600));
+    activateSub(); setLoading(false); setStep("done");
+  };
+  if(step==="done") return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.97)",zIndex:300,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24}}>
+      <div style={{fontSize:70,marginBottom:16}}>🎉</div>
+      <div style={{fontWeight:900,fontSize:24,marginBottom:8,textAlign:"center"}}>¡Bienvenido a Pro!</div>
+      <div style={{color:"#aaa",fontSize:15,textAlign:"center",marginBottom:32}}>Tienes acceso completo por 1 mes.</div>
+      <Btn onClick={onDone} style={{width:"auto",padding:"14px 40px"}}>¡Empezar!</Btn>
+    </div>
+  );
+  return(
+    <div style={{position:"fixed",inset:0,background:"#080810",zIndex:300,overflowY:"auto"}}>
+      <div style={{background:"linear-gradient(180deg,#0d0d1e,#080810)",padding:"40px 24px 28px",textAlign:"center",position:"relative"}}>
+        {onClose&&<button onClick={onClose} style={{position:"absolute",top:20,right:20,background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:22}}>✕</button>}
+        <div style={{fontSize:52,fontWeight:900,background:"linear-gradient(135deg,#00d2ff,#7b2ff7)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",marginBottom:10}}>₱</div>
+        <div style={{fontWeight:900,fontSize:26,letterSpacing:"-1px",marginBottom:12}}>Mi Plata <span style={{background:"linear-gradient(135deg,#00d2ff,#7b2ff7)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>Pro</span></div>
+        {dl>0
+          ?<div style={{background:"rgba(0,210,255,0.1)",border:"1px solid rgba(0,210,255,0.3)",borderRadius:30,padding:"6px 18px",display:"inline-block",fontSize:13,color:"#00d2ff",fontWeight:700}}>⏳ {dl} días de prueba restantes</div>
+          :<div style={{background:"rgba(231,76,60,0.15)",border:"1px solid rgba(231,76,60,0.3)",borderRadius:30,padding:"6px 18px",display:"inline-block",fontSize:13,color:"#e74c3c",fontWeight:700}}>⚠️ Prueba terminada</div>
+        }
+      </div>
+      <div style={{padding:"0 20px 60px"}}>
+        <div style={{background:"linear-gradient(135deg,rgba(0,210,255,0.1),rgba(123,47,247,0.1))",border:"1px solid rgba(0,210,255,0.2)",borderRadius:18,padding:"22px",textAlign:"center",marginBottom:22}}>
+          <div style={{fontSize:12,color:"#aaa",marginBottom:4}}>Suscripción mensual</div>
+          <div style={{fontWeight:900,fontSize:42,letterSpacing:"-2px"}}>{fmt(PRICE)}</div>
+          <div style={{fontSize:12,color:"#888"}}>/mes · Cancela cuando quieras</div>
+          <div style={{marginTop:8,fontSize:11,color:"#555"}}>≈ $2.50 USD · ¡Menos que un tinto! ☕</div>
+        </div>
+        <div style={{marginBottom:22}}>
+          {[["✅","Control de ingresos, gastos y saldo"],["✅","Cajas de anticipos y préstamos"],["✅","Alarmas de pagos con notificación"],["✅","📸 Escaneo de facturas con IA"],["✅","Clasificación automática"],["✅","Funciona sin internet"],["✅","Sin anuncios 🚫"]].map(([i,t],k)=>(
+            <div key={k} style={{display:"flex",gap:12,alignItems:"center",padding:"9px 0",borderBottom:"1px solid #111120"}}>
+              <span style={{fontSize:15}}>{i}</span><span style={{fontSize:14,color:"#ccc"}}>{t}</span>
+            </div>
+          ))}
+        </div>
+        <Btn onClick={pay} disabled={loading}>{loading?"Procesando...":`Suscribirme · ${fmt(PRICE)}/mes`}</Btn>
+        <div style={{textAlign:"center",fontSize:12,color:"#555",marginTop:10}}>Pago seguro · Se renueva automáticamente</div>
+        <div style={{marginTop:18,background:"#111120",borderRadius:12,padding:"13px",fontSize:12,color:"#666",lineHeight:1.7}}>
+          💳 <strong style={{color:"#888"}}>En Play Store pagarás con:</strong> Tarjeta, PSE, Nequi o Daviplata directamente desde Google Play.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── SCAN TAB ────────────────────────────────────
+function ScanTab({onSave,showToast,pro}){
+  const vidRef=useRef(), canRef=useRef(), fileRef=useRef();
+  const[mode,setMode]=useState("opts");
+  const[useAI,setUseAI]=useState(true);
+  const[prov,setProv]=useState(()=>DB.get("mp_ai")||"groq");
+  const[apiKey,setApiKey]=useState(()=>DB.get("mp_k_"+(DB.get("mp_ai")||"groq"))||"");
+  const[img,setImg]=useState(null);
+  const[scanning,setScanning]=useState(false);
+  const[res,setRes]=useState(null);
+  const[stream,setStream]=useState(null);
+  const[manD,setManD]=useState(""); const[manA,setManA]=useState("");
+  const[manC,setManC]=useState("otros"); const[manB,setManB]=useState("efectivo");
+  const[manDt,setManDt]=useState(tod());
+  const[showSub,setShowSub]=useState(false);
+
+  const saveP=p=>{setProv(p);DB.set("mp_ai",p);setApiKey(DB.get("mp_k_"+p)||"");};
+  const saveK=k=>{const clean=k.replace(/[^\x20-\x7E]/g,"").trim();setApiKey(clean);DB.set("mp_k_"+prov,clean);};
+
+  const startCam=async()=>{
+    if(!pro){setShowSub(true);return;}
+    try{
+      const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080},focusMode:{ideal:"continuous"}},audio:false});
+      setStream(s); setMode("cam");
+      setTimeout(()=>{if(vidRef.current){vidRef.current.srcObject=s;vidRef.current.play();}},80);
+    }catch(e){showToast("❌ Sin acceso a cámara","err");}
+  };
+  const stopCam=()=>{if(stream)stream.getTracks().forEach(t=>t.stop());setStream(null);};
+  const capture=()=>{
+    const v=vidRef.current, c=canRef.current;
+    if(!v||!c)return;
+    c.width=v.videoWidth||1280; c.height=v.videoHeight||720;
+    c.getContext("2d").drawImage(v,0,0);
+    const d=c.toDataURL("image/jpeg",.85).split(",")[1];
+    setImg(d); stopCam();
+    if(useAI){setMode("res");setScanning(true);setTimeout(()=>analyzeImg(d,prov,apiKey),100);}else setMode("man");
+  };
+  const fromFile=f=>{
+    if(!f)return;
+    if(!pro){setShowSub(true);return;}
+    const r=new FileReader();
+    r.onload=e=>{const img2=new Image();img2.onload=()=>{const c=document.createElement("canvas");const max=1280;let w=img2.width,h=img2.height;if(w>max||h>max){if(w>h){h=Math.round(h*max/w);w=max;}else{w=Math.round(w*max/h);h=max;}}c.width=w;c.height=h;c.getContext("2d").drawImage(img2,0,0,w,h);const b64=c.toDataURL("image/jpeg",0.85).split(",")[1];setImg(b64);if(useAI){setMode("res");setScanning(true);setTimeout(()=>analyzeImg(b64,prov,apiKey),100);}else setMode("man");};img2.src=e.target.result;};
+    r.readAsDataURL(f);
+  };
+  const analyzeImg=async(image,provider,key)=>{
+    const k=(key||apiKey||DB.get("mp_k_"+(provider||prov))||"").replace(/[^\x20-\x7E]/g,"").trim();
+    if(!k){showToast("❌ Ingresa tu API key en Escanear","err");setScanning(false);setMode("opts");return;}
+    try{
+      const r=await callAI(provider||prov,k,image||img);
+      if(!r||(!r.amount&&!r.description)) throw new Error("No se detectó información");
+      setRes({...r,bank:"efectivo"});
+    }catch(e){
+      const msg=e.message||"Error desconocido";
+      showToast("❌ "+msg.substring(0,60),"err");
+      setMode("man");
+    }
+    setScanning(false);
+  };
+  const analyze=async()=>{
+    const k=(apiKey||DB.get("mp_k_"+prov)||"").replace(/[^\x20-\x7E]/g,"").trim();
+    if(!k){showToast("❌ Ingresa tu API key","err");return;}
+    setScanning(true); setMode("res");
+    await analyzeImg(img,prov,k);
+  };
+  const goBack=()=>{stopCam();setImg(null);setRes(null);setScanning(false);setMode("opts");};
+  const confirm=()=>{
+    if(!res)return;
+    onSave({type:"expense",description:res.description||"Factura",amount:Number(res.amount)||0,category:res.category||"otros",bank:res.bank||"efectivo",date:res.date||tod(),notes:res.notes||""});
+    goBack(); showToast("✅ Factura guardada como gasto");
+  };
+  const saveMan=()=>{
+    if(!manD||!manA)return;
+    onSave({type:"expense",description:manD,amount:Number(manA),category:manC,bank:manB,date:manDt,notes:""});
+    setManD(""); setManA(""); goBack(); showToast("✅ Gasto guardado");
+  };
+
+  if(showSub) return <SubScreen onClose={()=>setShowSub(false)} onDone={()=>setShowSub(false)}/>;
+
+  if(mode==="cam") return(
+    <div style={{position:"fixed",inset:0,background:"#000",zIndex:150,display:"flex",flexDirection:"column"}}>
+      <video ref={vidRef} style={{flex:1,objectFit:"cover",width:"100%"}} playsInline muted autoPlay/>
+      <canvas ref={canRef} style={{display:"none"}}/>
+      <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",pointerEvents:"none"}}>
+        <div style={{width:"82%",maxWidth:320,aspectRatio:"3/2",border:"2px solid rgba(0,210,255,0.9)",borderRadius:14,boxShadow:"0 0 0 9999px rgba(0,0,0,0.5)"}}/>
+      </div>
+      <div style={{position:"absolute",top:20,left:16}}>
+        <button onClick={goBack} style={{background:"rgba(0,0,0,0.6)",border:"1px solid rgba(255,255,255,0.2)",color:"#fff",borderRadius:10,padding:"8px 14px",cursor:"pointer",fontFamily:"inherit",fontSize:13}}>✕ Cancelar</button>
+      </div>
+      <div style={{position:"absolute",bottom:0,left:0,right:0,background:"linear-gradient(transparent,rgba(0,0,0,0.9))",padding:"24px 20px 50px",display:"flex",flexDirection:"column",alignItems:"center",gap:10}}>
+        <p style={{color:"rgba(255,255,255,0.65)",fontSize:13,margin:0}}>Encuadra la factura en el marco</p>
+        <button onClick={capture} style={{width:72,height:72,borderRadius:"50%",background:"#fff",border:"5px solid rgba(0,210,255,0.9)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 0 24px rgba(0,210,255,0.6)"}}>
+          <div style={{width:52,height:52,borderRadius:"50%",background:"linear-gradient(135deg,#00d2ff,#7b2ff7)"}}/>
+        </button>
+      </div>
+    </div>
+  );
+
+  if(mode==="prev") return(
+    <div style={{padding:"18px 16px 100px"}}>
+      <h2 style={{margin:"0 0 14px",fontSize:19,fontWeight:900}}>📸 Foto capturada</h2>
+      <img src={`data:image/jpeg;base64,${img}`} style={{width:"100%",borderRadius:14,marginBottom:16,maxHeight:280,objectFit:"cover"}}/>
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        <Btn onClick={analyze}>✨ Analizar con {AIS.find(p=>p.id===prov)?.label}</Btn>
+        <button onClick={()=>setMode("man")} style={{background:"#111120",border:"1px solid #1a1a2e",borderRadius:12,color:"#ccc",padding:"12px",cursor:"pointer",fontSize:14,fontWeight:700,fontFamily:"inherit"}}>✏️ Ingresar manual</button>
+        <button onClick={goBack} style={{background:"none",border:"none",color:"#666",padding:"8px",cursor:"pointer",fontSize:13,fontFamily:"inherit"}}>← Volver</button>
+      </div>
+    </div>
+  );
+
+  if(mode==="res") return(
+    <div style={{padding:"18px 16px 100px"}}>
+      {scanning?(
+        <div style={{textAlign:"center",padding:"70px 20px"}}>
+          <div style={{width:58,height:58,border:"3px solid #1a1a2e",borderTopColor:"#00d2ff",borderRadius:"50%",animation:"spin .7s linear infinite",margin:"0 auto 18px"}}/>
+          <div style={{fontWeight:800,fontSize:17,color:"#00d2ff",marginBottom:6}}>Leyendo factura...</div>
+          <div style={{color:"#666",fontSize:13}}>Extrayendo valor, categoría y fecha</div>
+        </div>
+      ):res&&(
+        <div>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
+            <span style={{fontSize:24}}>✨</span>
+            <div><div style={{fontWeight:800,fontSize:17}}>Factura leída</div><div style={{fontSize:12,color:"#00d2ff"}}>Revisa y ajusta si necesitas</div></div>
+          </div>
+          {img&&<img src={`data:image/jpeg;base64,${img}`} style={{width:"100%",borderRadius:12,marginBottom:14,maxHeight:160,objectFit:"cover"}}/>}
+          <div style={{background:"#111120",borderRadius:14,padding:"14px",marginBottom:14,display:"flex",flexDirection:"column",gap:11}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid #1a1a2e",paddingBottom:9}}>
+              <span style={{color:"#888",fontSize:13}}>Descripción</span>
+              <input value={res.description||""} onChange={e=>setRes(r=>({...r,description:e.target.value}))} style={{background:"transparent",border:"none",color:"#e8e8f4",textAlign:"right",fontSize:13,fontWeight:600,outline:"none",fontFamily:"inherit",flex:1,marginLeft:10}}/>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid #1a1a2e",paddingBottom:9}}>
+              <span style={{color:"#888",fontSize:13}}>Valor COP</span>
+              <input type="number" value={res.amount||0} onChange={e=>setRes(r=>({...r,amount:Number(e.target.value)}))} style={{background:"transparent",border:"none",color:"#e74c3c",textAlign:"right",fontSize:20,fontWeight:900,outline:"none",fontFamily:"inherit",width:130}}/>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid #1a1a2e",paddingBottom:9}}>
+              <span style={{color:"#888",fontSize:13}}>Fecha</span>
+              <input type="date" value={res.date||tod()} onChange={e=>setRes(r=>({...r,date:e.target.value}))} style={{background:"transparent",border:"none",color:"#e8e8f4",textAlign:"right",fontSize:13,outline:"none",fontFamily:"inherit"}}/>
+            </div>
+            <div><div style={{color:"#888",fontSize:13,marginBottom:7}}>Categoría</div><CatGrid value={res.category||"otros"} onChange={v=>setRes(r=>({...r,category:v}))}/></div>
+            <div><div style={{color:"#888",fontSize:13,marginBottom:7}}>¿Por dónde pagaste?</div><BankGrid value={res.bank||"efectivo"} onChange={v=>setRes(r=>({...r,bank:v}))}/></div>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            <Btn onClick={confirm} style={{background:"linear-gradient(135deg,#27ae60,#2ecc71)"}}>✅ Guardar este gasto</Btn>
+            <button onClick={goBack} style={{background:"none",border:"none",color:"#666",padding:"8px",cursor:"pointer",fontSize:13,fontFamily:"inherit"}}>← Volver</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  if(mode==="man") return(
+    <div style={{padding:"18px 16px 100px"}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+        {img&&<img src={`data:image/jpeg;base64,${img}`} style={{width:65,height:46,borderRadius:8,objectFit:"cover",flexShrink:0}}/>}
+        <div><div style={{fontWeight:800,fontSize:17}}>Clasificar gasto</div><div style={{fontSize:12,color:"#aaa"}}>Llena los datos</div></div>
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:11}}>
+        <Inp placeholder="¿Qué compraste? *" value={manD} onChange={e=>setManD(e.target.value)}/>
+        <Inp placeholder="Valor (COP) *" type="number" value={manA} onChange={e=>setManA(e.target.value)}/>
+        <div><div style={{fontSize:12,color:"#888",marginBottom:7,fontWeight:700}}>Categoría</div><CatGrid value={manC} onChange={setManC}/></div>
+        <div><div style={{fontSize:12,color:"#888",marginBottom:7,fontWeight:700}}>Medio de pago</div><BankGrid value={manB} onChange={setManB}/></div>
+        <Inp type="date" value={manDt} onChange={e=>setManDt(e.target.value)}/>
+        <Btn onClick={saveMan}>💾 Guardar gasto</Btn>
+        <button onClick={goBack} style={{background:"none",border:"none",color:"#666",padding:"8px",cursor:"pointer",fontSize:13,fontFamily:"inherit"}}>← Volver</button>
+      </div>
+    </div>
+  );
+
+  // OPTS
+  return(
+    <div style={{padding:"18px 16px 100px"}}>
+      <canvas ref={canRef} style={{display:"none"}}/>
+      <input ref={fileRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>fromFile(e.target.files?.[0])}/>
+      {!pro&&(
+        <div onClick={()=>setShowSub(true)} style={{background:"linear-gradient(135deg,rgba(0,210,255,0.1),rgba(123,47,247,0.1))",border:"1px solid rgba(0,210,255,0.25)",borderRadius:12,padding:"11px 14px",marginBottom:14,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div><div style={{fontWeight:700,fontSize:13,color:"#00d2ff"}}>⏳ {daysLeft()} días de prueba</div><div style={{fontSize:11,color:"#888"}}>Después $10.000/mes · Toca para ver</div></div>
+          <IC n="arrow" s={16} c="#00d2ff"/>
+        </div>
+      )}
+      <h2 style={{margin:"0 0 4px",fontSize:19,fontWeight:900}}>📸 Escanear Factura</h2>
+      <p style={{color:"#888",fontSize:13,marginBottom:18}}>Toma la foto y registra el gasto en segundos.</p>
+      <div style={{background:"#111120",borderRadius:14,padding:"14px",marginBottom:16}}>
+        <div style={{fontSize:12,fontWeight:700,color:"#888",marginBottom:10}}>¿Cómo procesar la foto?</div>
+        <div style={{display:"flex",gap:8,marginBottom:useAI?14:0}}>
+          <button onClick={()=>setUseAI(true)} style={{flex:1,border:`2px solid ${useAI?"#00d2ff":"#1a1a2e"}`,borderRadius:10,padding:"9px",background:useAI?"rgba(0,210,255,0.08)":"#0c0c18",color:useAI?"#00d2ff":"#888",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700}}>✨ Con IA</button>
+          <button onClick={()=>setUseAI(false)} style={{flex:1,border:`2px solid ${!useAI?"#7b2ff7":"#1a1a2e"}`,borderRadius:10,padding:"9px",background:!useAI?"rgba(123,47,247,0.08)":"#0c0c18",color:!useAI?"#a87fff":"#888",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700}}>✏️ Manual</button>
+        </div>
+        {useAI&&(
+          <div>
+            <div style={{fontSize:12,color:"#888",marginBottom:9,fontWeight:700}}>Elige tu IA:</div>
+            {AIS.map(ai=>(
+              <button key={ai.id} onClick={()=>saveP(ai.id)} style={{width:"100%",border:`2px solid ${prov===ai.id?ai.color:"#1a1a2e"}`,borderRadius:10,padding:"10px 12px",background:prov===ai.id?`${ai.color}15`:"#0c0c18",cursor:"pointer",fontFamily:"inherit",textAlign:"left",display:"flex",alignItems:"center",gap:10,marginBottom:7}}>
+                <span style={{fontSize:18}}>{ai.emoji}</span>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:700,fontSize:13,color:prov===ai.id?ai.color:"#e8e8f4"}}>{ai.label}</div>
+                  <div style={{fontSize:11,color:"#888"}}>{ai.desc}</div>
+                </div>
+                {ai.id==="gemini"&&<span style={{background:"rgba(46,204,113,0.2)",color:"#2ecc71",fontSize:10,padding:"2px 8px",borderRadius:20,fontWeight:700,border:"1px solid rgba(46,204,113,0.3)"}}>GRATIS</span>}
+                {prov===ai.id&&<div style={{width:16,height:16,borderRadius:"50%",background:ai.color,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><IC n="check" s={10} c="#000"/></div>}
+              </button>
+            ))}
+            <div style={{background:"#0c0c18",borderRadius:10,padding:"11px",border:"1px solid #1a1a2e"}}>
+              <div style={{fontSize:11,color:"#888",marginBottom:6}}>
+                API Key — {AIS.find(a=>a.id===prov)?.label}
+                {prov==="gemini"&&<a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" style={{color:"#2ecc71",marginLeft:6}}>→ Obtener gratis</a>}
+              </div>
+              <input type="password" placeholder={AIS.find(a=>a.id===prov)?.hint||"sk-..."} value={apiKey} onChange={e=>saveK(e.target.value)}
+                style={{width:"100%",background:"#080810",border:"1px solid #1a1a2e",borderRadius:8,padding:"9px 11px",color:"#e8e8f4",fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}/>
+              {prov==="gemini"&&<div style={{fontSize:11,color:"#555",marginTop:5}}>100% gratis · 1,500 facturas/día 🎉</div>}
+            </div>
+          </div>
+        )}
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:9}}>
+        <Btn onClick={startCam} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:10,fontSize:16,padding:"15px"}}><IC n="camera" s={20}/>Tomar foto de factura</Btn>
+        <button onClick={()=>{if(!pro){setShowSub(true);return;}fileRef.current?.click();}} style={{background:"#111120",border:"1px solid #1a1a2e",borderRadius:13,color:"#ccc",padding:"12px",cursor:"pointer",fontSize:14,fontWeight:700,fontFamily:"inherit"}}>🖼️ Subir desde galería</button>
+      </div>
+      <div style={{marginTop:18,background:"#0c0c18",borderRadius:12,padding:"13px",border:"1px solid #1a1a2e"}}>
+        <div style={{fontSize:12,fontWeight:700,color:"#888",marginBottom:7}}>💡 Consejos</div>
+        {["Buena iluminación, sin sombras","Todo el recibo en el marco azul","El valor total debe verse claro","Funciona con tiquetes y facturas digitales"].map((t,i)=>(
+          <div key={i} style={{display:"flex",gap:7,marginBottom:5}}><span style={{color:"#00d2ff",fontSize:11}}>✓</span><span style={{fontSize:12,color:"#666"}}>{t}</span></div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── FEEDBACK TAB ────────────────────────────────
+function FeedbackTab(){
+  const[name,setName]=useState(""); const[msg,setMsg]=useState("");
+  const[rating,setRating]=useState(5); const[sent,setSent]=useState(false);
+  const[hist,setHist]=useState(()=>DB.get("mp_fb")||[]);
+
+  const send=()=>{
+    if(!msg)return;
+    const fb={id:Date.now(),name:name||"Anónimo",rating,msg,date:tod()};
+    const h=[fb,...hist]; DB.set("mp_fb",h); setHist(h);
+    setName(""); setMsg(""); setRating(5); setSent(true); setTimeout(()=>setSent(false),3000);
+  };
+  const share=()=>{
+    const text=`🌟 Estoy probando Mi Plata — la app para controlar mis finanzas en Colombia. ¡Genial! Pruébala: ${window.location.href}`;
+    if(navigator.share) navigator.share({title:"Mi Plata",text,url:window.location.href}).catch(()=>{});
+    else { navigator.clipboard?.writeText(text).then(()=>alert("¡Enlace copiado!")).catch(()=>{}); }
+  };
+
+  return(
+    <div style={{padding:"18px 16px 100px"}}>
+      <h2 style={{margin:"0 0 4px",fontSize:19,fontWeight:900}}>⭐ Tu opinión importa</h2>
+      <p style={{color:"#888",fontSize:13,marginBottom:18}}>Estamos en fase beta. Tu feedback mejora la app.</p>
+
+      <div onClick={share} style={{background:"linear-gradient(135deg,rgba(0,210,255,0.1),rgba(123,47,247,0.1))",border:"1px solid rgba(0,210,255,0.25)",borderRadius:14,padding:"16px",marginBottom:18,cursor:"pointer",display:"flex",alignItems:"center",gap:12}}>
+        <span style={{fontSize:28}}>📲</span>
+        <div style={{flex:1}}>
+          <div style={{fontWeight:800,fontSize:15,color:"#00d2ff"}}>Compartir con amigos</div>
+          <div style={{fontSize:12,color:"#888"}}>Invítalos a probar la app · toca para compartir</div>
+        </div>
+        <IC n="share" s={18} c="#00d2ff"/>
+      </div>
+
+      {sent&&<div style={{background:"rgba(46,204,113,0.15)",border:"1px solid rgba(46,204,113,0.3)",borderRadius:12,padding:"12px",marginBottom:14,textAlign:"center",fontWeight:700,color:"#2ecc71"}}>✅ ¡Gracias! Revisamos tu opinión pronto.</div>}
+
+      <div style={{background:"#111120",borderRadius:14,padding:"16px",marginBottom:18,display:"flex",flexDirection:"column",gap:12}}>
+        <div style={{fontWeight:700,fontSize:15}}>Deja tu comentario</div>
+        <Inp placeholder="Tu nombre (opcional)" value={name} onChange={e=>setName(e.target.value)}/>
+        <div>
+          <div style={{fontSize:12,color:"#888",marginBottom:8}}>¿Cuántas estrellas le das?</div>
+          <div style={{display:"flex",gap:8,justifyContent:"center"}}>
+            {[1,2,3,4,5].map(n=>(
+              <button key={n} onClick={()=>setRating(n)} style={{background:"none",border:"none",cursor:"pointer",fontSize:30,opacity:n<=rating?1:.25}}>{n<=rating?"⭐":"☆"}</button>
+            ))}
+          </div>
+        </div>
+        <textarea value={msg} onChange={e=>setMsg(e.target.value)} rows={4}
+          placeholder="¿Qué te gusta? ¿Qué mejorarías? ¿Qué le falta?"
+          style={{background:"#0c0c18",border:"1px solid #1a1a2e",borderRadius:12,padding:"12px 14px",color:"#e8e8f4",fontSize:14,outline:"none",width:"100%",boxSizing:"border-box",fontFamily:"inherit",resize:"none"}}/>
+        <Btn onClick={send}>Enviar opinión</Btn>
+      </div>
+
+      {hist.length>0&&(
+        <div>
+          <div style={{fontSize:13,fontWeight:700,color:"#888",marginBottom:10}}>Opiniones guardadas ({hist.length})</div>
+          {hist.map(f=>(
+            <div key={f.id} style={{background:"#111120",borderRadius:12,padding:"12px 14px",marginBottom:8}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                <span style={{fontWeight:700,fontSize:13}}>{f.name}</span>
+                <span style={{fontSize:12}}>{"⭐".repeat(f.rating)}</span>
+              </div>
+              <div style={{fontSize:13,color:"#ccc",lineHeight:1.5}}>{f.msg}</div>
+              <div style={{fontSize:11,color:"#555",marginTop:4}}>{f.date}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── MAIN APP ────────────────────────────────────
+
+// ─── AI ADVISOR ──────────────────────────────────
+function AIAdvisor({txs,tInc,tExp,month,apiKey}){
+  const[advice,setAdvice]=useState(null);
+  const[loading,setLoading]=useState(false);
+  const[open,setOpen]=useState(false);
+
+  const getAdvice=async()=>{
+    const k=(apiKey||DB.get("mp_k_"+(DB.get("mp_ai")||"groq"))||"").replace(/[^\x20-\x7E]/g,"").trim();
+    if(!k){alert("Necesitas configurar tu API Key de Gemini en la pestaña Escanear");return;}
+    setLoading(true);setOpen(true);
+    const saldo=tInc-tExp;
+    const cats=["alimentacion","mercado","transporte","servicios","salud","vivienda","ropa","tecnologia","entretenimiento","deudas","mascotas","otros"];
+    const resumen=cats.map(c=>({cat:c,total:txs.filter(x=>x.type==="expense"&&x.category===c).reduce((s,x)=>s+x.amount,0)})).filter(x=>x.total>0);
+    const prompt=`Eres un asesor financiero colombiano experto. Analiza estas finanzas del mes:
+- Ingresos: $${tInc.toLocaleString("es-CO")} COP
+- Gastos: $${tExp.toLocaleString("es-CO")} COP  
+- Saldo: $${saldo.toLocaleString("es-CO")} COP
+- Gastos por categoría: ${resumen.map(r=>r.cat+": $"+r.total.toLocaleString("es-CO")).join(", ")}
+
+Da 3-4 consejos CONCRETOS y PRÁCTICOS en español colombiano. Sé directo y útil. Menciona si hay categorías donde gasta demasiado. Si el saldo es negativo, di cómo mejorar. Máximo 200 palabras. Usa emojis para hacerlo visual.`;
+    try{
+      const aiProvAdv=DB.get("mp_ai")||"groq";
+      let adviceText="No se pudo obtener consejo";
+      if(aiProvAdv==="groq"&&k){
+        const r=await fetch("https://api.groq.com/openai/v1/chat/completions",{
+          method:"POST",
+          headers:{"Content-Type":"application/json","Authorization":"Bearer "+k},
+          body:JSON.stringify({model:"meta-llama/llama-4-scout-17b-16e-instruct",max_tokens:400,temperature:0.7,messages:[{role:"user",content:prompt}]})
+        });
+        const d=await r.json();
+        if(!d.error) adviceText=d.choices?.[0]?.message?.content||adviceText;
+      } else if(k){
+        const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${k}`,{
+          method:"POST",headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.7,maxOutputTokens:400}})
+        });
+        const d=await r.json();
+        if(!d.error) adviceText=d.candidates?.[0]?.content?.parts?.[0]?.text||adviceText;
+      }
+      setAdvice(adviceText);
+    }catch(e){setAdvice("❌ Error: "+e.message);}
+    setLoading(false);
+  };
+
+  return(
+    <div style={{background:"linear-gradient(135deg,rgba(0,210,255,0.08),rgba(123,47,247,0.08))",border:"1px solid rgba(0,210,255,0.2)",borderRadius:14,padding:"13px 15px",marginBottom:12}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:open?12:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:20}}>🤖</span>
+          <div><div style={{fontWeight:800,fontSize:13,color:"#00d2ff"}}>Asesor IA</div><div style={{fontSize:11,color:"#888"}}>Consejos personalizados</div></div>
+        </div>
+        <button onClick={open?()=>setOpen(false):getAdvice} style={{background:open?"#1a1a2e":"linear-gradient(135deg,#00d2ff,#7b2ff7)",border:"none",borderRadius:10,color:"#fff",padding:"7px 13px",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700}}>
+          {open?"Cerrar":"✨ Analizar"}
+        </button>
+      </div>
+      {open&&(
+        <div>
+          {loading?(
+            <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0"}}>
+              <div style={{width:18,height:18,border:"2px solid #1a1a2e",borderTopColor:"#00d2ff",borderRadius:"50%",animation:"spin .7s linear infinite",flexShrink:0}}/>
+              <span style={{color:"#888",fontSize:13}}>Analizando tus finanzas...</span>
+            </div>
+          ):advice&&(
+            <div style={{fontSize:13,color:"#ccc",lineHeight:1.6,whiteSpace:"pre-wrap"}}>{advice}</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ─── PAY BILL FORM ───────────────────────────────
+function PayBillForm({bill,onPayManual,onPayScan}){
+  const[amt,setAmt]=useState(String(bill?.amount||""));
+  const[bank,setBank]=useState("efectivo");
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:12}}>
+      <div style={{background:"#111120",borderRadius:12,padding:"12px",textAlign:"center"}}>
+        <div style={{fontSize:13,color:"#888",marginBottom:4}}>Monto a pagar</div>
+        <input type="number" value={amt} onChange={e=>setAmt(e.target.value)}
+          style={{background:"transparent",border:"none",color:"#e74c3c",fontSize:28,fontWeight:900,textAlign:"center",outline:"none",fontFamily:"inherit",width:"100%"}}/>
+        <div style={{fontSize:11,color:"#555"}}>COP</div>
+      </div>
+      <div><div style={{fontSize:12,color:"#888",marginBottom:7,fontWeight:700}}>¿Por dónde pagaste?</div><BankGrid value={bank} onChange={setBank}/></div>
+      <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:4}}>
+        <Btn onClick={()=>onPayManual({...bill},{...bill,bank},Number(amt)||bill.amount)} style={{background:"linear-gradient(135deg,#27ae60,#2ecc71)"}}>✅ Registrar pago manual</Btn>
+        <button onClick={()=>onPayScan(bill)} style={{background:"linear-gradient(135deg,#00d2ff,#7b2ff7)",border:"none",borderRadius:13,color:"#fff",padding:"13px",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+          📸 Escanear comprobante
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── BILLS TAB COMPONENT ─────────────────────────
+function BillsTab({bills,month,alarms,notifOk,askNotif,pend,onNew,onToggle,onDel,onDismiss,onPayWithScan,onPayManual,txs}){
+  const[viewMode,setViewMode]=useState("list"); // "list" | "calendar" | "history"
+  const[selMonth,setSelMonth]=useState(month);
+
+  // Get all months that have payment data
+  const allMonths=useMemo(()=>{
+    const ms=new Set();
+    bills.forEach(b=>(b.paidMonths||[]).forEach(m=>ms.add(m)));
+    return [...ms].sort().reverse();
+  },[bills]);
+
+  // History: for each month show which bills were paid
+  const historyData=useMemo(()=>{
+    return allMonths.map(m=>{
+      const paid=bills.filter(b=>(b.paidMonths||[]).includes(m));
+      const total=paid.reduce((s,b)=>s+b.amount,0);
+      return{month:m,paid,total};
+    });
+  },[allMonths,bills]);
+
+  // Calendar: days of current month with bills due
+  const calDays=useMemo(()=>{
+    const [y,mo]=month.split("-").map(Number);
+    const dim=new Date(y,mo,0).getDate();
+    const days=[];
+    for(let d=1;d<=dim;d++){
+      const billsOnDay=bills.filter(b=>b.dueDay===d);
+      days.push({day:d,bills:billsOnDay});
+    }
+    return days;
+  },[bills,month]);
+
+  const mLblShort=m=>{const[y,mo]=m.split("-");const ns=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];return ns[Number(mo)-1]+" "+y;};
+
+  return(
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+        <h2 style={{margin:0,fontSize:19,fontWeight:900}}>Pagos</h2>
+        <button onClick={onNew} style={{background:"linear-gradient(135deg,#00d2ff,#7b2ff7)",border:"none",borderRadius:11,color:"#fff",padding:"8px 14px",cursor:"pointer",fontSize:13,fontWeight:800,fontFamily:"inherit",display:"flex",alignItems:"center",gap:5}}><IC n="plus" s={14}/>Nuevo</button>
+      </div>
+
+      {/* View mode tabs */}
+      <div style={{display:"flex",gap:6,marginBottom:14,background:"#111120",borderRadius:12,padding:5}}>
+        {[["list","📋 Este mes"],["calendar","📅 Calendario"],["history","🗂️ Historial"]].map(([v,l])=>(
+          <button key={v} onClick={()=>setViewMode(v)} style={{flex:1,background:viewMode===v?"linear-gradient(135deg,#00d2ff22,#7b2ff722)":"transparent",border:viewMode===v?"1px solid rgba(0,210,255,0.3)":"1px solid transparent",borderRadius:9,color:viewMode===v?"#00d2ff":"#666",padding:"8px 4px",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700}}>{l}</button>
+        ))}
+      </div>
+
+      {/* LIST VIEW */}
+      {viewMode==="list"&&(
+        <div>
+          {!notifOk&&<div onClick={askNotif} style={{background:"rgba(0,210,255,0.06)",border:"1px solid rgba(0,210,255,0.15)",borderRadius:10,padding:"9px 13px",marginBottom:12,display:"flex",gap:8,alignItems:"center",fontSize:12,color:"#00d2ff",cursor:"pointer"}}><IC n="bell" s={14}/> Activar alertas</div>}
+          {bills.length===0?<div style={{textAlign:"center",padding:"50px 0",color:"#444"}}>📅 No tienes pagos programados</div>:(
+            <>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",background:"#111120",borderRadius:12,padding:"12px",marginBottom:12,textAlign:"center"}}>
+              <div><div style={{fontSize:11,color:"#999"}}>Pendiente</div><div style={{color:"#e74c3c",fontWeight:800,fontSize:15}}>{fmt(pend.reduce((s,b)=>s+b.amount,0))}</div></div>
+              <div><div style={{fontSize:11,color:"#999"}}>Pagado</div><div style={{color:"#2ecc71",fontWeight:800,fontSize:15}}>{fmt(bills.filter(b=>(b.paidMonths||[]).includes(month)).reduce((s,b)=>s+b.amount,0))}</div></div>
+              <div><div style={{fontSize:11,color:"#999"}}>Total</div><div style={{fontWeight:800,fontSize:15}}>{fmt(bills.reduce((s,b)=>s+b.amount,0))}</div></div>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:7}}>
+              {[...bills].sort((a,b)=>a.dueDay-b.dueDay).map(bill=>{
+                const paid=(bill.paidMonths||[]).includes(month);
+                const cat=CATS.find(c=>c.id===bill.category);
+                const isA=alarms.some(a=>a.id===bill.id);
+                return(
+                  <div key={bill.id} style={{background:isA?"rgba(231,76,60,0.07)":"#111120",border:isA?"1px solid rgba(231,76,60,0.25)":"1px solid #1a1a2e",borderRadius:11,padding:"11px 13px",opacity:paid?.7:1}}>
+                    <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:paid?0:8}}>
+                      <div style={{width:9,height:9,borderRadius:"50%",flexShrink:0,background:paid?"#2ecc71":isA?"#e74c3c":(cat?.color||"#aaa")}}/>
+                      <div style={{flex:1}}>
+                        <div style={{fontWeight:600,fontSize:13,textDecoration:paid?"line-through":"none"}}>{bill.name}</div>
+                        <div style={{fontSize:11,color:"#555"}}>{cat?.label} · Día {bill.dueDay}{isA&&<span style={{color:"#e74c3c",fontWeight:700}}> · HOY</span>}</div>
+                      </div>
+                      <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
+                        <span style={{fontWeight:800,fontSize:14,color:paid?"#2ecc71":"#e74c3c"}}>{fmt(bill.amount)}</span>
+                        <div style={{display:"flex",gap:4}}>
+                          {isA&&<button onClick={()=>onDismiss(bill)} style={{background:"rgba(231,76,60,0.12)",border:"none",borderRadius:6,color:"#e74c3c",padding:"4px 7px",cursor:"pointer",display:"flex",alignItems:"center"}}><IC n="mute" s={12}/></button>}
+                          <button onClick={()=>onToggle(bill.id)} style={{background:paid?"rgba(46,204,113,0.12)":"rgba(255,255,255,0.04)",border:"none",borderRadius:7,color:paid?"#2ecc71":"#666",padding:"5px 8px",cursor:"pointer",display:"flex",alignItems:"center"}}><IC n="check" s={13}/></button>
+                          <button onClick={()=>onDel(bill.id)} style={{background:"none",border:"none",cursor:"pointer",color:"#e74c3c",padding:2}}><IC n="trash" s={13}/></button>
+                        </div>
+                      </div>
+                    </div>
+                    {!paid&&(
+                      <button onClick={()=>onPayWithScan(bill)} style={{width:"100%",background:"linear-gradient(135deg,rgba(0,210,255,0.1),rgba(123,47,247,0.1))",border:"1px solid rgba(0,210,255,0.2)",borderRadius:9,color:"#00d2ff",padding:"8px",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+                        💳 Registrar pago
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* CALENDAR VIEW */}
+      {viewMode==="calendar"&&(
+        <div>
+          <div style={{background:"#111120",borderRadius:14,padding:"13px",marginBottom:12}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#888",marginBottom:12,textAlign:"center"}}>{mLblShort(month)}</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,marginBottom:6}}>
+              {["D","L","M","M","J","V","S"].map((d,i)=>(
+                <div key={i} style={{textAlign:"center",fontSize:10,color:"#555",fontWeight:700,padding:"4px 0"}}>{d}</div>
+              ))}
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3}}>
+              {(()=>{
+                const[y,mo]=month.split("-").map(Number);
+                const firstDay=new Date(y,mo-1,1).getDay();
+                const dim=new Date(y,mo,0).getDate();
+                const cells=[];
+                for(let i=0;i<firstDay;i++) cells.push(<div key={"e"+i}/>);
+                for(let d=1;d<=dim;d++){
+                  const dayBills=bills.filter(b=>b.dueDay===d);
+                  const hasPaid=dayBills.some(b=>(b.paidMonths||[]).includes(month));
+                  const hasPend=dayBills.some(b=>!(b.paidMonths||[]).includes(month));
+                  const today=new Date().getDate()===d&&month===curM();
+                  cells.push(
+                    <div key={d} style={{aspectRatio:"1",borderRadius:8,background:today?"rgba(0,210,255,0.15)":dayBills.length?"rgba(255,255,255,0.04)":"transparent",border:today?"1px solid rgba(0,210,255,0.4)":"1px solid transparent",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:dayBills.length?"pointer":"default",position:"relative"}} title={dayBills.map(b=>b.name).join(", ")}>
+                      <span style={{fontSize:11,fontWeight:today?700:400,color:today?"#00d2ff":"#ccc"}}>{d}</span>
+                      {dayBills.length>0&&<div style={{display:"flex",gap:2,marginTop:2}}>
+                        {hasPaid&&<div style={{width:5,height:5,borderRadius:"50%",background:"#2ecc71"}}/>}
+                        {hasPend&&<div style={{width:5,height:5,borderRadius:"50%",background:"#e74c3c"}}/>}
+                      </div>}
+                    </div>
+                  );
+                }
+                return cells;
+              })()}
+            </div>
+          </div>
+          <div style={{display:"flex",gap:12,marginBottom:12,fontSize:12,color:"#888"}}>
+            <span>🟢 Pagado</span><span>🔴 Pendiente</span>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:6}}>
+            {calDays.filter(d=>d.bills.length>0).map(({day,bills:db})=>(
+              <div key={day} style={{background:"#111120",borderRadius:11,padding:"11px 13px"}}>
+                <div style={{fontSize:12,color:"#888",fontWeight:700,marginBottom:7}}>Día {day}</div>
+                {db.map(bill=>{
+                  const paid=(bill.paidMonths||[]).includes(month);
+                  return(
+                    <div key={bill.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:7}}>
+                        <div style={{width:7,height:7,borderRadius:"50%",background:paid?"#2ecc71":"#e74c3c"}}/>
+                        <span style={{fontSize:13,textDecoration:paid?"line-through":"none"}}>{bill.name}</span>
+                      </div>
+                      <span style={{fontWeight:700,fontSize:13,color:paid?"#2ecc71":"#e74c3c"}}>{fmt(bill.amount)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* HISTORY VIEW */}
+      {viewMode==="history"&&(
+        <div>
+          {historyData.length===0?(
+            <div style={{textAlign:"center",padding:"50px 0",color:"#444"}}>📭 Sin historial de pagos</div>
+          ):(
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {historyData.map(({month:m,paid,total})=>(
+                <div key={m} style={{background:"#111120",borderRadius:14,padding:"13px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                    <div style={{fontWeight:800,fontSize:14,color:"#00d2ff"}}>{mLblShort(m)}</div>
+                    <div style={{fontWeight:800,color:"#2ecc71",fontSize:14}}>{fmt(total)}</div>
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                    {paid.map(b=>{
+                      const cat=CATS.find(c=>c.id===b.category);
+                      return(
+                        <div key={b.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:"1px solid #1a1a2e"}}>
+                          <div style={{display:"flex",alignItems:"center",gap:7}}>
+                            <div style={{width:7,height:7,borderRadius:"50%",background:cat?.color||"#aaa"}}/>
+                            <div>
+                              <div style={{fontSize:12,fontWeight:600}}>{b.name}</div>
+                              <div style={{fontSize:10,color:"#555"}}>{cat?.label}</div>
+                            </div>
+                          </div>
+                          <span style={{fontWeight:700,fontSize:13,color:"#2ecc71"}}>{fmt(b.amount)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ─── NOTIF SCHEDULER ─────────────────────────────
+function scheduleEventNotif(ev){
+  if(typeof Notification==="undefined"||Notification.permission!=="granted") return;
+  const dt=new Date(ev.date+"T"+ev.time);
+  const now=Date.now();
+  const t2h=dt.getTime()-2*60*60*1000-now;
+  const t15=dt.getTime()-15*60*1000-now;
+  if(t2h>0) setTimeout(()=>{try{new Notification("📅 En 2 horas · Mi Plata",{body:ev.title,tag:"ev2h"+ev.id});}catch(e){}},t2h);
+  if(t15>0) setTimeout(()=>{try{new Notification("⏰ En 15 min · Mi Plata",{body:ev.title,tag:"ev15"+ev.id});}catch(e){}},t15);
+}
+
+// ─── AGENDA TAB ───────────────────────────────────
+function AgendaTab({events,onAdd,onDel,onUpd,showToast,apiKey}){
+  const[view,setView]=useState("month"); // month|week|day|list
+  const[selDate,setSelDate]=useState(tod());
+  const[showForm,setShowForm]=useState(false);
+  const[aiText,setAiText]=useState("");
+  const[aiLoading,setAiLoading]=useState(false);
+  const[listening,setListening]=useState(false);
+  const[form,setForm]=useState({title:"",date:tod(),time:"08:00",notes:""});
+
+  const curMonth=selDate.slice(0,7);
+  const mDays=useMemo(()=>{
+    const[y,mo]=curMonth.split("-").map(Number);
+    const dim=new Date(y,mo,0).getDate();
+    const first=new Date(y,mo-1,1).getDay();
+    return{dim,first};
+  },[curMonth]);
+
+  const evOnDay=d=>events.filter(e=>e.date===d);
+  const mLbl=m=>{const[y,mo]=m.split("-");const ns=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];return ns[Number(mo)-1]+" "+y;};
+  const pM=m=>{const[y,mo]=m.split("-").map(Number);const d=new Date(y,mo-2,1);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");};
+  const nM=m=>{const[y,mo]=m.split("-").map(Number);const d=new Date(y,mo,1);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");};
+
+  const saveEvent=()=>{
+    if(!form.title||!form.date||!form.time){showToast("❌ Completa los campos","err");return;}
+    onAdd(form); setForm({title:"",date:tod(),time:"08:00",notes:""}); setShowForm(false);
+  };
+
+  const parseAI=async()=>{
+    if(!aiText.trim()) return;
+    const k=(apiKey||DB.get("mp_k_"+(DB.get("mp_ai")||"groq"))||"").replace(/[^\x20-\x7E]/g,"").trim();
+    // k is optional now - Puter works without key
+    setAiLoading(true);
+    const today=tod();
+    const prompt=`Hoy es ${today}. El usuario dice: "${aiText}". Extrae la actividad, fecha (YYYY-MM-DD) y hora (HH:MM en 24h) para agendar. Si falta info, infiere lo mejor posible. Responde SOLO JSON: {"title":"actividad","date":"YYYY-MM-DD","time":"HH:MM","notes":""}. Sin markdown.`;
+    try{
+      const aiProv2=DB.get("mp_ai")||"groq";
+      let ev=null, txt2="";
+      if(aiProv2==="groq"&&k){
+        const r=await fetch("https://api.groq.com/openai/v1/chat/completions",{
+          method:"POST",
+          headers:{"Content-Type":"application/json","Authorization":"Bearer "+k},
+          body:JSON.stringify({model:"meta-llama/llama-4-scout-17b-16e-instruct",max_tokens:200,temperature:0,messages:[{role:"user",content:prompt}]})
+        });
+        const d=await r.json();
+        if(d.error) throw new Error(d.error.message);
+        txt2=(d.choices?.[0]?.message?.content||"").replace(/```json|```/g,"").trim();
+      } else if(k){
+        const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${k}`,{
+          method:"POST",headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0,maxOutputTokens:200}})
+        });
+        const d=await r.json();
+        if(d.error) throw new Error(d.error.message);
+        txt2=(d.candidates?.[0]?.content?.parts?.[0]?.text||"").replace(/```json|```/g,"").trim();
+      }
+      if(!txt2) throw new Error("⚙️ Configura tu API Key en la pestaña Escanear");
+      const match2=txt2.match(/\{[\s\S]*\}/);
+      if(match2) ev=JSON.parse(match2[0]);
+      if(!ev) throw new Error("No pude interpretar la fecha/hora");
+      setForm({title:ev?.title||"",date:ev?.date||tod(),time:ev?.time||"08:00",notes:ev?.notes||""});
+      setShowForm(true); setAiText("");
+      showToast("✅ ¡Listo! Revisa y confirma");
+    }catch(e){showToast("❌ "+e.message,"err");}
+    setAiLoading(false);
+  };
+
+  const startVoice=()=>{
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(!SR){showToast("❌ Voz no disponible","err");return;}
+    const r=new SR(); r.lang="es-CO"; r.interimResults=false;
+    r.onstart=()=>setListening(true);
+    r.onend=()=>setListening(false);
+    r.onresult=e=>{const t=e.results[0][0].transcript;setAiText(t);};
+    r.start();
+  };
+
+  const upcomingEvents=[...events].filter(e=>e.date>=tod()).sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));
+
+  return(
+    <div style={{padding:"16px 14px 120px"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+        <h2 style={{margin:0,fontSize:19,fontWeight:900}}>📅 Agenda</h2>
+        <button onClick={()=>setShowForm(true)} style={{background:"linear-gradient(135deg,#00d2ff,#7b2ff7)",border:"none",borderRadius:11,color:"#fff",padding:"8px 14px",cursor:"pointer",fontSize:13,fontWeight:800,fontFamily:"inherit",display:"flex",alignItems:"center",gap:5}}>
+          <IC n="plus" s={14}/>Agendar
+        </button>
+      </div>
+
+      {/* AI input */}
+      <div style={{background:"linear-gradient(135deg,rgba(123,47,247,0.1),rgba(0,210,255,0.1))",border:"1px solid rgba(123,47,247,0.25)",borderRadius:14,padding:"12px",marginBottom:14}}>
+        <div style={{fontSize:12,color:"#aaa",marginBottom:8,fontWeight:700}}>🤖 Agenda con IA — escribe o habla</div>
+        <div style={{display:"flex",gap:7}}>
+          <input value={aiText} onChange={e=>setAiText(e.target.value)} placeholder='Ej: "reunión mañana a las 3pm"' onKeyDown={e=>e.key==="Enter"&&parseAI()}
+            style={{flex:1,background:"#0c0c18",border:"1px solid #1a1a2e",borderRadius:10,padding:"10px 12px",color:"#e8e8f4",fontSize:13,outline:"none",fontFamily:"inherit"}}/>
+          <button onClick={startVoice} style={{background:listening?"rgba(231,76,60,0.2)":"#1a1a2e",border:listening?"1px solid #e74c3c":"1px solid #2a2a4e",borderRadius:10,color:listening?"#e74c3c":"#888",width:40,height:40,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            <IC n="mic" s={16} c={listening?"#e74c3c":"#888"}/>
+          </button>
+          <button onClick={parseAI} disabled={aiLoading||!aiText} style={{background:"linear-gradient(135deg,#7b2ff7,#00d2ff)",border:"none",borderRadius:10,color:"#fff",width:40,height:40,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,opacity:aiLoading||!aiText?0.5:1}}>
+            {aiLoading?<div style={{width:14,height:14,border:"2px solid #fff3",borderTopColor:"#fff",borderRadius:"50%",animation:"spin .7s linear infinite"}}/>:<IC n="send" s={15} c="#fff"/>}
+          </button>
+        </div>
+      </div>
+
+      {/* Manual form */}
+      {showForm&&(
+        <div style={{background:"#111120",borderRadius:14,padding:"14px",marginBottom:14,border:"1px solid #1a1a2e"}}>
+          <div style={{fontWeight:800,fontSize:14,marginBottom:12}}>✏️ Nuevo evento</div>
+          <div style={{display:"flex",flexDirection:"column",gap:9}}>
+            <input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} placeholder="Actividad *"
+              style={{background:"#0c0c18",border:"1px solid #1a1a2e",borderRadius:10,padding:"11px 13px",color:"#e8e8f4",fontSize:14,outline:"none",fontFamily:"inherit"}}/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+              <input type="date" value={form.date} onChange={e=>setForm(f=>({...f,date:e.target.value}))}
+                style={{background:"#0c0c18",border:"1px solid #1a1a2e",borderRadius:10,padding:"11px 13px",color:"#e8e8f4",fontSize:13,outline:"none",fontFamily:"inherit"}}/>
+              <input type="time" value={form.time} onChange={e=>setForm(f=>({...f,time:e.target.value}))}
+                style={{background:"#0c0c18",border:"1px solid #1a1a2e",borderRadius:10,padding:"11px 13px",color:"#e8e8f4",fontSize:13,outline:"none",fontFamily:"inherit"}}/>
+            </div>
+            <input value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} placeholder="Notas (opcional)"
+              style={{background:"#0c0c18",border:"1px solid #1a1a2e",borderRadius:10,padding:"11px 13px",color:"#e8e8f4",fontSize:13,outline:"none",fontFamily:"inherit"}}/>
+            <div style={{display:"flex",gap:8}}>
+              <Btn onClick={saveEvent} style={{flex:1}}>💾 Guardar</Btn>
+              <button onClick={()=>setShowForm(false)} style={{flex:1,background:"#1a1a2e",border:"none",borderRadius:13,color:"#888",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700}}>Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Calendar */}
+      <div style={{background:"#111120",borderRadius:14,padding:"13px",marginBottom:14}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+          <button onClick={()=>setSelDate(pM(curMonth)+"-01")} style={{background:"#1a1a2e",border:"none",color:"#ccc",borderRadius:8,padding:"4px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:16}}>‹</button>
+          <span style={{fontWeight:800,fontSize:14,color:"#00d2ff"}}>{mLbl(curMonth)}</span>
+          <button onClick={()=>setSelDate(nM(curMonth)+"-01")} style={{background:"#1a1a2e",border:"none",color:"#ccc",borderRadius:8,padding:"4px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:16}}>›</button>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,marginBottom:4}}>
+          {["D","L","M","M","J","V","S"].map((d,i)=>(
+            <div key={i} style={{textAlign:"center",fontSize:10,color:"#555",fontWeight:700,padding:"3px 0"}}>{d}</div>
+          ))}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2}}>
+          {(()=>{
+            const[y,mo]=curMonth.split("-").map(Number);
+            const cells=[];
+            for(let i=0;i<mDays.first;i++) cells.push(<div key={"e"+i}/>);
+            for(let d=1;d<=mDays.dim;d++){
+              const ds=`${curMonth}-${String(d).padStart(2,"0")}`;
+              const evs=evOnDay(ds);
+              const isToday=ds===tod();
+              const isSel=ds===selDate;
+              cells.push(
+                <div key={d} onClick={()=>setSelDate(ds)}
+                  style={{aspectRatio:"1",borderRadius:8,background:isSel?"rgba(0,210,255,0.2)":isToday?"rgba(123,47,247,0.15)":"transparent",border:isSel?"1px solid #00d2ff":isToday?"1px solid rgba(123,47,247,0.4)":"1px solid transparent",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer",position:"relative"}}>
+                  <span style={{fontSize:11,fontWeight:isSel||isToday?700:400,color:isSel?"#00d2ff":isToday?"#a87fff":"#ccc"}}>{d}</span>
+                  {evs.length>0&&<div style={{position:"absolute",bottom:2,right:2,width:5,height:5,borderRadius:"50%",background:"#00d2ff"}}/>}
+                </div>
+              );
+            }
+            return cells;
+          })()}
+        </div>
+      </div>
+
+      {/* Events on selected day */}
+      <div style={{marginBottom:10}}>
+        <div style={{fontSize:12,color:"#888",fontWeight:700,marginBottom:8}}>
+          {selDate===tod()?"Hoy":selDate} — {evOnDay(selDate).length===0?"Sin eventos":""+evOnDay(selDate).length+" evento(s)"}
+        </div>
+        {evOnDay(selDate).length===0?(
+          <div style={{textAlign:"center",padding:"20px",color:"#444",fontSize:13}}>Sin eventos este día</div>
+        ):(
+          evOnDay(selDate).map(ev=>(
+            <div key={ev.id} style={{background:"#111120",borderRadius:11,padding:"11px 13px",marginBottom:7,display:"flex",alignItems:"center",gap:10,border:"1px solid #1a1a2e"}}>
+              <div style={{background:"linear-gradient(135deg,#00d2ff,#7b2ff7)",borderRadius:8,padding:"6px 8px",fontSize:12,fontWeight:800,color:"#fff",flexShrink:0,minWidth:44,textAlign:"center"}}>{ev.time}</div>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:700,fontSize:13}}>{ev.title}</div>
+                {ev.notes&&<div style={{fontSize:11,color:"#666",marginTop:2}}>{ev.notes}</div>}
+              </div>
+              <button onClick={()=>onDel(ev.id)} style={{background:"none",border:"none",cursor:"pointer",color:"#e74c3c",padding:2}}><IC n="trash" s={14}/></button>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Upcoming */}
+      {upcomingEvents.filter(e=>e.date!==selDate).length>0&&(
+        <div>
+          <div style={{fontSize:12,color:"#888",fontWeight:700,marginBottom:8}}>Próximos eventos</div>
+          {upcomingEvents.filter(e=>e.date!==selDate).slice(0,5).map(ev=>(
+            <div key={ev.id} style={{background:"#111120",borderRadius:11,padding:"10px 13px",marginBottom:6,display:"flex",alignItems:"center",gap:10,border:"1px solid #1a1a2e"}}>
+              <div style={{flexShrink:0,textAlign:"center",minWidth:36}}>
+                <div style={{fontSize:10,color:"#888"}}>{ev.date.slice(5)}</div>
+                <div style={{fontSize:11,color:"#00d2ff",fontWeight:700}}>{ev.time}</div>
+              </div>
+              <div style={{flex:1,fontSize:13,fontWeight:600}}>{ev.title}</div>
+              <button onClick={()=>onDel(ev.id)} style={{background:"none",border:"none",cursor:"pointer",color:"#e74c3c",padding:2}}><IC n="trash" s={13}/></button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── LUISA CHAT ───────────────────────────────────
+function LuisaChat({onClose,txs,bills=[],cajas=[],events,onAddTx,onAddEvent,showToast,apiKey,tInc,tExp,month,aiName="Asistente",onNameChange}){
+  const speakText=(text)=>{
+    if(!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const clean=text.replace(/[*_#`]/g,"").replace(/ACTION:\{[^}]*\}/g,"").replace(/EVENT:\{[^}]*\}/g,"").trim();
+    const u=new SpeechSynthesisUtterance(clean);
+    u.lang="es-CO"; u.rate=1.05; u.pitch=1.1;
+    const voices=window.speechSynthesis.getVoices();
+    const esp=voices.find(v=>v.lang.startsWith("es")&&v.name.toLowerCase().includes("female"))
+      ||voices.find(v=>v.lang.startsWith("es"))
+      ||voices.find(v=>v.lang.startsWith("es-US"))
+      ||voices[0];
+    if(esp) u.voice=esp;
+    window.speechSynthesis.speak(u);
+  };
+  const[msgs,setMsgs]=useState(()=>[{role:"ai",text:`¡Hola! Soy ${aiName} 🤖 Tu asistente financiera. Puedo registrar gastos, ingresos, agendar eventos y darte consejos. ¿En qué te ayudo?`}]);
+  const[input,setInput]=useState("");
+  const[loading,setLoading]=useState(false);
+  const[listening,setListening]=useState(false);
+  const[voiceReply,setVoiceReply]=useState(()=>DB.get("mp_voice_reply")!==false);
+  const endRef=useRef();
+
+  useEffect(()=>endRef.current?.scrollIntoView({behavior:"smooth"}),[msgs]);
+
+  const send=async(text)=>{
+    const msg=text||input;
+    if(!msg.trim()) return;
+    setInput("");
+    setMsgs(m=>[...m,{role:"user",text:msg}]);
+    setLoading(true);
+    const k=(apiKey||DB.get("mp_k_"+(DB.get("mp_ai")||"groq"))||"").replace(/[^\x20-\x7E]/g,"").trim();
+    // k is optional - Puter.js handles AI for free without API key
+    const saldo=tInc-tExp;
+    const pendBills=bills.filter(b=>!(b.paidMonths||[]).includes(month));
+    const totalPend=pendBills.reduce((s,b)=>s+b.amount,0);
+    const cajasInfo=cajas.map(c=>{const te=(c.entries||[]).reduce((s,e)=>s+e.amount,0),tg=(c.withdrawals||[]).reduce((s,w)=>s+w.amount,0);return`${c.name}: disponible $${(te-tg).toLocaleString("es-CO")}`;}).join(", ");
+    const context=`Eres ${aiName}, asistente financiera y de agenda en Mi Plata (app colombiana). Hoy es ${tod()}. Estado financiero del mes: Ingresos=$${tInc.toLocaleString("es-CO")}, Gastos=$${tExp.toLocaleString("es-CO")}, Saldo=$${saldo.toLocaleString("es-CO")} COP. Pagos pendientes: ${pendBills.length} por $${totalPend.toLocaleString("es-CO")} (${pendBills.map(b=>b.name).join(", ")||"ninguno"}). Cajas: ${cajasInfo||"ninguna"}. Últimos 5 movimientos: ${txs.slice(0,5).map(t=>(t.type==="income"?"+":"-")+"$"+t.amount.toLocaleString("es-CO")+" ("+t.description+")").join(", ")||"ninguno"}. Próximos eventos: ${events.filter(e=>e.date>=tod()).slice(0,3).map(e=>e.date+" "+e.time+" "+e.title).join(", ")||"ninguno"}. INSTRUCCIONES: Responde siempre en español colombiano. Sé breve y directo. Si el usuario registra un GASTO responde con JSON: ACTION:{"type":"expense","description":"...","amount":NUMERO,"category":"alimentacion|mercado|transporte|servicios|salud|vivienda|ropa|tecnologia|entretenimiento|deudas|mascotas|colegio|deporte|vehiculo|otros","bank":"efectivo","date":"${tod()}"}. Si registra INGRESO: ACTION:{"type":"income","description":"...","amount":NUMERO,"bank":"efectivo","date":"${tod()}"}. Si agenda algo: EVENT:{"title":"...","date":"YYYY-MM-DD","time":"HH:MM","notes":""}. Para ACTION o EVENT primero explica brevemente, luego pon el JSON.`;
+
+    try{
+      const history=msgs.slice(-6).map(m=>({role:m.role==="user"?"user":"model",parts:[{text:m.text}]}));
+      const aiProv=DB.get("mp_ai")||"groq";
+      let reply="Lo siento, no entendí.";
+
+      // ── GROQ ────────────────────────────────────
+      if(aiProv==="groq"&&k){
+        const groqMsgs=[{role:"system",content:context},...msgs.slice(-6).map(m=>({role:m.role==="user"?"user":"assistant",content:m.text})),{role:"user",content:msg}];
+        const r=await fetch("https://api.groq.com/openai/v1/chat/completions",{
+          method:"POST",
+          headers:{"Content-Type":"application/json","Authorization":"Bearer "+k},
+          body:JSON.stringify({model:"meta-llama/llama-4-scout-17b-16e-instruct",max_tokens:600,temperature:0.7,messages:groqMsgs})
+        });
+        const d=await r.json();
+        if(d.error) throw new Error(d.error.message||JSON.stringify(d.error));
+        reply=(d.choices?.[0]?.message?.content||reply).trim();
+
+      // ── GEMINI ──────────────────────────────────
+      } else if(aiProv==="gemini"&&k){
+        const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${k}`,{
+          method:"POST",headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({system_instruction:{parts:[{text:context}]},contents:[...history,{role:"user",parts:[{text:msg}]}],generationConfig:{temperature:0.7,maxOutputTokens:600}})
+        });
+        const d=await r.json();
+        if(d.error) throw new Error(d.error.message);
+        reply=(d.candidates?.[0]?.content?.parts?.[0]?.text||reply).trim();
+
+      // ── OPENAI ──────────────────────────────────
+      } else if(aiProv==="openai"&&k){
+        const r=await fetch("https://api.openai.com/v1/chat/completions",{
+          method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+k},
+          body:JSON.stringify({model:"gpt-4o-mini",max_tokens:600,temperature:0.7,messages:[{role:"system",content:context},...msgs.slice(-6).map(m=>({role:m.role==="user"?"user":"assistant",content:m.text})),{role:"user",content:msg}]})
+        });
+        const d=await r.json();
+        if(d.error) throw new Error(d.error.message);
+        reply=(d.choices?.[0]?.message?.content||reply).trim();
+
+      } else {
+        reply="⚙️ Para usar el asistente, ve a la pestaña Escanear, selecciona Groq y pega tu API Key gratuita de console.groq.com — sin tarjeta de crédito.";
+      }
+
+      // Parse action
+      const actionMatch=reply.match(/ACTION:(\{[\s\S]*?\})/);
+      const eventMatch=reply.match(/EVENT:(\{[\s\S]*?\})/);
+      let cleanReply=reply.replace(/ACTION:\{[\s\S]*?\}/,"").replace(/EVENT:\{[\s\S]*?\}/,"").trim();
+
+      if(actionMatch){
+        try{
+          const tx=JSON.parse(actionMatch[1]);
+          onAddTx(tx);
+          cleanReply+="\n\n✅ ¡Registrado!";
+        }catch(e){}
+      }
+      if(eventMatch){
+        try{
+          const ev=JSON.parse(eventMatch[1]);
+          onAddEvent(ev);
+          cleanReply+="\n\n📅 ¡Agendado!";
+        }catch(e){}
+      }
+
+      setMsgs(m=>[...m,{role:"ai",text:cleanReply}]);
+      if(voiceReply) speakText(cleanReply);
+    }catch(e){
+      setMsgs(m=>[...m,{role:"ai",text:"❌ Error: "+e.message}]);
+    }
+    setLoading(false);
+  };
+
+  const startVoice=()=>{
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(!SR){showToast("❌ Voz no disponible en este dispositivo","err");return;}
+    const r=new SR(); r.lang="es-CO"; r.interimResults=false;
+    r.onstart=()=>setListening(true);
+    r.onend=()=>setListening(false);
+    r.onresult=e=>{const t=e.results[0][0].transcript;send(t);};
+    r.start();
+  };
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:400,display:"flex",flexDirection:"column",maxWidth:480,margin:"0 auto"}}>
+      {/* Header */}
+      <div style={{background:"#0c0c18",padding:"14px 16px",borderBottom:"1px solid #1a1a2e",display:"flex",alignItems:"center",gap:12,flexShrink:0}}>
+        <div style={{width:40,height:40,borderRadius:"50%",background:"linear-gradient(135deg,#7b2ff7,#00d2ff)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:20}}>🤖</div>
+        <div style={{flex:1}}>
+          <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <div style={{fontWeight:900,fontSize:16}}>{aiName}</div>
+          <button onClick={()=>{const n=prompt("Nombre del asistente:",aiName);if(n&&n.trim())onNameChange(n.trim());}} style={{background:"none",border:"none",cursor:"pointer",color:"#555",padding:0,fontSize:11}}>✏️</button>
+        </div>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{fontSize:11,color:"#00d2ff"}}>Asistente IA · siempre disponible</div>
+          <button onClick={()=>{const v=!voiceReply;setVoiceReply(v);DB.set("mp_voice_reply",v);window.speechSynthesis?.cancel();}} title={voiceReply?"Voz ON":"Voz OFF"}
+            style={{background:voiceReply?"rgba(0,210,255,0.15)":"rgba(255,255,255,0.05)",border:voiceReply?"1px solid rgba(0,210,255,0.4)":"1px solid #2a2a4e",borderRadius:8,color:voiceReply?"#00d2ff":"#555",padding:"3px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700}}>
+            {voiceReply?"🔊 Voz":"🔇 Mudo"}
+          </button>
+        </div>
+        </div>
+        <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:"#666",padding:4}}><IC n="x" s={20}/></button>
+      </div>
+
+      {/* Messages */}
+      <div style={{flex:1,overflowY:"auto",padding:"14px",display:"flex",flexDirection:"column",gap:10}}>
+        {msgs.map((m,i)=>(
+          <div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
+            <div style={{maxWidth:"82%",background:m.role==="user"?"linear-gradient(135deg,#00d2ff,#7b2ff7)":"#111120",borderRadius:m.role==="user"?"16px 16px 4px 16px":"16px 16px 16px 4px",padding:"10px 14px",fontSize:13,lineHeight:1.5,color:"#fff",border:m.role==="ai"?"1px solid #1a1a2e":"none",whiteSpace:"pre-wrap"}}>
+              {m.text}
+            </div>
+          </div>
+        ))}
+        {loading&&(
+          <div style={{display:"flex",justifyContent:"flex-start"}}>
+            <div style={{background:"#111120",borderRadius:"16px 16px 16px 4px",padding:"12px 16px",border:"1px solid #1a1a2e",display:"flex",gap:5,alignItems:"center"}}>
+              {[0,1,2].map(i=><div key={i} style={{width:6,height:6,borderRadius:"50%",background:"#00d2ff",animation:`bounce 1s ${i*0.2}s infinite`}}/>)}
+            </div>
+          </div>
+        )}
+        <div ref={endRef}/>
+      </div>
+
+      {/* Quick actions */}
+      <div style={{padding:"8px 14px 0",display:"flex",gap:6,overflowX:"auto",flexShrink:0}}>
+        {["💰 ¿Cuánto me queda?","📅 ¿Qué tengo hoy?","📊 Analiza mis gastos","💡 Dame un consejo"].map((q,i)=>(
+          <button key={i} onClick={()=>send(q.replace(/^[^ ]+ /,""))} style={{flexShrink:0,background:"#111120",border:"1px solid #1a1a2e",borderRadius:20,color:"#888",padding:"6px 12px",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:600,whiteSpace:"nowrap"}}>{q}</button>
+        ))}
+      </div>
+
+      {/* Input */}
+      <div style={{padding:"10px 14px 20px",background:"#0c0c18",borderTop:"1px solid #1a1a2e",display:"flex",gap:8,flexShrink:0}}>
+        <input value={input} onChange={e=>setInput(e.target.value)} {...{placeholder:`Escribe o habla con ${aiName}...`}} onKeyDown={e=>e.key==="Enter"&&send()}
+          style={{flex:1,background:"#111120",border:"1px solid #1a1a2e",borderRadius:12,padding:"11px 14px",color:"#e8e8f4",fontSize:14,outline:"none",fontFamily:"inherit"}}/>
+        <button onClick={startVoice} style={{background:listening?"rgba(231,76,60,0.2)":"#111120",border:listening?"1px solid #e74c3c":"1px solid #1a1a2e",borderRadius:12,color:listening?"#e74c3c":"#888",width:44,height:44,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+          <IC n="mic" s={18} c={listening?"#e74c3c":"#888"}/>
+        </button>
+        <button onClick={()=>send()} disabled={!input||loading} style={{background:"linear-gradient(135deg,#00d2ff,#7b2ff7)",border:"none",borderRadius:12,color:"#fff",width:44,height:44,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,opacity:!input||loading?0.5:1}}>
+          <IC n="send" s={17} c="#fff"/>
+        </button>
+      </div>
+
+      <style>{`@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}`}</style>
+    </div>
+  );
+}
+
+function App(){
+  useEffect(()=>{ initTrial(); },[]);
+
+  const[tab,setTab]=useState("dashboard");
+  const[month,setMonth]=useState(curM());
+  const[txs,setTxs]=useState(()=>DB.get("mp_tx")||[]);
+  const[bills,setBills]=useState(()=>DB.get("mp_bills")||[]);
+  const[cajas,setCajas]=useState(()=>DB.get("mp_cajas")||[]);
+  const[activeCaja,setActiveCaja]=useState(null);
+  const[modal,setModal]=useState(null);
+  const[toast,setToast]=useState(null);
+  const[events,setEvents]=useState(()=>DB.get("mp_events")||[]);
+  const[showLuisa,setShowLuisa]=useState(false);
+  const[aiName,setAiName]=useState(()=>DB.get("mp_ainame")||"Asistente");
+  const[alarms,setAlarms]=useState([]);
+  const[dismissed,setDismissed]=useState(()=>DB.get("mp_dis")||[]);
+  const[notifOk,setNotifOk]=useState(typeof Notification!=="undefined"&&Notification?.permission==="granted");
+  const[showSub,setShowSub]=useState(false);
+  const[pro,setPro]=useState(()=>checkPro());
+  const[newCN,setNewCN]=useState("");
+  const dl=daysLeft();
+
+  useEffect(()=>{
+    const check=()=>{
+      setPro(checkPro());
+      const now=new Date(), d=now.getDate(), m=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0");
+      const active=bills.filter(b=>{ const k=b.id+"-"+m; return b.dueDay===d&&!dismissed.includes(k); });
+      setAlarms(active);
+      if(typeof Notification!=="undefined"&&Notification?.permission==="granted") active.forEach(b=>{ try{ new Notification("💸 Vence HOY · Mi Plata",{body:`${b.name} · ${fmt(b.amount)}`,tag:"b"+b.id}); }catch(e){} });
+    };
+    check(); const iv=setInterval(check,60000); return()=>clearInterval(iv);
+  },[bills,dismissed]);
+
+  const askNotif=async()=>{ if(!("Notification"in window))return; const p=await Notification.requestPermission(); setNotifOk(p==="granted"); };
+  const showT=(msg,type="ok")=>{ setToast({msg,type}); setTimeout(()=>setToast(null),2600); };
+
+  const saveTxs=d=>{setTxs(d);DB.set("mp_tx",d);};
+  const saveBills=d=>{setBills(d);DB.set("mp_bills",d);};
+  const saveCajas=d=>{setCajas(d);DB.set("mp_cajas",d);};
+
+  const addTx=tx=>{saveTxs([{...tx,id:Date.now()},...txs]);showT(tx.type==="income"?"💰 Ingreso guardado":"📝 Gasto guardado");setModal(null);};
+  const updTx=tx=>{saveTxs(txs.map(t=>t.id===tx.id?tx:t));showT("✅ Actualizado");setModal(null);};
+  const delTx=id=>{saveTxs(txs.filter(t=>t.id!==id));showT("🗑️ Eliminado","warn");};
+
+  const saveEvents=d=>{setEvents(d);DB.set("mp_events",d);};
+  const addEvent=e=>{const ev={...e,id:Date.now()};saveEvents([ev,...events]);showT("📅 Evento agendado");
+    // Schedule notifications
+    scheduleEventNotif(ev);
+  };
+  const delEvent=id=>{saveEvents(events.filter(e=>e.id!==id));showT("🗑️ Eliminado","warn");};
+  const updEvent=e=>{saveEvents(events.map(x=>x.id===e.id?e:x));showT("✅ Evento actualizado");};
+
+  const addBill=b=>{saveBills([{...b,id:Date.now()},...bills]);showT("🔔 Pago programado");setModal(null);};
+  const toggleBill=id=>{saveBills(bills.map(b=>{ if(b.id!==id)return b; const pm=b.paidMonths||[]; return{...b,paidMonths:pm.includes(month)?pm.filter(x=>x!==month):[...pm,month]}; }));};
+  const delBill=id=>{saveBills(bills.filter(b=>b.id!==id));showT("🗑️ Eliminado","warn");};
+  const dismissAlarm=b=>{ const k=b.id+"-"+curM(); const d2=[...dismissed,k]; setDismissed(d2); DB.set("mp_dis",d2); setAlarms(a=>a.filter(x=>x.id!==b.id)); };
+
+  const addCaja=n=>{saveCajas([{id:Date.now(),name:n,entries:[],withdrawals:[]},...cajas]);showT(`✅ "${n}" creada`);setModal(null);};
+  const delCaja=id=>{saveCajas(cajas.filter(c=>c.id!==id));if(activeCaja===id)setActiveCaja(null);};
+  const renameCaja=(id,n)=>{saveCajas(cajas.map(c=>c.id===id?{...c,name:n}:c));showT("✅ Nombre actualizado");setModal(null);};
+  const addEntry=(cid,e)=>{saveCajas(cajas.map(c=>c.id!==cid?c:{...c,entries:[{...e,id:Date.now()},...(c.entries||[])]}));showT("💵 Entrega registrada");setModal(null);};
+  const addW=(cid,w)=>{saveCajas(cajas.map(c=>c.id!==cid?c:{...c,withdrawals:[{...w,id:Date.now()},...(c.withdrawals||[])]}));showT("📤 Retiro registrado");setModal(null);};
+  const delW=(cid,wid)=>{saveCajas(cajas.map(c=>c.id!==cid?c:{...c,withdrawals:c.withdrawals.filter(w=>w.id!==wid)}));};
+  const delE=(cid,eid)=>{saveCajas(cajas.map(c=>c.id!==cid?c:{...c,entries:c.entries.filter(e=>e.id!==eid)}));};
+
+  const openCaja=cajas.find(c=>c.id===activeCaja);
+  const cStats=c=>{ const te=(c.entries||[]).reduce((s,e)=>s+e.amount,0),tg=(c.withdrawals||[]).reduce((s,w)=>s+w.amount,0); return{te,tg,disp:te-tg,mG:(c.withdrawals||[]).filter(w=>w.date?.startsWith(month)).reduce((s,w)=>s+w.amount,0)}; };
+
+  const mTx=txs.filter(t=>t.date?.startsWith(month));
+  const tInc=mTx.filter(t=>t.type==="income").reduce((s,t)=>s+t.amount,0);
+  const tExp=mTx.filter(t=>t.type==="expense").reduce((s,t)=>s+t.amount,0);
+  const pend=bills.filter(b=>!(b.paidMonths||[]).includes(month));
+  const byAct=ACTS.map(a=>({name:a,total:mTx.filter(x=>x.type==="income"&&x.activity===a).reduce((s,x)=>s+x.amount,0)})).filter(a=>a.total>0);
+  const byBank=BANKS.map(b=>({...b,total:mTx.filter(x=>x.type==="income"&&x.bank===b.id).reduce((s,x)=>s+x.amount,0)})).filter(b=>b.total>0);
+
+  const TABS=[
+    {id:"dashboard",icon:"chart",label:"Resumen"},
+    {id:"transactions",icon:"list",label:"Movimientos"},
+    {id:"agenda",icon:"calendar",label:"Agenda"},
+    {id:"cajas",icon:"box",label:"Cajas"},
+    {id:"bills",icon:"bell",label:"Pagos"},
+    {id:"scan",icon:"camera",label:"Escanear"},
+    {id:"feedback",icon:"star",label:"Beta 🟢"},
+  ];
+
+  return(
+    <div style={{background:"#080810",minHeight:"100vh",color:"#e8e8f4",fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif",maxWidth:480,margin:"0 auto"}}>
+
+      {showSub&&<SubScreen onClose={()=>setShowSub(false)} onDone={()=>{setPro(checkPro());setShowSub(false);}}/>}
+
+      {/* HEADER */}
+      <div style={{padding:"13px 16px 11px",borderBottom:"1px solid #1a1a2e",background:"#0c0c18",position:"sticky",top:0,zIndex:50}}>
+        {activeCaja&&openCaja?(
+          <div style={{display:"flex",alignItems:"center",gap:12}}>
+            <button onClick={()=>setActiveCaja(null)} style={{background:"#1a1a2e",border:"none",color:"#ccc",width:34,height:34,borderRadius:10,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><IC n="back" s={18}/></button>
+            <div style={{flex:1}}><div style={{fontWeight:800,fontSize:17}}>{openCaja.name}</div><div style={{fontSize:11,color:"#555"}}>Caja de control</div></div>
+            <button onClick={()=>setModal({type:"renameCaja",data:openCaja})} style={{background:"none",border:"none",cursor:"pointer",color:"#666",padding:4}}><IC n="edit" s={16}/></button>
+          </div>
+        ):(
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <div style={{fontSize:24,fontWeight:900,background:"linear-gradient(135deg,#00d2ff,#7b2ff7)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",lineHeight:1}}>₱</div>
+            <div style={{flex:1}}><div style={{fontWeight:900,fontSize:18,letterSpacing:"-0.5px"}}>Mi Plata</div><div style={{fontSize:10,color:"#555"}}>Control financiero</div></div>
+            {pro
+              ?<span style={{background:"rgba(0,210,255,0.1)",border:"1px solid rgba(0,210,255,0.2)",borderRadius:8,color:"#00d2ff",padding:"3px 9px",fontSize:11,fontWeight:700}}>PRO ✓</span>
+              :<button onClick={()=>setShowSub(true)} style={{background:"rgba(231,76,60,0.12)",border:"1px solid rgba(231,76,60,0.25)",borderRadius:8,color:"#e74c3c",padding:"3px 9px",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700}}>⏳{dl}d</button>
+            }
+            <div style={{display:"flex",alignItems:"center",gap:5}}>
+              <button onClick={()=>setMonth(pM(month))} style={{background:"#1a1a2e",border:"none",color:"#ccc",width:26,height:26,borderRadius:7,cursor:"pointer",fontSize:15,display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
+              <span style={{fontSize:11,fontWeight:700,minWidth:58,textAlign:"center"}}>{mLbl(month)}</span>
+              <button onClick={()=>setMonth(nM(month))} style={{background:"#1a1a2e",border:"none",color:"#ccc",width:26,height:26,borderRadius:7,cursor:"pointer",fontSize:15,display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* TABS */}
+      {!activeCaja&&(
+        <div style={{display:"flex",background:"#0c0c18",borderBottom:"1px solid #1a1a2e",overflowX:"auto"}}>
+          {TABS.map(t=>(
+            <button key={t.id} onClick={()=>setTab(t.id)} style={{flex:"0 0 auto",minWidth:52,display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"8px 4px",background:"none",border:"none",borderBottom:tab===t.id?"2px solid #00d2ff":"2px solid transparent",color:tab===t.id?"#00d2ff":"#444",fontSize:9,cursor:"pointer",fontFamily:"inherit",position:"relative",whiteSpace:"nowrap"}}>
+              <IC n={t.icon} s={15}/>
+              <span>{t.label}</span>
+              {t.id==="bills"&&alarms.length>0&&<span style={{position:"absolute",top:5,right:"8%",width:7,height:7,borderRadius:"50%",background:"#e74c3c"}}/>}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* CONTENT */}
+      {activeCaja&&openCaja?(
+        <CajaDetail caja={openCaja} month={month} onAddE={e=>addEntry(openCaja.id,e)} onAddW={w=>addW(openCaja.id,w)} onDelE={eid=>delE(openCaja.id,eid)} onDelW={wid=>delW(openCaja.id,wid)} onDelete={()=>delCaja(openCaja.id)} setModal={setModal}/>
+      ):(
+        <div style={{padding:"15px 14px 100px"}}>
+
+          {/* DASHBOARD */}
+          {tab==="dashboard"&&(
+            <div>
+              {alarms.length>0&&(
+                <div style={{background:"rgba(231,76,60,0.1)",border:"1px solid rgba(231,76,60,0.3)",borderRadius:14,padding:"12px 14px",marginBottom:14}}>
+                  <div style={{fontWeight:800,fontSize:13,color:"#e74c3c",marginBottom:8}}>🔔 Pagos que vencen HOY</div>
+                  {alarms.map(b=>(
+                    <div key={b.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                      <div><div style={{fontSize:13,fontWeight:600}}>{b.name}</div><div style={{fontSize:11,color:"#e74c3c",fontWeight:700}}>{fmt(b.amount)}</div></div>
+                      <button onClick={()=>dismissAlarm(b)} style={{background:"rgba(231,76,60,0.15)",border:"1px solid rgba(231,76,60,0.3)",borderRadius:8,color:"#e74c3c",padding:"5px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,display:"flex",alignItems:"center",gap:4}}><IC n="mute" s={13}/>Silenciar</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:9,marginBottom:14}}>
+                <Card label="Ingresos" value={fmt(tInc)} color="#2ecc71" icon="up"/>
+                <Card label="Gastos" value={fmt(tExp)} color="#e74c3c" icon="down"/>
+                <Card label="Saldo" value={fmt(tInc-tExp)} color={tInc-tExp>=0?"#4f8ef7":"#e74c3c"} icon="wallet"/>
+              </div>
+              <div style={{display:"flex",gap:9,marginBottom:14}}>
+                <button onClick={()=>setTab("scan")} style={{flex:2,background:"linear-gradient(135deg,#00d2ff,#7b2ff7)",border:"none",borderRadius:13,color:"#fff",padding:"13px",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+                  <IC n="camera" s={18}/>📸 Escanear factura
+                </button>
+                <button onClick={()=>setModal({type:"addTx",data:{type:"expense"}})} style={{flex:1,background:"#111120",border:"1px solid #1a1a2e",borderRadius:13,color:"#ccc",padding:"13px",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700}}>
+                  ➕ Gasto
+                </button>
+              </div>
+              {pend.length>0&&(
+                <div onClick={()=>setTab("bills")} style={{background:"rgba(231,76,60,0.08)",border:"1px solid rgba(231,76,60,0.2)",borderRadius:10,padding:"9px 13px",display:"flex",gap:8,alignItems:"center",marginBottom:12,fontSize:13,color:"#e74c3c",cursor:"pointer"}}>
+                  <IC n="bell" s={14}/><span><strong>{pend.length} pagos pendientes</strong> · {fmt(pend.reduce((s,b)=>s+b.amount,0))}</span>
+                </div>
+              )}
+              {byBank.length>0&&(
+                <div style={{background:"#111120",borderRadius:14,padding:"13px 15px",marginBottom:12}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#888",marginBottom:9}}>💳 Ingresos por banco</div>
+                  {byBank.map(b=>(
+                    <div key={b.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:"1px solid #1a1a2e"}}>
+                      <BankBadge id={b.id}/><span style={{fontWeight:700,color:"#2ecc71",fontSize:13}}>{fmt(b.total)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {byAct.length>0&&(
+                <div style={{background:"#111120",borderRadius:14,padding:"13px 15px",marginBottom:12}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#888",marginBottom:9}}>💼 Ingresos por actividad</div>
+                  {byAct.map((a,i)=>(
+                    <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:"1px solid #1a1a2e"}}>
+                      <span style={{fontSize:13}}>{a.name}</span><span style={{fontWeight:700,color:"#2ecc71",fontSize:13}}>{fmt(a.total)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {cajas.length>0&&(
+                <div style={{background:"#111120",borderRadius:14,padding:"13px 15px",marginBottom:12}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#888",marginBottom:9}}>📦 Cajas</div>
+                  {cajas.map(c=>{ const s=cStats(c); return(
+                    <div key={c.id} onClick={()=>setActiveCaja(c.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:"1px solid #1a1a2e",cursor:"pointer"}}>
+                      <div style={{flex:1}}><div style={{fontWeight:700,fontSize:13}}>{c.name}</div><div style={{fontSize:11,color:"#888"}}>Este mes: {fmt(s.mG)}</div></div>
+                      <div style={{textAlign:"right"}}><div style={{fontWeight:800,color:s.disp>=0?"#4f8ef7":"#e74c3c",fontSize:14}}>{fmt(s.disp)}</div><div style={{fontSize:10,color:"#888"}}>disponible</div></div>
+                      <IC n="arrow" s={14} c="#555"/>
+                    </div>
+                  ); })}
+                </div>
+              )}
+              {tExp>0&&(
+                <div style={{background:"#111120",borderRadius:14,padding:"13px 15px"}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#888",marginBottom:9}}>📊 Gastos por categoría</div>
+                  {CATS.map(c=>{ const t=mTx.filter(x=>x.type==="expense"&&x.category===c.id).reduce((s,x)=>s+x.amount,0); if(!t)return null; return(
+                    <div key={c.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                      <div style={{display:"flex",gap:7,alignItems:"center"}}><span style={{width:8,height:8,borderRadius:"50%",background:c.color,display:"inline-block"}}/><span style={{fontSize:13}}>{c.label}</span></div>
+                      <div style={{display:"flex",alignItems:"center",gap:7}}>
+                        <div style={{width:60,height:4,background:"#1a1a2e",borderRadius:3,overflow:"hidden"}}><div style={{height:"100%",borderRadius:3,background:c.color,width:`${Math.min(100,(t/tExp)*100)}%`}}/></div>
+                        <span style={{fontSize:12,fontWeight:700,minWidth:80,textAlign:"right"}}>{fmt(t)}</span>
+                      </div>
+                    </div>
+                  ); })}
+                </div>
+              )}
+              {mTx.length===0&&cajas.length===0&&(
+                <div style={{textAlign:"center",padding:"50px 0",color:"#444"}}>
+                  <div style={{fontSize:48,marginBottom:12}}>📊</div>
+                  <p>Sin movimientos en {mLbl(month)}</p>
+                  <Btn onClick={()=>{setTab("transactions");setModal({type:"tx"});}} style={{width:"auto",padding:"12px 24px",display:"inline-block"}}>+ Primer movimiento</Btn>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TRANSACTIONS */}
+          {tab==="transactions"&&(
+            <div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+                <h2 style={{margin:0,fontSize:19,fontWeight:900}}>Movimientos</h2>
+                <button onClick={()=>setModal({type:"tx"})} style={{background:"linear-gradient(135deg,#00d2ff,#7b2ff7)",border:"none",borderRadius:11,color:"#fff",padding:"8px 14px",cursor:"pointer",fontSize:13,fontWeight:800,fontFamily:"inherit",display:"flex",alignItems:"center",gap:5}}><IC n="plus" s={14}/>Agregar</button>
+              </div>
+              {mTx.length===0?<div style={{textAlign:"center",padding:"50px 0",color:"#444"}}>📭 Sin movimientos</div>:(
+                <div style={{display:"flex",flexDirection:"column",gap:7}}>
+                  {[...mTx].sort((a,b)=>(b.date||"").localeCompare(a.date||"")).map(tx=>{
+                    const cat=CATS.find(c=>c.id===tx.category);
+                    return(
+                      <div key={tx.id} style={{background:"#111120",borderRadius:11,padding:"11px 13px",display:"flex",gap:10,alignItems:"flex-start"}}>
+                        <div style={{width:9,height:9,borderRadius:"50%",flexShrink:0,marginTop:5,background:tx.type==="income"?"#2ecc71":(cat?.color||"#aaa")}}/>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontWeight:600,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tx.description}</div>
+                          <div style={{fontSize:11,color:"#555",marginTop:2}}>{tx.type==="income"?`💼 ${tx.activity||"Ingreso"}`:cat?.label} · {tx.date}</div>
+                          {tx.bank&&<div style={{marginTop:4}}><BankBadge id={tx.bank}/></div>}
+                          {tx.notes&&<div style={{fontSize:11,color:"#777",marginTop:3}}>{tx.notes}</div>}
+                        </div>
+                        <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:5}}>
+                          <span style={{fontWeight:800,fontSize:14,color:tx.type==="income"?"#2ecc71":"#e74c3c"}}>{tx.type==="income"?"+":"-"}{fmt(tx.amount)}</span>
+                          <div style={{display:"flex",gap:4}}>
+                            <button onClick={()=>setModal({type:"tx",data:tx})} style={{background:"none",border:"none",cursor:"pointer",color:"#555",padding:2}}><IC n="edit" s={13}/></button>
+                            <button onClick={()=>delTx(tx.id)} style={{background:"none",border:"none",cursor:"pointer",color:"#e74c3c",padding:2}}><IC n="trash" s={13}/></button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* CAJAS */}
+          {tab==="cajas"&&(
+            <div>
+              <h2 style={{margin:"0 0 6px",fontSize:19,fontWeight:900}}>Mis Cajas</h2>
+              <p style={{color:"#777",fontSize:13,marginBottom:14}}>Controla plata que recibes como préstamo o anticipo.</p>
+              <div style={{background:"#111120",borderRadius:13,padding:"12px",marginBottom:14,display:"flex",gap:8}}>
+                <input value={newCN} onChange={e=>setNewCN(e.target.value)}
+                  placeholder='Nueva caja: "Anticipo", "Nómina"...'
+                  onKeyDown={e=>e.key==="Enter"&&newCN&&(addCaja(newCN),setNewCN(""))}
+                  style={{flex:1,background:"#0c0c18",border:"1px solid #1a1a2e",borderRadius:9,padding:"9px 11px",color:"#e8e8f4",fontSize:13,outline:"none",fontFamily:"inherit"}}/>
+                <button onClick={()=>{if(newCN){addCaja(newCN);setNewCN("");}}} style={{background:"linear-gradient(135deg,#00d2ff,#7b2ff7)",border:"none",borderRadius:9,color:"#fff",padding:"9px 14px",cursor:"pointer",fontWeight:800,fontFamily:"inherit",fontSize:14}}>+</button>
+              </div>
+              {cajas.length===0?<div style={{textAlign:"center",padding:"40px 0",color:"#444"}}>📦 No tienes cajas</div>:(
+                <div style={{display:"flex",flexDirection:"column",gap:11}}>
+                  {cajas.map(c=>{ const s=cStats(c); return(
+                    <div key={c.id} onClick={()=>setActiveCaja(c.id)} style={{background:"#111120",borderRadius:15,padding:"15px",cursor:"pointer",border:"1px solid #1a1a2e"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:11}}>
+                        <div><div style={{fontWeight:800,fontSize:16}}>{c.name}</div><div style={{fontSize:12,color:"#888"}}>{(c.entries||[]).length} entregas · {(c.withdrawals||[]).length} retiros</div></div>
+                        <IC n="arrow" s={16} c="#555"/>
+                      </div>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:9}}>
+                        <div><div style={{fontSize:10,color:"#888"}}>Recibido</div><div style={{fontWeight:700,color:"#2ecc71",fontSize:13}}>{fmt(s.te)}</div></div>
+                        <div><div style={{fontSize:10,color:"#888"}}>Gastado</div><div style={{fontWeight:700,color:"#e74c3c",fontSize:13}}>{fmt(s.tg)}</div></div>
+                        <div><div style={{fontSize:10,color:"#888"}}>Disponible</div><div style={{fontWeight:800,color:s.disp>=0?"#4f8ef7":"#e74c3c",fontSize:15}}>{fmt(s.disp)}</div></div>
+                      </div>
+                      <div style={{fontSize:12,color:"#888"}}>Este mes: <strong style={{color:"#e74c3c"}}>{fmt(s.mG)}</strong></div>
+                    </div>
+                  ); })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* BILLS */}
+          {tab==="bills"&&(
+            <BillsTab
+              bills={bills} month={month} alarms={alarms} notifOk={notifOk}
+              askNotif={askNotif} pend={pend}
+              onNew={()=>setModal({type:"bill"})}
+              onToggle={toggleBill} onDel={delBill} onDismiss={dismissAlarm}
+              onPayWithScan={(bill)=>{setModal({type:"payBill",data:bill});}}
+              onPayManual={(bill,amount)=>{
+                addTx({type:"expense",description:"Pago: "+bill.name,amount:amount||bill.amount,category:bill.category||"servicios",bank:"efectivo",date:tod(),notes:"Pago programado"});
+                toggleBill(bill.id);
+              }}
+              txs={txs}
+            />
+          )}
+
+          {tab==="agenda"&&<AgendaTab events={events} onAdd={addEvent} onDel={delEvent} onUpd={updEvent} showToast={showT} apiKey={DB.get("mp_k_"+(DB.get("mp_ai")||"groq"))||""} />}
+          {tab==="scan"&&<ScanTab onSave={tx=>{addTx(tx);setTab("transactions");}} showToast={showT} pro={pro}/>}
+          {tab==="feedback"&&<FeedbackTab/>}
+        </div>
+      )}
+
+      {/* MODALS */}
+      {modal?.type==="tx"&&<Modal title={modal.data?.id?"Editar movimiento":"Nuevo movimiento"} onClose={()=>setModal(null)}><TxForm initial={modal.data} onSave={modal.data?.id?updTx:addTx}/></Modal>}
+      {modal?.type==="bill"&&<Modal title="Nuevo pago fijo" onClose={()=>setModal(null)}><BillForm onSave={addBill}/></Modal>}
+      {modal?.type==="payBill"&&<Modal title={"Pagar: "+modal.data?.name} onClose={()=>setModal(null)}>
+        <PayBillForm bill={modal.data} onPayManual={(bill,amt)=>{
+          addTx({type:"expense",description:"Pago: "+bill.name,amount:amt||bill.amount,category:bill.category||"servicios",bank:"efectivo",date:tod(),notes:"Pago programado"});
+          toggleBill(bill.id); setModal(null); showT("✅ Pago registrado");
+        }} onPayScan={(bill)=>{setModal(null); setTab("scan");}} />
+      </Modal>}
+      {modal?.type==="renameCaja"&&<Modal title="Cambiar nombre" onClose={()=>setModal(null)}>
+        <div style={{display:"flex",flexDirection:"column",gap:11}}>
+          <Inp placeholder="Nuevo nombre" value={modal.data.name} onChange={e=>setModal(m=>({...m,data:{...m.data,name:e.target.value}}))}/>
+          <Btn onClick={()=>renameCaja(modal.data.id,modal.data.name)}>Guardar nombre</Btn>
+        </div>
+      </Modal>}
+      {modal?.type==="entry"&&<Modal title="Registrar entrega" onClose={()=>setModal(null)}>
+        {(()=>{ const[a,setA]=useState(""),[n,setN]=useState(""),[d,setD]=useState(tod());
+          return(<div style={{display:"flex",flexDirection:"column",gap:11}}>
+            <Inp placeholder="Monto recibido *" type="number" value={a} onChange={e=>setA(e.target.value)}/>
+            <Inp placeholder="¿Quién entregó / motivo?" value={n} onChange={e=>setN(e.target.value)}/>
+            <Inp type="date" value={d} onChange={e=>setD(e.target.value)}/>
+            <Btn onClick={()=>{if(a)addEntry(modal.cid,{amount:Number(a),notes:n,date:d});}}>💵 Guardar entrega</Btn>
+          </div>); })()
+        }
+      </Modal>}
+      {modal?.type==="withdrawal"&&<Modal title="Registrar retiro" onClose={()=>setModal(null)}>
+        {(()=>{ const[n,setN]=useState(""),[a,setA]=useState(""),[d,setD]=useState(tod());
+          return(<div style={{display:"flex",flexDirection:"column",gap:11}}>
+            <Inp placeholder="¿Qué compraste? *" value={n} onChange={e=>setN(e.target.value)}/>
+            <Inp placeholder="Monto *" type="number" value={a} onChange={e=>setA(e.target.value)}/>
+            <Inp type="date" value={d} onChange={e=>setD(e.target.value)}/>
+            <Btn onClick={()=>{if(n&&a)addW(modal.cid,{name:n,amount:Number(a),date:d});}}>📤 Guardar retiro</Btn>
+          </div>); })()
+        }
+      </Modal>}
+
+      {/* LUISA BUTTON */}
+      {!activeCaja&&!showLuisa&&(
+        <button onClick={()=>setShowLuisa(true)} style={{position:"fixed",bottom:76,right:16,zIndex:300,background:"linear-gradient(135deg,#7b2ff7,#00d2ff)",border:"none",borderRadius:"50%",width:58,height:58,cursor:"pointer",boxShadow:"0 4px 24px rgba(123,47,247,0.6)",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column"}}>
+          <span style={{fontSize:22}}>🤖</span>
+        </button>
+      )}
+      {showLuisa&&<LuisaChat onClose={()=>setShowLuisa(false)} txs={txs} bills={bills} cajas={cajas} events={events} onAddTx={addTx} onAddEvent={addEvent} showToast={showT} apiKey={DB.get("mp_k_"+(DB.get("mp_ai")||"groq"))||""} tInc={tInc} tExp={tExp} month={month} aiName={aiName} onNameChange={n=>{setAiName(n);DB.set("mp_ainame",n);}}/>}
+
+      {toast&&(
+        <div style={{position:"fixed",bottom:88,left:"50%",transform:"translateX(-50%)",background:toast.type==="err"?"#c0392b":toast.type==="warn"?"#e67e22":"#111120",color:"#fff",padding:"10px 22px",borderRadius:30,fontSize:13,fontWeight:700,boxShadow:"0 4px 20px rgba(0,0,0,0.6)",zIndex:500,whiteSpace:"nowrap",border:"1px solid rgba(255,255,255,0.1)",pointerEvents:"none"}}>
+          {toast.msg}
+        </div>
+      )}
+
+      <style>{`
+        @keyframes slideUp{from{transform:translateY(50px);opacity:0}to{transform:translateY(0);opacity:1}}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+        body{margin:0;background:#080810;overscroll-behavior:none;}
+        input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.5);}
+        select option{background:#111120;}
+        ::-webkit-scrollbar{width:0;}
+      `}</style>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
