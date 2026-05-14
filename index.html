@@ -2290,17 +2290,23 @@ function detenerVoz(){
   toast('🔇 Modo voz apagado','var(--t2)');
 }
 
-function iniciarEscucha(){
-  if(!modoVozActivo || vozEscuchando) return;
+// Min 2 segundos entre llamadas a recognition.start() para reducir el chime del navegador
+const MIN_RESTART_DELAY = 2000;
+let _ultimoStart = 0;
+let _reinicioProgramado = false;
+
+// Crear la instancia de SpeechRecognition UNA SOLA VEZ y reutilizarla.
+// Cada `new SR()` puede provocar un chime del SO, por eso evitamos recrearla.
+function crearRecognition(){
+  if(recognition) return recognition;
 
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new SR();
   recognition.lang = 'es-CO';
-  // continuous=true elimina el bucle de reinicios (y el chime del navegador cada 2s)
   recognition.continuous = true;
-  // interimResults=true permite detectar voz del usuario mientras la IA habla, para interrumpir
   recognition.interimResults = true;
   recognition.maxAlternatives = 1;
+  console.log('[mic] 🆕 Nueva instancia SpeechRecognition creada @', new Date().toLocaleTimeString());
 
   recognition.onstart = () => {
     vozEscuchando = true;
@@ -2313,15 +2319,17 @@ function iniciarEscucha(){
       const txt = (r[0].transcript || '').trim();
       if(!txt) continue;
 
-      // INTERRUPCION: si la IA está hablando y detectamos voz (incluso parcial), cortar TTS ya
+      // INTERRUPCION: si la IA está hablando y detectamos voz, cortar TTS de inmediato
       if(ttsSpeaking) interrumpirTTS();
 
-      // Solo procesar el resultado cuando es final
+      // Procesar solo cuando el resultado es final
       if(r.isFinal){
+        if(vozProcesando) continue; // ya hay una petición en curso
         vozProcesando = true;
         document.getElementById('mic-btn').textContent = '⏳';
         document.getElementById('ia-input').value = txt;
-        try { recognition.stop(); } catch(_) {}
+        // NO llamamos recognition.stop() — con continuous=true dejamos la recognition viva
+        // para evitar que el navegador emita el chime al reiniciar
         sendIA();
         return;
       }
@@ -2332,22 +2340,49 @@ function iniciarEscucha(){
     vozEscuchando = false;
     if(!modoVozActivo) return;
     if(e.error === 'aborted') return;
-    if(e.error === 'no-speech' || e.error === 'audio-capture'){
-      setTimeout(()=>{ if(modoVozActivo && !vozProcesando) iniciarEscucha(); }, 500);
-    } else {
-      setTimeout(()=>{ if(modoVozActivo && !vozProcesando) iniciarEscucha(); }, 1000);
-    }
+    console.log('[mic] ⚠️ onerror:', e.error);
+    programarReinicio(e.error === 'no-speech' ? 500 : 1000);
   };
 
   recognition.onend = () => {
     vozEscuchando = false;
+    console.log('[mic] 🔚 onend @', new Date().toLocaleTimeString());
     if(modoVozActivo && !vozProcesando){
-      setTimeout(()=>{ if(modoVozActivo && !vozProcesando) iniciarEscucha(); }, 300);
+      programarReinicio(300);
     }
   };
 
-  try { recognition.start(); }
-  catch(e){ vozEscuchando = false; }
+  return recognition;
+}
+
+// Programa el reinicio respetando MIN_RESTART_DELAY desde el último start
+function programarReinicio(delayBase){
+  if(_reinicioProgramado) return;
+  _reinicioProgramado = true;
+  const transcurrido = Date.now() - _ultimoStart;
+  const espera = Math.max(delayBase, MIN_RESTART_DELAY - transcurrido);
+  console.log('[mic] ⏰ reinicio en', espera, 'ms (transcurrido desde último start:', transcurrido, 'ms)');
+  setTimeout(() => {
+    _reinicioProgramado = false;
+    if(modoVozActivo && !vozProcesando) iniciarEscucha();
+  }, espera);
+}
+
+function iniciarEscucha(){
+  if(!modoVozActivo || vozEscuchando) return;
+  const rec = crearRecognition();
+  try {
+    _ultimoStart = Date.now();
+    console.log('[mic] ▶️ recognition.start() @', new Date().toLocaleTimeString());
+    rec.start();
+  } catch(e){
+    vozEscuchando = false;
+    console.warn('[mic] start() falló:', e.message);
+    // Si ya estaba corriendo, no es problema
+    if(!/already started/i.test(e.message)){
+      programarReinicio(1000);
+    }
+  }
 }
 
 // Interrumpe la voz de la IA inmediatamente — usado cuando el usuario empieza a hablar
