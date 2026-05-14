@@ -817,7 +817,12 @@ select.form-inp option{background:#0c1228;}
         <input class="bb-inp" id="ia-input" placeholder="Escribe a la IA…" onkeydown="if(event.key==='Enter'){this.blur();sendIA();}"/>
         <button class="bb-send-btn" ontouchend="event.preventDefault();sendIA();" onclick="sendIA()">➤</button>
       </div>
-      <div class="bb-mic" id="mic-btn" onclick="toggleMic()" title="Hablar">🎤</div>
+      <div class="bb-mic" id="mic-btn"
+           onmousedown="startRecording(event)" onmouseup="stopRecordingAndSend(event)"
+           onmouseleave="stopRecordingAndSend(event)"
+           ontouchstart="startRecording(event)" ontouchend="stopRecordingAndSend(event)"
+           ontouchcancel="stopRecordingAndSend(event)"
+           title="Mantén presionado para hablar">🎤</div>
       <div class="bb-mic" id="tts-btn" onclick="toggleTTS()" title="Voz activa" style="font-size:15px">🔊</div>
     </div>
   </div>
@@ -2053,13 +2058,14 @@ function rechazarDeteccion(id){
 // ════════════════════════════════════════
 // IA CHAT
 // ════════════════════════════════════════
-let micActive = false;
-let recognition = null;
 let iaHistory = [];
-let modoVozActivo = false;
-let vozEscuchando = false;
-let vozProcesando = false;
 let vozSeleccionada = null;
+
+// Estado del push-to-talk (MediaRecorder + Groq Whisper)
+let mediaRecorder = null;
+let audioChunks = [];
+let mediaStream = null;
+let isRecording = false;
 
 function addIAMsg(text, who){
   const el = document.getElementById('ia-msgs');
@@ -2124,13 +2130,9 @@ async function sendIA(){
         renderCurrentScreen();
       }, 1000);
     }
-    // Si no hay TTS activo y estamos en modo voz, reanudar escucha
-    if(!ttsActivo && modoVozActivo) vozReanudar();
   } catch(e){
     hideTyping();
     addIAMsg('⚠️ Error: '+e.message,'bot');
-    // Reanudar siempre para no dejar vozProcesando colgado
-    vozReanudar();
   }
 }
 
@@ -2258,223 +2260,126 @@ function ejecutarAccionesIA(resp, originalMsg){
 }
 
 // ════════════════════════════════════════
-// MODO VOZ CONTINUA — como Google Assistant
+// PUSH-TO-TALK — MediaRecorder + Groq Whisper
 // ════════════════════════════════════════
+// Sin Web Speech API, sin continuous listening, sin chime de Chrome.
+// El usuario mantiene presionado el botón mic mientras habla. Al soltar,
+// el audio se envía a /api/transcribe (Groq Whisper) y el texto va a sendIA().
 
-function toggleMic(){
-  if(!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)){
-    toast('⚠️ Usa Chrome para voz.','var(--amber)');
-    return;
-  }
+async function startRecording(e){
+  if(e){ e.preventDefault(); e.stopPropagation(); }
+  if(isRecording) return;
 
-  // Si el modo voz está activo PERO la recognition está pausada por silencio,
-  // tocar el botón la reactiva (en vez de apagar el modo voz).
-  if(modoVozActivo && !vozEscuchando && !vozProcesando && !ttsSpeaking){
-    toast('🎤 Escuchando de nuevo','var(--blue)');
-    iniciarEscucha();
-    return;
-  }
-
-  if(modoVozActivo){
-    // APAGAR modo voz (si está escuchando o hablando, cualquier toque la apaga)
-    detenerVoz();
-    return;
-  }
-
-  // ENCENDER modo voz
-  modoVozActivo = true;
-  document.getElementById('mic-btn').classList.add('active');
-  document.getElementById('mic-btn').textContent = '🔴';
-  toast('🎤 Modo voz activado — habla cuando quieras','var(--blue)');
-  iniciarEscucha();
-}
-
-function detenerVoz(){
-  modoVozActivo = false;
-  vozEscuchando = false;
-  vozProcesando = false;
-  _ultimoTranscript = '';
-  if(recognition){ try{ recognition.stop(); }catch(e){} recognition = null; }
-  window.speechSynthesis.cancel();
-  document.getElementById('mic-btn').classList.remove('active');
-  document.getElementById('mic-btn').textContent = '🎤';
-  toast('🔇 Modo voz apagado','var(--t2)');
-}
-
-// NOTA: la Web Speech API estándar NO expone ninguna propiedad para extender
-// el timeout de no-speech (no existe recognition.silenceTimeout, noSpeechTimeout,
-// continuousTimeout, ni equivalentes en webkitSpeechRecognition). El timeout es
-// una decisión interna del navegador (~5-8s en Chrome). Único workaround práctico:
-// reproducir audio silencioso justo antes de start() para enmascarar el chime
-// del sistema en algunos dispositivos Android.
-
-// WAV silencioso de 0 muestras — el navegador "engancha" la sesión de audio
-// del output antes de que recognition.start() dispare el chime del sistema.
-const SILENT_WAV_URI = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
-let _silentAudio = null;
-function reproducirSilencio(){
-  try {
-    if(!_silentAudio){
-      _silentAudio = new Audio(SILENT_WAV_URI);
-      _silentAudio.volume = 0;
+  // Si la IA está hablando, cortar para escuchar al usuario inmediatamente
+  if(ttsSpeaking){
+    if(window._kontrolAudio){
+      try { window._kontrolAudio.pause(); } catch(_) {}
+      const src = window._kontrolAudio.src;
+      window._kontrolAudio = null;
+      if(src && src.startsWith('blob:')){ try { URL.revokeObjectURL(src); } catch(_) {} }
     }
-    _silentAudio.currentTime = 0;
-    const p = _silentAudio.play();
-    if(p && p.catch) p.catch(()=>{});
+    if('speechSynthesis' in window) window.speechSynthesis.cancel();
+    ttsSpeaking = false;
+  }
+
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+    });
+
+    // Elegir el primer mimeType soportado por el navegador
+    const opciones = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4', 'audio/mpeg'];
+    let mimeType = '';
+    for(const m of opciones){
+      if(typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)){ mimeType = m; break; }
+    }
+
+    mediaRecorder = mimeType ? new MediaRecorder(mediaStream, { mimeType }) : new MediaRecorder(mediaStream);
+    audioChunks = [];
+
+    mediaRecorder.ondataavailable = ev => {
+      if(ev.data && ev.data.size > 0) audioChunks.push(ev.data);
+    };
+
+    mediaRecorder.onstop = async () => {
+      // Cerrar el stream del mic
+      if(mediaStream){
+        mediaStream.getTracks().forEach(t => t.stop());
+        mediaStream = null;
+      }
+
+      if(!audioChunks.length){
+        resetMicUI();
+        return;
+      }
+
+      const blobType = mediaRecorder.mimeType || 'audio/webm';
+      const audioBlob = new Blob(audioChunks, { type: blobType });
+      audioChunks = [];
+
+      // Indicador visual de transcripción en curso
+      const micBtn = document.getElementById('mic-btn');
+      if(micBtn) micBtn.textContent = '⏳';
+
+      try {
+        const res = await fetch('/api/transcribe', {
+          method: 'POST',
+          headers: { 'Content-Type': blobType },
+          body: audioBlob
+        });
+        const data = await res.json();
+        if(!res.ok) throw new Error(data.error || 'Error transcribiendo');
+        const texto = (data.texto || '').trim();
+
+        resetMicUI();
+        if(!texto){
+          toast('No se entendió. Intenta de nuevo.', 'var(--amber)');
+          return;
+        }
+
+        document.getElementById('ia-input').value = texto;
+        sendIA();
+      } catch(err){
+        console.error('[transcribe] error:', err);
+        toast('⚠️ Error transcribiendo: ' + err.message, 'var(--red)');
+        resetMicUI();
+      }
+    };
+
+    mediaRecorder.start();
+    isRecording = true;
+    const micBtn = document.getElementById('mic-btn');
+    if(micBtn){
+      micBtn.classList.add('active');
+      micBtn.textContent = '🔴';
+    }
+  } catch(err){
+    console.error('[mic] no se pudo abrir el micrófono:', err);
+    toast('⚠️ No se pudo acceder al mic: ' + (err.message || err.name), 'var(--red)');
+    resetMicUI();
+  }
+}
+
+function stopRecordingAndSend(e){
+  if(e){ e.preventDefault(); e.stopPropagation(); }
+  if(!isRecording) return;
+  isRecording = false;
+  try {
+    if(mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
   } catch(_) {}
 }
 
-// Función de prueba expuesta en consola: window.testChime()
-// Apaga el modo voz, reproduce TTS, y reporta. Si el chime persiste sin
-// recognition activa, el origen es ElevenLabs o el navegador al cerrar audio.
-window.testChime = async function(){
-  console.log('[test] Apagando modo voz...');
-  const estabaActivo = modoVozActivo;
-  if(estabaActivo) detenerVoz();
-  await new Promise(r => setTimeout(r, 500));
-  console.log('[test] Reproduciendo TTS de prueba (sin recognition)...');
-  await hablar('Esta es una prueba. Si oyes un sonido al terminar, viene del audio, no del micrófono.');
-  console.log('[test] TTS terminado. Si hubo chime → es de ElevenLabs/audio. Si no hubo → era de recognition.start().');
-  if(estabaActivo) console.log('[test] Vuelve a activar el modo voz con el botón 🎤');
-};
-
-// Recognition con continuous=true. En Android la sesión se cierra tras cada
-// resultado y también tras silencios cortos (no-speech timeout). Para evitar
-// el chime molesto cuando el usuario está en silencio, NO reiniciamos en onend
-// si la sesión terminó sin haber capturado ningún resultado.
-let _ultimoTranscript = '';
-let _huboResultadoEnSesion = false;
-function crearRecognition(){
-  if(recognition) return recognition;
-
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  recognition = new SR();
-  recognition.lang = 'es-CO';
-  recognition.continuous = true;
-  recognition.interimResults = false;
-  recognition.maxAlternatives = 1;
-
-  recognition.onstart = () => {
-    vozEscuchando = true;
-    _huboResultadoEnSesion = false; // nueva sesión, aún sin resultado
-    document.getElementById('mic-btn').textContent = '👂';
-  };
-
-  recognition.onresult = e => {
-    // Tomar el resultado más reciente (continuous=true los acumula)
-    const ultimo = e.results[e.results.length - 1];
-    if(!ultimo || !ultimo.isFinal) return;
-    const txt = (ultimo[0]?.transcript || '').trim();
-    if(!txt) return;
-
-    // Prevención de duplicados: ignorar si el transcript es idéntico al anterior
-    if(txt === _ultimoTranscript){
-      console.log('[mic] duplicado ignorado:', JSON.stringify(txt));
-      return;
-    }
-    _ultimoTranscript = txt;
-
-    // Filtrar ruido: al menos 3 palabras O 10 caracteres
-    const palabras = txt.split(/\s+/).filter(w => w.length > 0).length;
-    if(palabras < 3 && txt.length < 10){
-      console.log('[mic] descartado (muy corto):', JSON.stringify(txt));
-      return;
-    }
-    if(vozProcesando) return;
-
-    vozProcesando = true;
-    _huboResultadoEnSesion = true;
-    console.log('[mic] resultado:', txt);
-    document.getElementById('mic-btn').textContent = '⏳';
-    document.getElementById('ia-input').value = txt;
-    // Android: continuous=true igual cierra la sesión tras cada resultado.
-    // Stop explícito + reset de vozEscuchando para permitir el reinicio limpio.
-    try { recognition.stop(); } catch(_) {}
-    vozEscuchando = false;
-    sendIA();
-  };
-
-  recognition.onerror = e => {
-    vozEscuchando = false;
-    if(e.error === 'aborted') return;
-    console.log('[mic] onerror:', e.error);
-    // continuous=true maneja el silencio nativamente — NO reiniciar en 'no-speech'.
-    // Solo reiniciar en errores reales que matan la sesión.
-    if(e.error === 'network' || e.error === 'audio-capture'){
-      setTimeout(() => {
-        if(modoVozActivo && !vozProcesando && !vozEscuchando && !ttsSpeaking) iniciarEscucha();
-      }, 1000);
-    }
-  };
-
-  recognition.onend = () => {
-    vozEscuchando = false; // reset SIEMPRE
-    console.log('[mic] 🔚 onend, huboResultado:', _huboResultadoEnSesion);
-    // CLAVE: solo reiniciar si NO hubo resultado en esta sesión (significaría
-    // que se cerró por silencio). Reiniciar ahí dispara un chime cada vez.
-    // Si hubo resultado, vozReanudar se encarga del restart tras la IA.
-    if(!_huboResultadoEnSesion && modoVozActivo && !vozProcesando){
-      // Indicador visual de que el mic está pausado por silencio
-      document.getElementById('mic-btn').textContent = '🔴';
-      // NO reiniciamos. El usuario puede tocar el botón mic para reactivar.
-      console.log('[mic] silencio detectado — pausa hasta que el usuario hable o toque el mic');
-    }
-  };
-
-  return recognition;
-}
-
-function iniciarEscucha(){
-  // No iniciar si: modo voz apagado, ya escuchando, procesando, o la IA está hablando.
-  if(!modoVozActivo || vozEscuchando || vozProcesando || ttsSpeaking) return;
-  const rec = crearRecognition();
-  try {
-    // Reproducir audio silencioso ANTES de start() para enmascarar el chime
-    // del navegador en algunos dispositivos Android.
-    reproducirSilencio();
-    rec.start();
-  } catch(e){
-    vozEscuchando = false;
-    if(!/already started/i.test(e.message)){
-      console.warn('[mic] start() falló:', e.message);
-    }
+function resetMicUI(){
+  isRecording = false;
+  const micBtn = document.getElementById('mic-btn');
+  if(micBtn){
+    micBtn.classList.remove('active');
+    micBtn.textContent = '🎤';
+    micBtn.style.background = '';
   }
 }
 
-// Interrumpe la voz de la IA inmediatamente — usado cuando el usuario empieza a hablar
-function interrumpirTTS(){
-  if(window._kontrolAudio){
-    try { window._kontrolAudio.pause(); } catch(_) {}
-    const src = window._kontrolAudio.src;
-    window._kontrolAudio = null;
-    if(src && src.startsWith('blob:')){ try { URL.revokeObjectURL(src); } catch(_) {} }
-  }
-  if('speechSynthesis' in window) window.speechSynthesis.cancel();
-  ttsSpeaking = false;
-  const btn = document.getElementById('mic-btn');
-  if(btn) btn.style.background = '';
-}
-
-// Llamar esto cuando la IA termina de hablar. En Android la recognition se cierra
-// tras cada resultado aunque continuous=true, así que SIEMPRE reiniciamos con un
-// delay de 800ms, sin importar vozEscuchando (lo reseteamos para forzar el reinicio).
-function vozReanudar(){
-  console.log('[voz] reanudar - vozProcesando:', vozProcesando, 'vozEscuchando:', vozEscuchando, 'ttsSpeaking:', ttsSpeaking);
-  vozProcesando = false;
-  _ultimoTranscript = '';
-  document.getElementById('mic-btn').textContent = '🔴';
-  if(modoVozActivo){
-    setTimeout(() => {
-      // Solo iniciar si confirmamos que ttsSpeaking sigue en false
-      if(modoVozActivo && !vozProcesando && !ttsSpeaking){
-        vozEscuchando = false; // reset para forzar el reinicio
-        iniciarEscucha();
-      }
-    }, 600);
-  }
-}
-
-// Fin modo voz
+// Fin push-to-talk
 
 // ════════════════════════════════════════
 // TEXT TO SPEECH — Kontrol habla de vuelta
@@ -2496,12 +2401,11 @@ function hablarCorto(texto){
 }
 
 async function hablar(texto){
-  console.log('[tts] hablar llamado, ttsActivo:', ttsActivo);
-  if(!ttsActivo){ vozReanudar(); return; }
+  if(!ttsActivo) return;
   window.speechSynthesis.cancel();
   if(window._kontrolAudio){window._kontrolAudio.pause();window._kontrolAudio=null;}
   let limpio=texto.replace(/[\u{1F300}-\u{1FAFF}]/gu,'').replace(/[*_#`═\[\]]/g,'').replace(/\$/g,' pesos ').replace(/\s+/g,' ').trim();
-  if(!limpio){ vozReanudar(); return; }
+  if(!limpio) return;
   try{
     ttsSpeaking=true;
     document.getElementById('mic-btn').style.background='rgba(167,139,250,0.2)';
@@ -2511,13 +2415,13 @@ async function hablar(texto){
     const url=URL.createObjectURL(blob);
     const audio=new Audio(url);
     window._kontrolAudio=audio;
-    audio.onended=()=>{console.log('[tts] audio terminado');ttsSpeaking=false;URL.revokeObjectURL(url);document.getElementById('mic-btn').style.background='';vozReanudar();};
+    audio.onended=()=>{ttsSpeaking=false;URL.revokeObjectURL(url);document.getElementById('mic-btn').style.background='';};
     audio.onerror=()=>{ttsSpeaking=false;document.getElementById('mic-btn').style.background='';_hablarFallback(limpio);};
     await audio.play();
   } catch(e){ttsSpeaking=false;document.getElementById('mic-btn').style.background='';_hablarFallback(limpio);}
 }
 function _hablarFallback(texto){
-  if(!('speechSynthesis' in window)){ vozReanudar(); return; }
+  if(!('speechSynthesis' in window)) return;
 
   // Limpiar texto y convertir números a formato hablable
   let limpio = texto
@@ -2545,7 +2449,6 @@ function _hablarFallback(texto){
     if(indice >= frases.length || !ttsActivo) {
       ttsSpeaking = false;
       document.getElementById('mic-btn').style.background='';
-      vozReanudar(); // reanudar escucha al terminar
       return;
     }
     const frase = frases[indice].trim();
@@ -2569,10 +2472,9 @@ function _hablarFallback(texto){
       indice++; 
       hablarFrase(); 
     };
-    utt.onerror = ()=>{ 
-      ttsSpeaking=false; 
+    utt.onerror = ()=>{
+      ttsSpeaking=false;
       document.getElementById('mic-btn').style.background='';
-      vozReanudar();
     };
 
     window.speechSynthesis.speak(utt);
