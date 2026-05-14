@@ -2276,14 +2276,13 @@ function toggleMic(){
   document.getElementById('mic-btn').classList.add('active');
   document.getElementById('mic-btn').textContent = '🔴';
   toast('🎤 Modo voz activado — habla cuando quieras','var(--blue)');
-  iniciarVAD();
+  iniciarEscucha();
 }
 
 function detenerVoz(){
   modoVozActivo = false;
   vozEscuchando = false;
   vozProcesando = false;
-  detenerVAD();
   if(recognition){ try{ recognition.stop(); }catch(e){} recognition = null; }
   window.speechSynthesis.cancel();
   document.getElementById('mic-btn').classList.remove('active');
@@ -2291,87 +2290,17 @@ function detenerVoz(){
   toast('🔇 Modo voz apagado','var(--t2)');
 }
 
-// ── VAD (Voice Activity Detection) silencioso vía Web Audio API ──
-// AnalyserNode monitorea volumen del mic SIN emitir chime. Solo dispara
-// recognition.start() cuando detecta voz real, evitando el sonido del navegador.
-const VOICE_THRESHOLD = 30;         // 0-255 — sube si hay falsos positivos
-const VOICE_FRAMES_REQUIRED = 3;    // frames consecutivos arriba del umbral para disparar
-let _vadStream = null;
-let _vadCtx = null;
-let _vadAnalyser = null;
-let _vadRaf = null;
-let _vadActive = false;
-let _vadFramesAlto = 0;
-
-async function iniciarVAD(){
-  if(_vadActive) return;
-  try {
-    _vadStream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-    });
-    _vadCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const source = _vadCtx.createMediaStreamSource(_vadStream);
-    _vadAnalyser = _vadCtx.createAnalyser();
-    _vadAnalyser.fftSize = 512;
-    _vadAnalyser.smoothingTimeConstant = 0.3;
-    source.connect(_vadAnalyser);
-    _vadActive = true;
-    console.log('[vad] 🎙️ VAD iniciado — monitoreando mic en silencio');
-    monitorearVAD();
-  } catch(e) {
-    console.error('[vad] error iniciando:', e);
-    toast('⚠️ No se pudo acceder al mic: ' + e.message, 'var(--red)');
-  }
-}
-
-function monitorearVAD(){
-  if(!_vadActive){ _vadRaf = null; return; }
-
-  const buf = new Uint8Array(_vadAnalyser.frequencyBinCount);
-  _vadAnalyser.getByteFrequencyData(buf);
-  let sum = 0;
-  for(let i = 0; i < buf.length; i++) sum += buf[i];
-  const avg = sum / buf.length;
-
-  // Pausar el trigger durante TTS, procesamiento o mientras ya escucha
-  const enPausa = ttsSpeaking || vozProcesando || vozEscuchando;
-
-  if(!enPausa && avg > VOICE_THRESHOLD){
-    _vadFramesAlto++;
-    if(_vadFramesAlto >= VOICE_FRAMES_REQUIRED){
-      console.log('[vad] 🔊 Voz detectada (avg=' + avg.toFixed(1) + ') — disparando recognition.start()');
-      _vadFramesAlto = 0;
-      iniciarEscucha();
-    }
-  } else {
-    _vadFramesAlto = 0;
-  }
-
-  _vadRaf = requestAnimationFrame(monitorearVAD);
-}
-
-function detenerVAD(){
-  _vadActive = false;
-  if(_vadRaf){ cancelAnimationFrame(_vadRaf); _vadRaf = null; }
-  if(_vadStream){ _vadStream.getTracks().forEach(t => t.stop()); _vadStream = null; }
-  if(_vadCtx){ _vadCtx.close().catch(()=>{}); _vadCtx = null; }
-  _vadAnalyser = null;
-  _vadFramesAlto = 0;
-  console.log('[vad] 🛑 VAD detenido');
-}
-
-// Crear la instancia de SpeechRecognition UNA SOLA VEZ y reutilizarla.
-// El VAD es el ÚNICO que dispara recognition.start(); no hay reinicios automáticos.
+// Recognition con continuous=true: la mantenemos abierta todo el tiempo.
+// NO se reinicia después de procesar resultados — continuous se encarga.
 function crearRecognition(){
   if(recognition) return recognition;
 
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new SR();
   recognition.lang = 'es-CO';
-  recognition.continuous = false;     // una frase por sesión — termina sola tras silencio
-  recognition.interimResults = false; // solo el resultado final
+  recognition.continuous = true;
+  recognition.interimResults = true;
   recognition.maxAlternatives = 1;
-  console.log('[mic] 🆕 Nueva instancia SpeechRecognition creada @', new Date().toLocaleTimeString());
 
   recognition.onstart = () => {
     vozEscuchando = true;
@@ -2379,34 +2308,44 @@ function crearRecognition(){
   };
 
   recognition.onresult = e => {
-    const txt = (e.results[0]?.[0]?.transcript || '').trim();
-    if(!txt) return;
-    vozProcesando = true;
-    document.getElementById('mic-btn').textContent = '⏳';
-    document.getElementById('ia-input').value = txt;
-    sendIA();
+    for(let i = e.resultIndex; i < e.results.length; i++){
+      const r = e.results[i];
+      const txt = (r[0].transcript || '').trim();
+      if(!txt) continue;
+      if(r.isFinal){
+        if(vozProcesando) continue;
+        vozProcesando = true;
+        document.getElementById('mic-btn').textContent = '⏳';
+        document.getElementById('ia-input').value = txt;
+        sendIA();
+        return;
+      }
+    }
   };
 
   recognition.onerror = e => {
     vozEscuchando = false;
-    if(e.error !== 'aborted') console.log('[mic] ⚠️ onerror:', e.error);
-    // NO reiniciar automáticamente — el VAD dispara el próximo start cuando detecte voz real
+    if(!modoVozActivo) return;
+    if(e.error === 'aborted') return;
+    // Reiniciar solo si murió por error
+    setTimeout(() => { if(modoVozActivo && !vozProcesando && !vozEscuchando) iniciarEscucha(); }, 500);
   };
 
   recognition.onend = () => {
     vozEscuchando = false;
-    console.log('[mic] 🔚 onend @', new Date().toLocaleTimeString());
-    // NO reiniciar automáticamente — el VAD dispara el próximo start cuando detecte voz real
+    // Reiniciar solo si murió inesperadamente (el navegador cerró la sesión)
+    if(modoVozActivo && !vozProcesando){
+      setTimeout(() => { if(modoVozActivo && !vozProcesando && !vozEscuchando) iniciarEscucha(); }, 300);
+    }
   };
 
   return recognition;
 }
 
 function iniciarEscucha(){
-  if(!modoVozActivo || vozEscuchando || vozProcesando || ttsSpeaking) return;
+  if(!modoVozActivo || vozEscuchando) return;
   const rec = crearRecognition();
   try {
-    console.log('[mic] ▶️ recognition.start() @', new Date().toLocaleTimeString());
     rec.start();
   } catch(e){
     vozEscuchando = false;
@@ -2435,6 +2374,11 @@ function interrumpirTTS(){
 function vozReanudar(){
   vozProcesando = false;
   document.getElementById('mic-btn').textContent = '🔴';
+  // Si la recognition murió durante el TTS (onend mientras vozProcesando=true),
+  // reiniciarla ahora que terminó el TTS.
+  if(modoVozActivo && !vozEscuchando){
+    setTimeout(iniciarEscucha, 300);
+  }
 }
 
 // Fin modo voz
