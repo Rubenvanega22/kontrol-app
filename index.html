@@ -2290,16 +2290,19 @@ function detenerVoz(){
   toast('🔇 Modo voz apagado','var(--t2)');
 }
 
-// Recognition con continuous=true: la mantenemos abierta todo el tiempo.
-// NO se reinicia después de procesar resultados — continuous se encarga.
+// Recognition con continuous=false: una frase por sesión.
+// recognition.start() SOLO se llama desde:
+//   1. toggleMic (al activar el modo voz)
+//   2. vozReanudar (después de que la IA termina de hablar)
+// Nunca se reinicia automáticamente desde onend/onerror para evitar el chime del navegador.
 function crearRecognition(){
   if(recognition) return recognition;
 
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new SR();
   recognition.lang = 'es-CO';
-  recognition.continuous = true;
-  recognition.interimResults = true;
+  recognition.continuous = false;
+  recognition.interimResults = false;
   recognition.maxAlternatives = 1;
 
   recognition.onstart = () => {
@@ -2308,42 +2311,42 @@ function crearRecognition(){
   };
 
   recognition.onresult = e => {
-    for(let i = e.resultIndex; i < e.results.length; i++){
-      const r = e.results[i];
-      const txt = (r[0].transcript || '').trim();
-      if(!txt) continue;
-      if(r.isFinal){
-        if(vozProcesando) continue;
-        vozProcesando = true;
-        document.getElementById('mic-btn').textContent = '⏳';
-        document.getElementById('ia-input').value = txt;
-        sendIA();
-        return;
-      }
+    // Detener inmediatamente para evitar resultados duplicados o cortados
+    try { recognition.stop(); } catch(_) {}
+    const txt = (e.results[0]?.[0]?.transcript || '').trim();
+    if(!txt) return;
+
+    // Filtrar ruido: solo enviar si tiene al menos 3 palabras O 10 caracteres
+    const palabras = txt.split(/\s+/).filter(w => w.length > 0).length;
+    if(palabras < 3 && txt.length < 10){
+      console.log('[mic] descartado (muy corto):', JSON.stringify(txt));
+      return;
     }
+    if(vozProcesando) return;
+
+    vozProcesando = true;
+    document.getElementById('mic-btn').textContent = '⏳';
+    document.getElementById('ia-input').value = txt;
+    sendIA();
   };
 
   recognition.onerror = e => {
     vozEscuchando = false;
-    if(!modoVozActivo) return;
-    if(e.error === 'aborted') return;
-    // Reiniciar solo si murió por error
-    setTimeout(() => { if(modoVozActivo && !vozProcesando && !vozEscuchando) iniciarEscucha(); }, 500);
+    if(e.error !== 'aborted') console.log('[mic] onerror:', e.error);
+    // NO reiniciar automáticamente — el reinicio se hace en vozReanudar
   };
 
   recognition.onend = () => {
     vozEscuchando = false;
-    // Reiniciar solo si murió inesperadamente (el navegador cerró la sesión)
-    if(modoVozActivo && !vozProcesando){
-      setTimeout(() => { if(modoVozActivo && !vozProcesando && !vozEscuchando) iniciarEscucha(); }, 300);
-    }
+    // NO reiniciar automáticamente — el reinicio se hace en vozReanudar
   };
 
   return recognition;
 }
 
 function iniciarEscucha(){
-  if(!modoVozActivo || vozEscuchando) return;
+  // No iniciar si: modo voz apagado, ya escuchando, procesando, o la IA está hablando.
+  if(!modoVozActivo || vozEscuchando || vozProcesando || ttsSpeaking) return;
   const rec = crearRecognition();
   try {
     rec.start();
@@ -2369,14 +2372,12 @@ function interrumpirTTS(){
   if(btn) btn.style.background = '';
 }
 
-// Llamar esto cuando la IA termina de hablar — solo limpia el estado.
-// El VAD reanuda el monitoreo automáticamente al detectar la próxima voz real.
+// Llamar esto cuando la IA termina de hablar. Es el ÚNICO lugar (junto con toggleMic)
+// que reinicia recognition.start(), para minimizar el chime del navegador.
 function vozReanudar(){
   vozProcesando = false;
   document.getElementById('mic-btn').textContent = '🔴';
-  // Si la recognition murió durante el TTS (onend mientras vozProcesando=true),
-  // reiniciarla ahora que terminó el TTS.
-  if(modoVozActivo && !vozEscuchando){
+  if(modoVozActivo && !vozEscuchando && !ttsSpeaking){
     setTimeout(iniciarEscucha, 300);
   }
 }
