@@ -2454,11 +2454,12 @@ function vozReanudar(){
   document.getElementById('mic-btn').textContent = '🔴';
   if(modoVozActivo){
     setTimeout(() => {
+      // Solo iniciar si confirmamos que ttsSpeaking sigue en false
       if(modoVozActivo && !vozProcesando && !ttsSpeaking){
         vozEscuchando = false; // reset para forzar el reinicio
         iniciarEscucha();
       }
-    }, 300);
+    }, 600);
   }
 }
 
