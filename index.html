@@ -1266,7 +1266,30 @@ function goTab(id){
   if(id==='pagos') renderPagos();
   if(id==='agenda') renderAgenda();
   if(id==='recordar') renderRecordatorios();
+  if(id==='metas') renderMetas();
   if(id==='config') renderConfig();
+}
+
+// Detecta la pantalla activa y la re-renderiza sin cambiar de tab.
+function renderCurrentScreen(){
+  const renders = {
+    resumen: renderResumen,
+    movimientos: renderMovimientos,
+    cajas: renderCajas,
+    pagos: renderPagos,
+    agenda: renderAgenda,
+    recordar: renderRecordatorios,
+    metas: renderMetas,
+    config: renderConfig
+  };
+  for(const [id, fn] of Object.entries(renders)){
+    const el = document.getElementById('scr-'+id);
+    if(el && el.classList.contains('on')){
+      try { fn(); } catch(e){ console.error('renderCurrentScreen '+id+':', e); }
+      return id;
+    }
+  }
+  return null;
 }
 
 // ════════════════════════════════════════
@@ -2062,7 +2085,6 @@ async function sendIA(){
   if(!msg) return;
   inp.value='';
   inp.blur();
-  goTab('ia');
   setTimeout(()=>{const el=document.getElementById('ia-msgs');if(el)el.scrollTop=el.scrollHeight;},100);
   addIAMsg(msg,'usr');
   iaHistory.push({role:'user',content:msg});
@@ -2097,7 +2119,10 @@ async function sendIA(){
     iaHistory.push({role:'assistant',content:respText});
     hablar(respText);
     if(data.acciones && data.acciones.length > 0){
-      setTimeout(()=>{ syncDesdeSupabase(); }, 1000);
+      setTimeout(async () => {
+        await syncDesdeSupabase();
+        renderCurrentScreen();
+      }, 1000);
     }
     // Si no hay TTS activo y estamos en modo voz, reanudar escucha
     if(!ttsActivo && modoVozActivo) vozReanudar();
