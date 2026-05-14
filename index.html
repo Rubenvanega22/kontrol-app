@@ -1441,8 +1441,9 @@ function renderResumen(){
     const d = new Date(m.fecha+'T12:00:00');
     return d.getMonth()===mes && d.getFullYear()===anio;
   });
-  const ingresos = movsDelMes.filter(m=>m.tipo==='ingreso').reduce((a,m)=>a+m.monto,0);
-  const gastos = movsDelMes.filter(m=>m.tipo==='gasto').reduce((a,m)=>a+m.monto,0);
+  const esReal = m => m.categoria !== 'caja' && m.categoria !== 'transferencia';
+  const ingresos = movsDelMes.filter(m=>m.tipo==='ingreso' && esReal(m)).reduce((a,m)=>a+m.monto,0);
+  const gastos = movsDelMes.filter(m=>m.tipo==='gasto' && esReal(m)).reduce((a,m)=>a+m.monto,0);
   const balanceTotal = DB.cuentas.reduce((a,c)=>a+c.saldo,0);
 
   document.getElementById('bal-total').textContent = fmtCOP(balanceTotal);
@@ -1527,7 +1528,7 @@ function renderMiniChart(){
   for(let i=6;i>=0;i--){
     const d = new Date(); d.setDate(d.getDate()-i);
     const ds = d.toISOString().split('T')[0];
-    const daymovs = DB.movimientos.filter(m=>m.fecha===ds);
+    const daymovs = DB.movimientos.filter(m=>m.fecha===ds && m.categoria!=='caja' && m.categoria!=='transferencia');
     const neto = daymovs.reduce((a,m)=>a+(m.tipo==='ingreso'?m.monto:-m.monto),0);
     dias.push({ds,neto});
   }
@@ -1542,7 +1543,7 @@ function renderMiniChart(){
   dias.forEach(d=>{ dayMap[d.ds]=running; });
   // reconstruir hacia atrás
   const dayVals = dias.map(d=>{
-    const s = DB.movimientos.filter(m=>m.fecha===d.ds).reduce((a,m)=>a+(m.tipo==='ingreso'?m.monto:-m.monto),0);
+    const s = DB.movimientos.filter(m=>m.fecha===d.ds && m.categoria!=='caja' && m.categoria!=='transferencia').reduce((a,m)=>a+(m.tipo==='ingreso'?m.monto:-m.monto),0);
     return s;
   });
   // sumar acumulado simple
@@ -2111,8 +2112,9 @@ function buildIASystem(){
   var hoy = new Date();
   var mes = hoy.getMonth(), anio = hoy.getFullYear();
   var movsDelMes = DB.movimientos.filter(function(m){ var d=new Date(m.fecha+'T12:00:00'); return d.getMonth()===mes&&d.getFullYear()===anio; });
-  var ingresos = movsDelMes.filter(function(m){return m.tipo==='ingreso';}).reduce(function(a,m){return a+m.monto;},0);
-  var gastos2 = movsDelMes.filter(function(m){return m.tipo==='gasto';}).reduce(function(a,m){return a+m.monto;},0);
+  var esReal = function(m){return m.categoria!=='caja' && m.categoria!=='transferencia';};
+  var ingresos = movsDelMes.filter(function(m){return m.tipo==='ingreso' && esReal(m);}).reduce(function(a,m){return a+m.monto;},0);
+  var gastos2 = movsDelMes.filter(function(m){return m.tipo==='gasto' && esReal(m);}).reduce(function(a,m){return a+m.monto;},0);
   var movsTxt = DB.movimientos.slice(0,6).map(function(m){return (m.tipo==='ingreso'?'+':'-')+fmtCOP(m.monto)+' '+m.descripcion;}).join(' | ');
   var pagosTxt = DB.pagos.filter(function(p){return p.status!=='pagado';}).map(function(p){return p.nombre+' '+fmtCOP(p.monto)+' vence '+fmtDate(p.fechaLimite);}).join(' | ');
   var eventosTxt = DB.eventos.filter(function(e){return new Date(e.fecha+'T12:00:00')>=new Date();}).slice(0,5).map(function(e){return e.titulo+' el '+fmtDate(e.fecha)+(e.hora?' a las '+e.hora:'');}).join(' | ');
@@ -2151,11 +2153,11 @@ function intentLocal(msg){
     return 'Tienes '+pend.length+' pago(s): '+pend.map(function(p){return p.nombre+' '+fmtCOP(p.monto);}).join(', ');
   }
   if(/gastos del mes|gast. este mes/i.test(m)){
-    var g = DB.movimientos.filter(function(x){return x.tipo==='gasto'&&new Date(x.fecha+'T12:00:00').getMonth()===hoy.getMonth();}).reduce(function(a,x){return a+x.monto;},0);
+    var g = DB.movimientos.filter(function(x){return x.tipo==='gasto'&&new Date(x.fecha+'T12:00:00').getMonth()===hoy.getMonth()&&x.categoria!=='caja'&&x.categoria!=='transferencia';}).reduce(function(a,x){return a+x.monto;},0);
     return 'Has gastado '+fmtCOP(g)+' este mes.';
   }
   if(/ingresos del mes|cu.nto gan./i.test(m)){
-    var g2 = DB.movimientos.filter(function(x){return x.tipo==='ingreso'&&new Date(x.fecha+'T12:00:00').getMonth()===hoy.getMonth();}).reduce(function(a,x){return a+x.monto;},0);
+    var g2 = DB.movimientos.filter(function(x){return x.tipo==='ingreso'&&new Date(x.fecha+'T12:00:00').getMonth()===hoy.getMonth()&&x.categoria!=='caja'&&x.categoria!=='transferencia';}).reduce(function(a,x){return a+x.monto;},0);
     return 'Tus ingresos este mes: '+fmtCOP(g2)+'.';
   }
   if(/agenda|eventos|programado/i.test(m)){

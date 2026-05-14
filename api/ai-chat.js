@@ -142,8 +142,9 @@ async function buildContexto(userId) {
 
   const totalSaldo = (cuentas || []).reduce((a, c) => a + parseFloat(c.saldo || 0), 0);
   const totalCajas = (cajas || []).reduce((a, c) => a + parseFloat(c.saldo || 0), 0);
-  const ingresosMes = (movsMes || []).filter(m => m.tipo === 'ingreso').reduce((a, m) => a + parseFloat(m.monto), 0);
-  const gastosMes = (movsMes || []).filter(m => m.tipo === 'gasto').reduce((a, m) => a + parseFloat(m.monto), 0);
+  const esReal = m => m.categoria !== 'caja' && m.categoria !== 'transferencia';
+  const ingresosMes = (movsMes || []).filter(m => m.tipo === 'ingreso' && esReal(m)).reduce((a, m) => a + parseFloat(m.monto), 0);
+  const gastosMes = (movsMes || []).filter(m => m.tipo === 'gasto' && esReal(m)).reduce((a, m) => a + parseFloat(m.monto), 0);
 
   return {
     totalSaldo, totalCajas, ingresosMes, gastosMes,
@@ -187,18 +188,38 @@ Eventos próximos:
 ${ctx.eventos.map(e => `• ${e.titulo} — ${e.fecha} ${e.hora||''} [ID:${e.id}]`).join('\n') || 'ninguno'}
 
 Metas activas:
-${ctx.metas.map(m => `• ${m.titulo} — ${m.progreso||0}% [ID:${m.id}]`).join('\n') || 'ninguna'}
+${ctx.metas.map(m => {
+  const mms = (m.micrometas || []).map(mm => `   ${mm.completada ? '✓' : '○'} ${mm.titulo || mm.descripcion || ''} [ID:${mm.id}]`).join('\n');
+  return `• ${m.titulo} — ${m.progreso||0}% [ID:${m.id}]${mms ? '\n' + mms : ''}`;
+}).join('\n') || 'ninguna'}
 
 ═══ ACCIONES INVISIBLES — úsalas al final de tu respuesta ═══
-[ACCION:gasto|monto|descripcion|categoria]
-[ACCION:ingreso|monto|descripcion|categoria]
+— Movimientos
+[ACCION:gasto|monto|descripcion|categoria|cuenta_id_opcional]
+[ACCION:ingreso|monto|descripcion|categoria|cuenta_id_opcional]
+[ACCION:editar_movimiento|ID|nuevo_monto|nueva_descripcion|nueva_fecha]
+  Deja vacíos los campos que NO quieras cambiar. Ej: [ACCION:editar_movimiento|abc123||Almuerzo|]
+[ACCION:borrar_movimiento|ID]
+— Pagos
 [ACCION:pago|nombre|monto|YYYY-MM-DD]
+[ACCION:marcar_pago_pagado|ID]
+[ACCION:borrar_pago|ID]
+— Eventos y recordatorios
 [ACCION:evento|titulo|YYYY-MM-DD|HH:MM]
 [ACCION:recordatorio|texto]
-[ACCION:meta|titulo|tipo|monto_objetivo|YYYY-MM-DD]
-[ACCION:borrar_movimiento|ID]
-[ACCION:borrar_pago|ID]
 [ACCION:borrar_evento|ID]
+— Cajas (efectivo)
+[ACCION:caja_entrada|caja_id|monto|descripcion]
+[ACCION:caja_salida|caja_id|monto|descripcion]
+— Transferencias (entre cuentas o cajas)
+[ACCION:transferir|origen_tipo|origen_id|destino_tipo|destino_id|monto]
+  origen_tipo y destino_tipo deben ser "cuenta" o "caja". Usa los IDs de arriba.
+— Metas
+[ACCION:meta|titulo|tipo|monto_objetivo|YYYY-MM-DD]
+[ACCION:borrar_meta|ID]
+[ACCION:completar_micrometa|ID]
+
+IMPORTANTE: si el usuario menciona una cuenta o caja específica por nombre, busca su ID en el listado de arriba y úsalo en la acción.
 
 ═══ REGLAS ═══
 1. NUNCA muestres [ACCION:...] — son invisibles
@@ -250,9 +271,14 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
         const monto = parseFloat(parts[1]);
         const desc = (parts[2] || 'Sin descripción').trim();
         const cat = (parts[3] || 'otro').trim();
+        const cuentaIdEspecificada = (parts[4] || '').trim();
         if (!monto || monto <= 0) continue;
 
-        const cuentaId = contexto.cuentas[0]?.id || null;
+        const cuenta = cuentaIdEspecificada
+          ? contexto.cuentas.find(c => c.id === cuentaIdEspecificada)
+          : contexto.cuentas[0];
+        const cuentaId = cuenta?.id || null;
+
         const { data: mov, error } = await supabase
           .from('movements')
           .insert({
@@ -264,16 +290,50 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
 
         if (error) { console.error('Error movimiento:', error.message); continue; }
 
-        if (cuentaId && contexto.cuentas[0]) {
-          const saldo = parseFloat(contexto.cuentas[0].saldo || 0);
+        if (cuenta) {
+          const saldo = parseFloat(cuenta.saldo || 0);
           const nuevo = accion === 'ingreso' ? saldo + monto : saldo - monto;
-          await supabase.from('accounts').update({ saldo: nuevo }).eq('id', cuentaId).eq('user_id', userId);
+          await supabase.from('accounts').update({ saldo: nuevo }).eq('id', cuenta.id).eq('user_id', userId);
         }
-        ejecutadas.push({ accion, monto, desc, id: mov.id });
+        ejecutadas.push({ accion, monto, desc, id: mov.id, cuenta_id: cuentaId });
+
+      } else if (accion === 'editar_movimiento') {
+        const movId = parts[1];
+        const nuevoMonto = parts[2] && !isNaN(parseFloat(parts[2])) ? parseFloat(parts[2]) : null;
+        const nuevaDesc = (parts[3] || '').trim() || null;
+        const nuevaFecha = (parts[4] || '').trim() || null;
+        const movActual = contexto.movimientos.find(m => m.id === movId) || contexto.movsRecientes.find(m => m.id === movId);
+        const updates = {};
+        if (nuevoMonto !== null) updates.monto = nuevoMonto;
+        if (nuevaDesc) updates.descripcion = nuevaDesc;
+        if (nuevaFecha) updates.fecha = nuevaFecha;
+        if (Object.keys(updates).length > 0) {
+          const { error } = await supabase.from('movements').update(updates).eq('id', movId).eq('user_id', userId);
+          if (!error) {
+            if (nuevoMonto !== null && movActual && movActual.account_id) {
+              const cuenta = contexto.cuentas.find(c => c.id === movActual.account_id);
+              if (cuenta) {
+                const diff = nuevoMonto - parseFloat(movActual.monto);
+                const ajuste = movActual.tipo === 'ingreso' ? diff : -diff;
+                await supabase.from('accounts').update({ saldo: parseFloat(cuenta.saldo) + ajuste }).eq('id', cuenta.id);
+              }
+            }
+            ejecutadas.push({ accion, id: movId, cambios: updates });
+          }
+        }
 
       } else if (accion === 'borrar_movimiento') {
-        const { error } = await supabase.from('movements').delete().eq('id', parts[1]).eq('user_id', userId);
-        if (!error) ejecutadas.push({ accion: 'borrado', tipo: 'movimiento' });
+        const movId = parts[1];
+        const mov = contexto.movimientos.find(m => m.id === movId) || contexto.movsRecientes.find(m => m.id === movId);
+        if (mov && mov.account_id) {
+          const cuenta = contexto.cuentas.find(c => c.id === mov.account_id);
+          if (cuenta) {
+            const ajuste = mov.tipo === 'ingreso' ? -parseFloat(mov.monto) : parseFloat(mov.monto);
+            await supabase.from('accounts').update({ saldo: parseFloat(cuenta.saldo) + ajuste }).eq('id', cuenta.id);
+          }
+        }
+        const { error } = await supabase.from('movements').delete().eq('id', movId).eq('user_id', userId);
+        if (!error) ejecutadas.push({ accion: 'borrado', tipo: 'movimiento', id: movId });
 
       } else if (accion === 'borrar_pago') {
         const { error } = await supabase.from('payments').delete().eq('id', parts[1]).eq('user_id', userId);
@@ -283,12 +343,20 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
         const { error } = await supabase.from('events').delete().eq('id', parts[1]).eq('user_id', userId);
         if (!error) ejecutadas.push({ accion: 'borrado', tipo: 'evento' });
 
+      } else if (accion === 'borrar_meta') {
+        const { error } = await supabase.from('metas').delete().eq('id', parts[1]).eq('user_id', userId);
+        if (!error) ejecutadas.push({ accion: 'borrado', tipo: 'meta' });
+
       } else if (accion === 'pago') {
         const { error } = await supabase.from('payments').insert({
           user_id: userId, nombre: parts[1],
           monto: parseFloat(parts[2]), fecha_limite: parts[3], status: 'pendiente'
         });
         if (!error) ejecutadas.push({ accion, detalle: parts[1] });
+
+      } else if (accion === 'marcar_pago_pagado') {
+        const { error } = await supabase.from('payments').update({ status: 'pagado' }).eq('id', parts[1]).eq('user_id', userId);
+        if (!error) ejecutadas.push({ accion, id: parts[1] });
 
       } else if (accion === 'evento') {
         const { error } = await supabase.from('events').insert({
@@ -312,6 +380,67 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
           año: new Date().getFullYear(), estado: 'activa', progreso: 0
         });
         if (!error) ejecutadas.push({ accion, detalle: parts[1] });
+
+      } else if (accion === 'completar_micrometa') {
+        const { error } = await supabase.from('micrometas').update({ completada: true }).eq('id', parts[1]);
+        if (!error) ejecutadas.push({ accion, id: parts[1] });
+
+      } else if (accion === 'transferir') {
+        const origenTipo = (parts[1] || '').trim();
+        const origenId = (parts[2] || '').trim();
+        const destinoTipo = (parts[3] || '').trim();
+        const destinoId = (parts[4] || '').trim();
+        const monto = parseFloat(parts[5]);
+        if (monto > 0 && (origenTipo === 'cuenta' || origenTipo === 'caja') && (destinoTipo === 'cuenta' || destinoTipo === 'caja')) {
+          const tablaOrigen = origenTipo === 'caja' ? 'cajas' : 'accounts';
+          const tablaDestino = destinoTipo === 'caja' ? 'cajas' : 'accounts';
+          const fuenteOrigen = origenTipo === 'caja' ? contexto.cajas : contexto.cuentas;
+          const fuenteDestino = destinoTipo === 'caja' ? contexto.cajas : contexto.cuentas;
+          const origen = fuenteOrigen.find(x => x.id === origenId);
+          const destino = fuenteDestino.find(x => x.id === destinoId);
+          if (origen && destino) {
+            await supabase.from(tablaOrigen).update({ saldo: parseFloat(origen.saldo) - monto }).eq('id', origenId);
+            await supabase.from(tablaDestino).update({ saldo: parseFloat(destino.saldo) + monto }).eq('id', destinoId);
+            const fecha = new Date().toISOString().split('T')[0];
+            await supabase.from('movements').insert([
+              {
+                user_id: userId, tipo: 'gasto',
+                descripcion: `Transferencia a ${destinoTipo} ${destino.nombre}`,
+                monto, fecha,
+                account_id: origenTipo === 'cuenta' ? origenId : null,
+                categoria: 'transferencia', source: 'ia'
+              },
+              {
+                user_id: userId, tipo: 'ingreso',
+                descripcion: `Transferencia desde ${origenTipo} ${origen.nombre}`,
+                monto, fecha,
+                account_id: destinoTipo === 'cuenta' ? destinoId : null,
+                categoria: 'transferencia', source: 'ia'
+              }
+            ]);
+            ejecutadas.push({ accion, monto, origen: `${origenTipo}:${origen.nombre}`, destino: `${destinoTipo}:${destino.nombre}` });
+          }
+        }
+
+      } else if (accion === 'caja_entrada' || accion === 'caja_salida') {
+        const cajaId = (parts[1] || '').trim();
+        const monto = parseFloat(parts[2]);
+        const desc = (parts[3] || (accion === 'caja_entrada' ? 'Entrada de caja' : 'Salida de caja')).trim();
+        const caja = contexto.cajas.find(c => c.id === cajaId);
+        if (caja && monto > 0) {
+          const nuevoSaldo = accion === 'caja_entrada'
+            ? parseFloat(caja.saldo) + monto
+            : parseFloat(caja.saldo) - monto;
+          await supabase.from('cajas').update({ saldo: nuevoSaldo }).eq('id', cajaId);
+          const tipoMov = accion === 'caja_entrada' ? 'ingreso' : 'gasto';
+          await supabase.from('movements').insert({
+            user_id: userId, tipo: tipoMov,
+            descripcion: `${desc} — ${caja.nombre}`,
+            monto, fecha: new Date().toISOString().split('T')[0],
+            account_id: null, categoria: 'caja', source: 'ia'
+          });
+          ejecutadas.push({ accion, monto, desc, caja: caja.nombre });
+        }
       }
     } catch(e) {
       console.error('Error acción:', accion, e.message);
