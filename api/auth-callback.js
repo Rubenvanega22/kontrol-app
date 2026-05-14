@@ -28,15 +28,25 @@ module.exports = async function handler(req, res) {
       const { data: userInfo } = await oauth2.userinfo.get();
       const email = userInfo.email;
 
-      // Guardar en Supabase
-      await supabase.from('email_accounts').upsert({
+      // Extraer user_id del state si viene como "gmail:UUID"
+      let userId = null;
+      if (state && state.startsWith('gmail:')) {
+        userId = state.substring(6).trim() || null;
+      }
+
+      const row = {
         email,
         tipo: 'gmail',
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token,
         token_expiry: tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null,
         activo: true
-      }, { onConflict: 'email' });
+      };
+      if (userId) row.user_id = userId;
+
+      // Si tenemos user_id, conflict por (user_id, email); si no, por email solo (legacy).
+      const onConflict = userId ? 'user_id,email' : 'email';
+      await supabase.from('email_accounts').upsert(row, { onConflict });
 
       return res.redirect('/?auth_success=gmail&email=' + encodeURIComponent(email));
 

@@ -101,7 +101,8 @@ async function syncGmail(emailAccount) {
           nota: `Auto-detectado de ${parsed.bancoNombre}`,
           source: 'email',
           email_id: msg.id,
-          confirmado: true
+          confirmado: false,
+          user_id: emailAccount.user_id || null
         }).select().single();
 
         // Actualizar log con movement_id
@@ -205,7 +206,8 @@ async function syncOutlook(emailAccount) {
           nota: `Auto-detectado de ${parsed.bancoNombre}`,
           source: 'email',
           email_id: msg.id,
-          confirmado: true
+          confirmado: false,
+          user_id: emailAccount.user_id || null
         }).select().single();
 
         if (movement) {
@@ -271,25 +273,50 @@ async function crearAlertaWhatsApp(parsed, movement) {
 }
 
 // ─── Handler principal ─────────────────────────────────────
+// 3 modos de auth:
+//   1. GET (Vercel cron) — procesa todas las cuentas activas
+//   2. POST con CRON_SECRET — manual del cron, mismo comportamiento
+//   3. POST con JWT de Supabase — solo procesa cuentas del usuario autenticado
+//      y devuelve la lista de detecciones para que el frontend muestre confirmación.
 module.exports = async function handler(req, res) {
-  // Verificar que es llamada autorizada (cron de Vercel o manual)
-  const authHeader = req.headers.authorization;
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}` && req.method !== 'GET') {
-    return res.status(401).json({ error: 'No autorizado' });
+  const authHeader = req.headers.authorization || '';
+  let userId = null;
+  let isCron = false;
+
+  if (authHeader === `Bearer ${process.env.CRON_SECRET}`) {
+    isCron = true;
+  } else if (authHeader.startsWith('Bearer ')) {
+    const token = authHeader.slice(7);
+    try {
+      const { data, error } = await supabase.auth.getUser(token);
+      if (error || !data?.user) return res.status(401).json({ error: 'Token inválido' });
+      userId = data.user.id;
+    } catch (e) {
+      return res.status(401).json({ error: 'Token inválido: ' + e.message });
+    }
+  } else if (req.method === 'GET') {
+    // Vercel cron GET sin auth header
+    isCron = true;
+  } else {
+    return res.status(401).json({ error: 'Sin autenticación' });
   }
 
   try {
-    // Obtener todas las cuentas de correo activas
-    const { data: emailAccounts, error } = await supabase
-      .from('email_accounts')
-      .select('*')
-      .eq('activo', true);
+    let query = supabase.from('email_accounts').select('*').eq('activo', true);
+    if (userId) query = query.eq('user_id', userId);
+    const { data: emailAccounts, error } = await query;
 
     if (error || !emailAccounts?.length) {
-      return res.json({ ok: true, message: 'No hay correos configurados', movimientos: 0 });
+      return res.json({
+        ok: true,
+        message: 'No hay correos configurados',
+        cuentas_revisadas: 0,
+        movimientos_detectados: 0,
+        detecciones: []
+      });
     }
 
-    let totalMovimientos = 0;
+    let detecciones = [];
 
     for (const account of emailAccounts) {
       let resultados = [];
@@ -298,17 +325,18 @@ module.exports = async function handler(req, res) {
       } else if (account.tipo === 'outlook') {
         resultados = await syncOutlook(account);
       }
-      totalMovimientos += resultados.length;
+      detecciones = detecciones.concat(resultados);
     }
 
-    // Verificar agenda: ¿hay eventos para hoy sin notificar?
-    await verificarAgenda();
+    // Solo el cron verifica la agenda diaria
+    if (isCron) await verificarAgenda();
 
     return res.json({
       ok: true,
       timestamp: new Date().toISOString(),
       cuentas_revisadas: emailAccounts.length,
-      movimientos_detectados: totalMovimientos
+      movimientos_detectados: detecciones.length,
+      detecciones
     });
 
   } catch (error) {

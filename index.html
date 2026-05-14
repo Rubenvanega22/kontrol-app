@@ -1099,37 +1099,25 @@ select.form-inp option{background:#0c1228;}
   </div>
 </div>
 
-<!-- Modal Agregar Correo -->
+<!-- Modal Conectar Correo (OAuth) -->
 <div class="modal-overlay hidden" id="modal-agregar-correo" onclick="closeModalOutside(event,'modal-agregar-correo')">
   <div class="modal">
     <div class="modal-hdr">
-      <span class="modal-ttl">Agregar correo</span>
+      <span class="modal-ttl">Conectar correo</span>
       <button class="modal-close" onclick="hideModal('modal-agregar-correo')">✕</button>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Dirección de correo</label>
-      <input class="form-inp" id="correo-email" type="email" placeholder="tucorreo@gmail.com"/>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Tipo de correo</label>
-      <select class="form-inp" id="correo-tipo">
-        <option value="gmail">Gmail</option>
-        <option value="outlook">Outlook / Hotmail</option>
-      </select>
     </div>
     <div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:12px;padding:12px;margin-bottom:14px">
       <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:6px">ℹ️ ¿Cómo funciona?</div>
       <div style="font-size:11.5px;color:var(--t3);line-height:1.6">
-        Kontrol usa la bandeja de tu correo para detectar notificaciones de <b style="color:var(--t1)">Bancolombia, Nequi, Davivienda, Daviplata</b>. Cuando pulses "Sincronizar", revisará los últimos 50 correos bancarios y te mostrará los movimientos para que los confirmes. <br/><br/>
-        <b style="color:var(--amber)">Para Gmail necesitas una contraseña de aplicación</b> (no tu contraseña normal). Ve a myaccount.google.com → Seguridad → Contraseñas de aplicaciones.
+        Conecta tu Gmail para que Kontrol detecte automáticamente notificaciones de <b style="color:var(--t1)">Bancolombia, Nequi, Davivienda, Daviplata</b>.
+        Las detecciones aparecerán en <b style="color:var(--t1)">Bandeja</b> para que las confirmes o descartes antes de quedar registradas como movimientos.
       </div>
     </div>
-    <div class="form-group">
-      <label class="form-label">Contraseña de aplicación</label>
-      <input class="form-inp" id="correo-pass" type="password" placeholder="xxxx xxxx xxxx xxxx"/>
+    <button class="btn-primary" onclick="conectarGmail()">📧 Conectar Gmail</button>
+    <div style="font-size:11px;color:var(--t3);margin-top:12px;line-height:1.5;text-align:center">
+      🔒 Permiso de solo lectura. Kontrol nunca verá correos que no sean de bancos.
     </div>
-    <button class="btn-primary" onclick="guardarCorreo()">Guardar correo</button>
-    <button class="btn-secondary" onclick="hideModal('modal-agregar-correo')">Cancelar</button>
+    <button class="btn-secondary" style="margin-top:14px" onclick="hideModal('modal-agregar-correo')">Cancelar</button>
   </div>
 </div>
 
@@ -1164,14 +1152,16 @@ async function syncDesdeSupabase() {
       { data: pagos },
       { data: cajas },
       { data: eventos },
-      { data: recordatorios }
+      { data: recordatorios },
+      { data: emailAccounts }
     ] = await Promise.all([
       supa.from('accounts').select('*').eq('user_id', uid),
       supa.from('movements').select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(200),
       supa.from('payments').select('*').eq('user_id', uid),
       supa.from('cajas').select('*').eq('user_id', uid),
       supa.from('events').select('*').eq('user_id', uid),
-      supa.from('reminders').select('*').eq('user_id', uid)
+      supa.from('reminders').select('*').eq('user_id', uid),
+      supa.from('email_accounts').select('*').eq('user_id', uid).eq('activo', true)
     ]);
 
     // Actualizar DB local con datos de Supabase
@@ -1182,8 +1172,11 @@ async function syncDesdeSupabase() {
     if (movimientos) DB.movimientos = movimientos.map(m => ({
       id: m.id, tipo: m.tipo, descripcion: m.descripcion,
       monto: parseFloat(m.monto), fecha: m.fecha,
-      cuentaId: m.account_id, categoria: m.categoria || 'otro', source: m.source || 'manual'
+      cuentaId: m.account_id, categoria: m.categoria || 'otro', source: m.source || 'manual',
+      confirmado: m.confirmado !== false  // null/undefined → true (legacy), false → false
     }));
+
+    DB.emailAccounts = emailAccounts || [];
 
     if (pagos) DB.pagos = pagos.map(p => ({
       id: p.id, nombre: p.nombre, monto: parseFloat(p.monto),
@@ -2727,29 +2720,161 @@ function renderConfig(){
 }
 
 function renderCorreosConfig(){
-  const correos = DB.correos||[];
+  const accounts = DB.emailAccounts || [];
   const el = document.getElementById('correos-list-config');
-  if(!el) return;
-  if(!correos.length){ el.innerHTML='<div style="font-size:12px;color:var(--t3);padding:4px 0">Sin correos configurados.</div>'; return; }
-  el.innerHTML = correos.map((c,i)=>`<div class="config-row" style="margin-bottom:6px">
-    <div class="config-row-info">
-      <div class="config-row-lbl">${c.tipo==='gmail'?'📧':'📨'} ${c.email}</div>
-      <div class="config-row-sub">${c.tipo} · ${c.sincronizado?'Sincronizado':'Pendiente'}</div>
-    </div>
-    <button onclick="eliminarCorreo(${i})" style="background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.2);color:var(--red);border-radius:8px;padding:4px 8px;font-size:11px;cursor:pointer">✕</button>
-  </div>`).join('');
+  if(el){
+    if(!accounts.length){
+      el.innerHTML='<div style="font-size:12px;color:var(--t3);padding:4px 0">Sin correos conectados.</div>';
+    } else {
+      el.innerHTML = accounts.map(c=>{
+        const ult = c.ultimo_sync ? new Date(c.ultimo_sync).toLocaleString('es-CO',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : 'nunca';
+        return `<div class="config-row" style="margin-bottom:6px">
+          <div class="config-row-info">
+            <div class="config-row-lbl">${c.tipo==='gmail'?'📧':'📨'} ${c.email}</div>
+            <div class="config-row-sub">${c.tipo} · último sync: ${ult}</div>
+          </div>
+          <button onclick="desconectarCorreo('${c.id}')" style="background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.2);color:var(--red);border-radius:8px;padding:4px 8px;font-size:11px;cursor:pointer">✕</button>
+        </div>`;
+      }).join('');
+    }
+  }
 
-  // También actualizar en pantalla escanear
+  // También en pantalla escanear (panel Correo)
   const elScan = document.getElementById('correos-config-list');
-  if(elScan) elScan.innerHTML = correos.length
-    ? correos.map(c=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bd2)">
-        <div>
-          <div style="font-size:13px;font-weight:600">${c.tipo==='gmail'?'📧':'📨'} ${c.email}</div>
-          <div style="font-size:10px;color:var(--t3)">${c.tipo}</div>
+  if(elScan){
+    elScan.innerHTML = accounts.length
+      ? accounts.map(c=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bd2)">
+          <div>
+            <div style="font-size:13px;font-weight:600">${c.tipo==='gmail'?'📧':'📨'} ${c.email}</div>
+            <div style="font-size:10px;color:var(--t3)">${c.tipo}</div>
+          </div>
+          <button class="btn-secondary" style="padding:6px 12px;font-size:11px;width:auto" onclick="sincronizarCorreo()">🔄 Sync</button>
+        </div>`).join('')
+      : '<div style="font-size:12px;color:var(--t3)">Sin correos. Conecta uno con el botón de abajo.</div>';
+  }
+}
+
+function conectarGmail(){
+  if(!currentUser){ toast('Inicia sesión primero','var(--red)'); return; }
+  // El backend redirige a Google y luego de vuelta a /?auth_success=gmail&email=...
+  window.location.href = `/api/auth-gmail?user_id=${encodeURIComponent(currentUser.id)}`;
+}
+
+async function desconectarCorreo(id){
+  if(!confirm('¿Desconectar esta cuenta de correo? Kontrol dejará de revisar sus correos.')) return;
+  const { error } = await supa.from('email_accounts').delete().eq('id', id);
+  if(error){ toast('Error: '+error.message,'var(--red)'); return; }
+  toast('🗑 Cuenta desconectada','var(--t2)');
+  await syncDesdeSupabase();
+  renderCorreosConfig();
+}
+
+async function sincronizarCorreo(){
+  if(!currentUser){ toast('Inicia sesión primero','var(--red)'); return; }
+  const { data: { session } } = await supa.auth.getSession();
+  if(!session){ toast('Sin sesión activa','var(--red)'); return; }
+
+  const syncEl = document.getElementById('correo-syncing');
+  const resEl = document.getElementById('sc-correo-resultado');
+  if(syncEl) syncEl.style.display='block';
+  if(resEl) resEl.style.display='none';
+
+  try {
+    const res = await fetch('/api/sync-emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${session.access_token}` }
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || 'Error sincronizando');
+
+    if(syncEl) syncEl.style.display='none';
+    const n = data.movimientos_detectados || 0;
+    if(n > 0){
+      toast(`✅ ${n} detección(es) nuevas — revisa la Bandeja`, 'var(--green)');
+    } else {
+      toast('Sin novedades en tu correo','var(--t2)');
+    }
+    await syncDesdeSupabase();
+    renderInbox();
+    renderCorreosConfig();
+    actualizarBadgeInbox();
+  } catch(e){
+    if(syncEl) syncEl.style.display='none';
+    toast('⚠️ '+e.message,'var(--red)');
+  }
+}
+
+// ── Bandeja: detecciones pendientes (movements con confirmado=false) ──
+function renderInbox(){
+  const el = document.getElementById('inbox-result-list');
+  if(!el) return;
+  const pendings = (DB.movimientos || []).filter(m => m.confirmado === false);
+  if(!pendings.length){
+    el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--t3);font-size:12px">No hay detecciones pendientes 🎉</div>';
+    return;
+  }
+  const catIcoMap = {alimentacion:'🍔',transporte:'🚗',servicios:'💡',salud:'🏥',educacion:'🎓',hogar:'🏠',entretenimiento:'🎬',otro:'📦'};
+  el.innerHTML = pendings.map(m => {
+    const ico = m.tipo === 'ingreso' ? '📥' : '📤';
+    const color = m.tipo === 'ingreso' ? 'var(--green)' : 'var(--red)';
+    const signo = m.tipo === 'ingreso' ? '+' : '-';
+    return `<div class="inbox-card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <div style="font-size:18px">${ico}</div>
+        <div style="flex:1">
+          <div style="font-weight:700;color:${color};font-size:14px">${signo}${fmtCOP(m.monto)}</div>
+          <div style="font-size:12.5px;color:var(--t2);margin-top:2px">${m.descripcion}</div>
         </div>
-        <button class="btn-secondary" style="padding:6px 12px;font-size:11px;width:auto" onclick="sincronizarCorreo('${c.email}')">🔄 Sync</button>
-      </div>`).join('')
-    : '<div style="font-size:12px;color:var(--t3)">Sin correos. Agrega uno en ⚙️ Config.</div>';
+        <div style="font-size:18px">${catIcoMap[m.categoria]||'📦'}</div>
+      </div>
+      <div style="font-size:10.5px;color:var(--t3)">${m.fecha} · ${m.categoria || 'otro'} · ${m.source || ''}</div>
+      <div class="inbox-actions">
+        <button class="inbox-btn-ok" onclick="confirmarMovimiento('${m.id}')">✓ Confirmar</button>
+        <button class="inbox-btn-ko" onclick="descartarMovimiento('${m.id}')">✕ Descartar</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function confirmarMovimiento(id){
+  const m = DB.movimientos.find(x => String(x.id) === String(id));
+  if(!m){ toast('No encontrado','var(--red)'); return; }
+  const { error } = await supa.from('movements').update({ confirmado: true }).eq('id', id);
+  if(error){ toast('Error: '+error.message,'var(--red)'); return; }
+  // Ajustar saldo de la cuenta si el movimiento tiene account_id
+  if(m.cuentaId){
+    const cuenta = DB.cuentas.find(c => String(c.id) === String(m.cuentaId));
+    if(cuenta){
+      const nuevoSaldo = m.tipo === 'ingreso' ? cuenta.saldo + m.monto : cuenta.saldo - m.monto;
+      await supa.from('accounts').update({ saldo: nuevoSaldo }).eq('id', cuenta.id);
+    }
+  }
+  toast('✓ Confirmado','var(--green)');
+  await syncDesdeSupabase();
+  renderInbox();
+  actualizarBadgeInbox();
+}
+
+async function descartarMovimiento(id){
+  if(!confirm('¿Descartar esta detección? Se eliminará permanentemente.')) return;
+  const { error } = await supa.from('movements').delete().eq('id', id);
+  if(error){ toast('Error: '+error.message,'var(--red)'); return; }
+  toast('✕ Descartado','var(--t2)');
+  await syncDesdeSupabase();
+  renderInbox();
+  actualizarBadgeInbox();
+}
+
+function actualizarBadgeInbox(){
+  const pendings = (DB.movimientos || []).filter(m => m.confirmado === false);
+  const badge = document.getElementById('notif-badge');
+  if(!badge) return;
+  if(pendings.length > 0){
+    badge.textContent = pendings.length;
+    badge.style.display = '';
+  } else {
+    badge.style.display = 'none';
+  }
 }
 
 function toggleBanco(id){
@@ -2762,52 +2887,8 @@ function toggleBanco(id){
   save();
 }
 
-function guardarCorreo(){
-  const email = document.getElementById('correo-email').value.trim();
-  const tipo = document.getElementById('correo-tipo').value;
-  const pass = document.getElementById('correo-pass').value.trim();
-  if(!email){ toast('⚠️ Ingresa el correo','var(--amber)'); return; }
-  if(!pass){ toast('⚠️ Ingresa la contraseña de aplicación','var(--amber)'); return; }
-  if(!DB.correos) DB.correos=[];
-  const yaExiste = DB.correos.find(c=>c.email===email);
-  if(yaExiste){ toast('⚠️ Este correo ya está agregado','var(--amber)'); return; }
-  DB.correos.push({ email, tipo, pass, sincronizado:false });
-  save();
-  hideModal('modal-agregar-correo');
-  document.getElementById('correo-email').value='';
-  document.getElementById('correo-pass').value='';
-  toast('✅ Correo guardado','var(--green)');
-  renderConfig();
-  renderCorreosConfig();
-}
-
-function eliminarCorreo(idx){
-  if(!confirm('¿Eliminar este correo?')) return;
-  DB.correos.splice(idx,1);
-  save();
-  toast('🗑 Correo eliminado','var(--red)');
-  renderConfig();
-}
-
-async function sincronizarCorreo(email){
-  const correo = (DB.correos||[]).find(c=>c.email===email);
-  if(!correo){ toast('Correo no encontrado','var(--amber)'); return; }
-
-  document.getElementById('correo-syncing').style.display='block';
-  document.getElementById('sc-correo-resultado').style.display='none';
-
-  // Usar la IA para analizar — simulamos la llamada al correo
-  // En web real necesitaríamos un backend proxy para IMAP
-  // Por ahora usamos la IA para parsear texto que el usuario pegue, 
-  // y mostramos instrucciones para el flujo real
-  setTimeout(()=>{
-    document.getElementById('correo-syncing').style.display='none';
-    toast('ℹ️ Usa la pestaña Bandeja para pegar notificaciones bancarias','var(--blue)');
-    // Nota técnica: acceso real a Gmail/Outlook desde web requiere
-    // OAuth2 + backend proxy (no posible solo en HTML estático)
-    // En el APK Flutter sí se puede implementar completo
-  }, 1500);
-}
+// (guardarCorreo, eliminarCorreo y la version stub de sincronizarCorreo fueron
+//  reemplazados por conectarGmail / desconectarCorreo / sincronizarCorreo OAuth)
 
 function onIAProveedorChange(){
   const prov = document.getElementById('ia-proveedor').value;
@@ -2913,6 +2994,7 @@ function setScanTab(tab){
     document.getElementById('scan-tab-'+t).classList.toggle('on', t===tab);
   });
   if(tab==='correo') renderCorreosConfig();
+  if(tab==='bandeja') renderInbox();
 }
 
 function abrirCamara(){
@@ -3266,6 +3348,19 @@ function addLogoutBtn() {
   const { data: { session } } = await supa.auth.getSession();
   if (session?.user) {
     await onLogin(session.user);
+    // Manejar redirecciones de OAuth (?auth_success=gmail&email=... o ?auth_error=...)
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('auth_success') === 'gmail') {
+      const email = params.get('email') || '';
+      toast(`✅ Gmail conectado: ${email}`, 'var(--green)');
+      window.history.replaceState({}, '', window.location.pathname);
+      await syncDesdeSupabase();
+      renderCorreosConfig();
+    } else if (params.get('auth_error')) {
+      toast(`⚠️ Error de OAuth: ${params.get('auth_error')}`, 'var(--red)');
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+    actualizarBadgeInbox();
   } else {
     document.getElementById('auth-screen').style.display = 'flex';
   }
