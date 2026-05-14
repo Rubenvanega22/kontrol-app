@@ -208,9 +208,20 @@ ${ctx.metas.map(m => {
 [ACCION:evento|titulo|YYYY-MM-DD|HH:MM]
 [ACCION:recordatorio|texto]
 [ACCION:borrar_evento|ID]
+— Cuentas (no se crean desde aquí — el usuario las crea en Config)
+[ACCION:editar_cuenta|cuenta_id|nuevo_saldo|nuevo_nombre]
+  Deja vacíos los campos que NO quieras cambiar. Ej: [ACCION:editar_cuenta|abc||Nuevo nombre]
+[ACCION:borrar_cuenta|cuenta_id]
+  ⚠️ REQUIERE confirmación del usuario en pantalla — solo emite la acción, el frontend pregunta.
+
 — Cajas (efectivo)
 [ACCION:caja_entrada|caja_id|monto|descripcion]
 [ACCION:caja_salida|caja_id|monto|descripcion]
+[ACCION:editar_caja|caja_id|nuevo_saldo|nuevo_nombre]
+  Deja vacíos los campos que NO quieras cambiar.
+[ACCION:borrar_caja|caja_id]
+  ⚠️ REQUIERE confirmación del usuario en pantalla — solo emite la acción.
+
 — Transferencias (entre cuentas o cajas)
 [ACCION:transferir|origen_tipo|origen_id|destino_tipo|destino_id|monto]
   origen_tipo y destino_tipo deben ser "cuenta" o "caja". Usa los IDs de arriba.
@@ -461,6 +472,58 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
         const validas = ['resumen','movimientos','cajas','pagos','agenda','recordar','metas','ia'];
         if (seccion && validas.includes(seccion)) {
           ejecutadas.push({ accion, seccion });
+        }
+
+      } else if (accion === 'editar_cuenta') {
+        const cuentaId = (parts[1] || '').trim();
+        const nuevoSaldoStr = (parts[2] || '').trim();
+        const nuevoNombre = (parts[3] || '').trim();
+        const updates = {};
+        if (nuevoSaldoStr && !isNaN(parseFloat(nuevoSaldoStr))) updates.saldo = parseFloat(nuevoSaldoStr);
+        if (nuevoNombre) updates.nombre = nuevoNombre;
+        if (Object.keys(updates).length > 0) {
+          const { error } = await supabase.from('accounts').update(updates).eq('id', cuentaId).eq('user_id', userId);
+          if (!error) ejecutadas.push({ accion, id: cuentaId, cambios: updates });
+        }
+
+      } else if (accion === 'editar_caja') {
+        const cajaId = (parts[1] || '').trim();
+        const nuevoSaldoStr = (parts[2] || '').trim();
+        const nuevoNombre = (parts[3] || '').trim();
+        const updates = {};
+        if (nuevoSaldoStr && !isNaN(parseFloat(nuevoSaldoStr))) updates.saldo = parseFloat(nuevoSaldoStr);
+        if (nuevoNombre) updates.nombre = nuevoNombre;
+        if (Object.keys(updates).length > 0) {
+          const { error } = await supabase.from('cajas').update(updates).eq('id', cajaId).eq('user_id', userId);
+          if (!error) ejecutadas.push({ accion, id: cajaId, cambios: updates });
+        }
+
+      } else if (accion === 'borrar_cuenta') {
+        // NO eliminar acá — devolver confirmación requerida para el frontend
+        const cuentaId = (parts[1] || '').trim();
+        const cuenta = contexto.cuentas.find(c => c.id === cuentaId);
+        if (cuenta) {
+          ejecutadas.push({
+            accion,
+            confirmacion_requerida: true,
+            tipo: 'cuenta',
+            id: cuentaId,
+            nombre: cuenta.nombre
+          });
+        }
+
+      } else if (accion === 'borrar_caja') {
+        // NO eliminar acá — devolver confirmación requerida para el frontend
+        const cajaId = (parts[1] || '').trim();
+        const caja = contexto.cajas.find(c => c.id === cajaId);
+        if (caja) {
+          ejecutadas.push({
+            accion,
+            confirmacion_requerida: true,
+            tipo: 'caja',
+            id: cajaId,
+            nombre: caja.nombre
+          });
         }
       }
     } catch(e) {

@@ -1784,7 +1784,11 @@ function renderCajas(){
   const el = document.getElementById('cajas-grid');
   const cajas = DB.cajas;
   const cards = cajas.map(c=>`
-    <div class="caja-card" onclick="abrirCajaDetalle(${c.id})">
+    <div class="caja-card" style="position:relative" onclick="abrirCajaDetalle('${c.id}')">
+      <div style="position:absolute;top:6px;right:6px;display:flex;gap:4px">
+        <button onclick="event.stopPropagation();editarCaja('${c.id}')" style="background:rgba(255,255,255,0.08);border:none;border-radius:6px;width:24px;height:24px;cursor:pointer;font-size:11px;padding:0" title="Editar">✏️</button>
+        <button onclick="event.stopPropagation();borrarCajaLocal('${c.id}')" style="background:rgba(248,113,113,0.15);border:none;border-radius:6px;width:24px;height:24px;cursor:pointer;font-size:11px;padding:0" title="Eliminar">🗑️</button>
+      </div>
       <div class="caja-ico">🏦</div>
       <div class="caja-name">${c.nombre}</div>
       <div class="caja-amt">${fmtCOP(c.saldo)}</div>
@@ -1794,6 +1798,64 @@ function renderCajas(){
     <div style="font-size:24px;color:var(--t3)">+</div>
     <div style="font-size:10px;color:var(--t3);margin-top:4px">Nueva caja</div>
   </div>`;
+}
+
+// Editar/borrar cuentas y cajas — usados por los botones de Config y Cajas
+// y también por las acciones de la IA que requieren confirmación.
+async function editarCuenta(id){
+  const c = DB.cuentas.find(x => String(x.id) === String(id));
+  if(!c){ toast('Cuenta no encontrada', 'var(--red)'); return; }
+  const nombre = prompt('Nombre de la cuenta:', c.nombre);
+  if(nombre === null) return;
+  const tipo = prompt('Tipo (banco, efectivo, tarjeta...):', c.tipo || 'banco');
+  if(tipo === null) return;
+  const saldoStr = prompt('Saldo:', c.saldo);
+  if(saldoStr === null) return;
+  const saldo = parseFloat(String(saldoStr).replace(/[^\d.-]/g, ''));
+  if(isNaN(saldo)){ toast('Saldo inválido', 'var(--red)'); return; }
+  const { error } = await supa.from('accounts').update({
+    nombre: nombre.trim(), tipo: tipo.trim(), saldo
+  }).eq('id', id);
+  if(error){ toast('Error: '+error.message, 'var(--red)'); return; }
+  await syncDesdeSupabase();
+  toast('✅ Cuenta actualizada', 'var(--green)');
+}
+
+async function borrarCuentaLocal(id){
+  const c = DB.cuentas.find(x => String(x.id) === String(id));
+  if(!c){ toast('Cuenta no encontrada', 'var(--red)'); return; }
+  if(!confirm(`¿Estás seguro de eliminar "${c.nombre}"?`)) return;
+  const { error } = await supa.from('accounts').delete().eq('id', id);
+  if(error){ toast('Error: '+error.message, 'var(--red)'); return; }
+  await syncDesdeSupabase();
+  toast('🗑️ Cuenta eliminada', 'var(--t2)');
+}
+
+async function editarCaja(id){
+  const c = DB.cajas.find(x => String(x.id) === String(id));
+  if(!c){ toast('Caja no encontrada', 'var(--red)'); return; }
+  const nombre = prompt('Nombre de la caja:', c.nombre);
+  if(nombre === null) return;
+  const saldoStr = prompt('Saldo:', c.saldo);
+  if(saldoStr === null) return;
+  const saldo = parseFloat(String(saldoStr).replace(/[^\d.-]/g, ''));
+  if(isNaN(saldo)){ toast('Saldo inválido', 'var(--red)'); return; }
+  const { error } = await supa.from('cajas').update({
+    nombre: nombre.trim(), saldo
+  }).eq('id', id);
+  if(error){ toast('Error: '+error.message, 'var(--red)'); return; }
+  await syncDesdeSupabase();
+  toast('✅ Caja actualizada', 'var(--green)');
+}
+
+async function borrarCajaLocal(id){
+  const c = DB.cajas.find(x => String(x.id) === String(id));
+  if(!c){ toast('Caja no encontrada', 'var(--red)'); return; }
+  if(!confirm(`¿Estás seguro de eliminar "${c.nombre}"?`)) return;
+  const { error } = await supa.from('cajas').delete().eq('id', id);
+  if(error){ toast('Error: '+error.message, 'var(--red)'); return; }
+  await syncDesdeSupabase();
+  toast('🗑️ Caja eliminada', 'var(--t2)');
 }
 
 function abrirCajaDetalle(id){
@@ -2126,9 +2188,23 @@ async function sendIA(){
     hablar(respText);
     if(data.acciones && data.acciones.length > 0){
       const navegarAction = data.acciones.find(a => a.accion === 'navegar');
-      const hayMutacion = data.acciones.some(a => a.accion !== 'navegar');
+      const accionesConfirmacion = data.acciones.filter(a => a.confirmacion_requerida);
+      const hayMutacion = data.acciones.some(a => a.accion !== 'navegar' && !a.confirmacion_requerida);
 
-      if(hayMutacion){
+      // Procesar confirmaciones primero — bloquean hasta que el usuario decide
+      for(const a of accionesConfirmacion){
+        const confirmado = confirm(`¿Seguro que quieres eliminar "${a.nombre}"?\nDi 'sí confirmo' para proceder.`);
+        if(!confirmado) continue;
+        const tabla = a.tipo === 'cuenta' ? 'accounts' : 'cajas';
+        const { error } = await supa.from(tabla).delete().eq('id', a.id);
+        if(error){
+          toast('Error: ' + error.message, 'var(--red)');
+        } else {
+          toast(`🗑️ ${a.tipo === 'cuenta' ? 'Cuenta' : 'Caja'} "${a.nombre}" eliminada`, 'var(--t2)');
+        }
+      }
+
+      if(hayMutacion || accionesConfirmacion.length > 0){
         setTimeout(async () => {
           await syncDesdeSupabase();
           if(navegarAction && navegarAction.seccion){
@@ -2570,6 +2646,10 @@ function renderConfig(){
     <div class="acct-ico" style="background:rgba(59,130,246,0.1)">${tipoIco[c.tipo]||'💳'}</div>
     <div class="acct-info"><div class="acct-name">${c.nombre}</div><div class="acct-type">${c.tipo}</div></div>
     <div class="acct-bal" style="color:${c.saldo>=0?'var(--green)':'var(--red)'}">${fmtCOP(c.saldo)}</div>
+    <div style="display:flex;gap:4px;margin-left:8px">
+      <button onclick="editarCuenta('${c.id}')" style="background:rgba(255,255,255,0.08);border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:12px;padding:0" title="Editar">✏️</button>
+      <button onclick="borrarCuentaLocal('${c.id}')" style="background:rgba(248,113,113,0.15);border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:12px;padding:0" title="Eliminar">🗑️</button>
+    </div>
   </div>`).join('');
 
   // IA
