@@ -2375,7 +2375,10 @@ function crearRecognition(){
     console.log('[mic] resultado:', txt);
     document.getElementById('mic-btn').textContent = '⏳';
     document.getElementById('ia-input').value = txt;
-    // NO llamamos recognition.stop() — la dejamos abierta para evitar el chime
+    // Android: continuous=true igual cierra la sesión tras cada resultado.
+    // Stop explícito + reset de vozEscuchando para permitir el reinicio limpio.
+    try { recognition.stop(); } catch(_) {}
+    vozEscuchando = false;
     sendIA();
   };
 
@@ -2393,14 +2396,16 @@ function crearRecognition(){
   };
 
   recognition.onend = () => {
-    vozEscuchando = false;
+    vozEscuchando = false; // reset SIEMPRE
     console.log('[mic] 🔚 onend');
-    // Reiniciar SOLO si el modo voz sigue activo y no estamos procesando
-    // (muerte inesperada). Si vozProcesando=true, la IA está respondiendo;
-    // no reiniciamos hasta que vozReanudar limpie el estado.
+    // Android: continuous=true puede cerrar la sesión inesperadamente.
+    // Reiniciar siempre que el modo voz siga activo y no estemos procesando.
     if(modoVozActivo && !vozProcesando){
       setTimeout(() => {
-        if(modoVozActivo && !vozProcesando && !vozEscuchando && !ttsSpeaking) iniciarEscucha();
+        if(modoVozActivo && !vozProcesando && !ttsSpeaking){
+          vozEscuchando = false; // reset por si quedó algo colgado
+          iniciarEscucha();
+        }
       }, 500);
     }
   };
@@ -2439,14 +2444,22 @@ function interrumpirTTS(){
   if(btn) btn.style.background = '';
 }
 
-// Llamar esto cuando la IA termina de hablar. Con continuous=true la recognition
-// sigue abierta, así que NO necesitamos reiniciarla — solo limpiamos el estado.
-// Resetea también _ultimoTranscript para permitir repetir la misma frase.
+// Llamar esto cuando la IA termina de hablar. En Android la recognition se cierra
+// tras cada resultado aunque continuous=true, así que SIEMPRE reiniciamos con un
+// delay de 800ms, sin importar vozEscuchando (lo reseteamos para forzar el reinicio).
 function vozReanudar(){
   console.log('[voz] reanudar - vozProcesando:', vozProcesando, 'vozEscuchando:', vozEscuchando, 'ttsSpeaking:', ttsSpeaking);
   vozProcesando = false;
   _ultimoTranscript = '';
   document.getElementById('mic-btn').textContent = '🔴';
+  if(modoVozActivo){
+    setTimeout(() => {
+      if(modoVozActivo && !vozProcesando && !ttsSpeaking){
+        vozEscuchando = false; // reset para forzar el reinicio
+        iniciarEscucha();
+      }
+    }, 800);
+  }
 }
 
 // Fin modo voz
