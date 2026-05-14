@@ -2332,13 +2332,25 @@ function crearRecognition(){
 
   recognition.onerror = e => {
     vozEscuchando = false;
-    if(e.error !== 'aborted') console.log('[mic] onerror:', e.error);
-    // NO reiniciar automáticamente — el reinicio se hace en vozReanudar
+    if(e.error === 'aborted') return;
+    console.log('[mic] onerror:', e.error);
+    // Si el usuario quedó callado, reiniciar para que pueda seguir hablando
+    if(e.error === 'no-speech'){
+      setTimeout(() => {
+        if(modoVozActivo && !vozProcesando && !vozEscuchando && !ttsSpeaking) iniciarEscucha();
+      }, 500);
+    }
   };
 
   recognition.onend = () => {
     vozEscuchando = false;
-    // NO reiniciar automáticamente — el reinicio se hace en vozReanudar
+    // Reiniciar automáticamente si el modo voz sigue activo y no hay petición en curso.
+    // El guard !ttsSpeaking evita reiniciar mientras la IA habla.
+    if(modoVozActivo && !vozProcesando){
+      setTimeout(() => {
+        if(modoVozActivo && !vozProcesando && !vozEscuchando && !ttsSpeaking) iniciarEscucha();
+      }, 500);
+    }
   };
 
   return recognition;
