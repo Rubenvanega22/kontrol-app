@@ -1,99 +1,209 @@
 // /api/auth-callback.js
-// Recibe el código OAuth de Google/Microsoft y guarda tokens
+// Recibe el código OAuth de Google/Microsoft y guarda tokens.
+// Diseñado para NUNCA producir un 500 — cualquier error redirige al frontend
+// con un mensaje en ?auth_error=... para que el usuario sepa qué pasó.
 
 const { google } = require('googleapis');
 const supabase = require('../lib/supabase');
 const { verifyState } = require('../lib/oauth-state');
 
+function safeRedirect(res, location){
+  try { return res.redirect(location); }
+  catch (_) {
+    try {
+      return res.status(302).setHeader('Location', location).end();
+    } catch (_) {
+      return res.status(500).json({ error: 'No se pudo redirigir', location });
+    }
+  }
+}
+
+function errorRedirect(res, msg){
+  return safeRedirect(res, '/?auth_error=' + encodeURIComponent(String(msg || 'Error desconocido').slice(0, 300)));
+}
+
 module.exports = async function handler(req, res) {
-  const { code, state, error } = req.query;
-
-  if (error) {
-    return res.redirect('/?auth_error=' + encodeURIComponent(error));
-  }
-
-  // Verificar firma HMAC del state. Rechaza cualquier manipulación.
-  const payload = verifyState(state);
-  if (!payload) {
-    return res.redirect('/?auth_error=' + encodeURIComponent('Estado OAuth inválido o manipulado'));
-  }
-  const payloadParts = payload.split(':');
-  const provider = payloadParts[0];
-  const userId = (payloadParts[1] || '').trim() || null;
-
   try {
+    // Vercel a veces entrega query params repetidos como array — normalizar a string.
+    const q = req.query || {};
+    const code = Array.isArray(q.code) ? q.code[0] : q.code;
+    const state = Array.isArray(q.state) ? q.state[0] : q.state;
+    const oauthError = Array.isArray(q.error) ? q.error[0] : q.error;
+
+    console.log('[auth-callback] start', {
+      hasCode: !!code,
+      stateLen: state ? state.length : 0,
+      oauthError: oauthError || null
+    });
+
+    if (oauthError) {
+      console.log('[auth-callback] OAuth provider error:', oauthError);
+      return errorRedirect(res, oauthError);
+    }
+    if (!code) {
+      console.log('[auth-callback] no code in query');
+      return errorRedirect(res, 'Sin código de autorización');
+    }
+
+    // ── Verificar firma HMAC del state ──
+    let payload;
+    try {
+      payload = verifyState(state);
+    } catch (e) {
+      console.error('[auth-callback] verifyState threw:', e.message);
+      return errorRedirect(res, 'Error verificando state: ' + e.message);
+    }
+    if (!payload) {
+      console.log('[auth-callback] invalid state signature');
+      return errorRedirect(res, 'Estado OAuth inválido o manipulado');
+    }
+
+    const payloadParts = String(payload).split(':');
+    const provider = payloadParts[0] || '';
+    const userId = (payloadParts[1] || '').trim() || null;
+    console.log('[auth-callback] payload ok, provider=', provider, 'hasUserId=', !!userId);
+
+    // ── Gmail ──
     if (provider === 'gmail') {
-      // Gmail OAuth
-      const oauth2Client = new google.auth.OAuth2(
-        process.env.GMAIL_CLIENT_ID,
-        process.env.GMAIL_CLIENT_SECRET,
-        process.env.GMAIL_REDIRECT_URI
-      );
+      if (!process.env.GMAIL_CLIENT_ID || !process.env.GMAIL_CLIENT_SECRET || !process.env.GMAIL_REDIRECT_URI) {
+        console.error('[auth-callback] missing Gmail OAuth env vars');
+        return errorRedirect(res, 'Configuración OAuth Gmail incompleta en el servidor');
+      }
 
-      const { tokens } = await oauth2Client.getToken(code);
-      oauth2Client.setCredentials(tokens);
+      let oauth2Client;
+      try {
+        oauth2Client = new google.auth.OAuth2(
+          process.env.GMAIL_CLIENT_ID,
+          process.env.GMAIL_CLIENT_SECRET,
+          process.env.GMAIL_REDIRECT_URI
+        );
+      } catch (e) {
+        console.error('[auth-callback] OAuth2 ctor failed:', e.message);
+        return errorRedirect(res, 'Error inicializando cliente OAuth: ' + e.message);
+      }
 
-      // Obtener email del usuario
-      const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
-      const { data: userInfo } = await oauth2.userinfo.get();
-      const email = userInfo.email;
+      let tokens;
+      try {
+        const result = await oauth2Client.getToken(code);
+        tokens = result.tokens || {};
+      } catch (e) {
+        console.error('[auth-callback] getToken failed:', e.message);
+        return errorRedirect(res, 'Error intercambiando código: ' + e.message);
+      }
+
+      if (!tokens.access_token) {
+        console.error('[auth-callback] no access_token in response', tokens);
+        return errorRedirect(res, 'Google no devolvió access_token');
+      }
+
+      try { oauth2Client.setCredentials(tokens); } catch (_) {}
+
+      let email = null;
+      try {
+        const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
+        const resp = await oauth2.userinfo.get();
+        email = resp && resp.data ? resp.data.email : null;
+      } catch (e) {
+        console.error('[auth-callback] userinfo.get failed:', e.message);
+        return errorRedirect(res, 'Error obteniendo email del usuario: ' + e.message);
+      }
+
+      if (!email) {
+        console.error('[auth-callback] userinfo did not return email');
+        return errorRedirect(res, 'Google no devolvió el email');
+      }
 
       const row = {
         email,
         tipo: 'gmail',
         access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token,
+        refresh_token: tokens.refresh_token || null,
         token_expiry: tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null,
         activo: true
       };
       if (userId) row.user_id = userId;
-
-      // Si tenemos user_id, conflict por (user_id, email); si no, por email solo (legacy).
       const onConflict = userId ? 'user_id,email' : 'email';
-      await supabase.from('email_accounts').upsert(row, { onConflict });
 
-      return res.redirect('/?auth_success=gmail&email=' + encodeURIComponent(email));
+      try {
+        const { error: upsertError } = await supabase.from('email_accounts').upsert(row, { onConflict });
+        if (upsertError) {
+          console.error('[auth-callback] supabase upsert error:', upsertError.message, upsertError.details);
+          return errorRedirect(res, 'Error guardando cuenta: ' + upsertError.message);
+        }
+      } catch (e) {
+        console.error('[auth-callback] supabase upsert threw:', e.message);
+        return errorRedirect(res, 'Error de base de datos: ' + e.message);
+      }
 
-    } else if (provider === 'outlook') {
-      // Outlook OAuth
-      const tokenRes = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          client_id: process.env.OUTLOOK_CLIENT_ID,
-          client_secret: process.env.OUTLOOK_CLIENT_SECRET,
-          code,
-          redirect_uri: process.env.OUTLOOK_REDIRECT_URI,
-          grant_type: 'authorization_code'
-        })
-      });
-      const tokens = await tokenRes.json();
+      console.log('[auth-callback] ✓ Gmail connected:', email, 'user_id=', userId || 'none');
+      return safeRedirect(res, '/?auth_success=gmail&email=' + encodeURIComponent(email));
+    }
 
-      // Obtener email del usuario
-      const profileRes = await fetch('https://graph.microsoft.com/v1.0/me', {
-        headers: { Authorization: `Bearer ${tokens.access_token}` }
-      });
-      const profile = await profileRes.json();
-      const email = profile.mail || profile.userPrincipalName;
+    // ── Outlook ──
+    if (provider === 'outlook') {
+      if (!process.env.OUTLOOK_CLIENT_ID || !process.env.OUTLOOK_CLIENT_SECRET || !process.env.OUTLOOK_REDIRECT_URI) {
+        return errorRedirect(res, 'Configuración OAuth Outlook incompleta en el servidor');
+      }
+
+      let tokens;
+      try {
+        const tokenRes = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            client_id: process.env.OUTLOOK_CLIENT_ID,
+            client_secret: process.env.OUTLOOK_CLIENT_SECRET,
+            code,
+            redirect_uri: process.env.OUTLOOK_REDIRECT_URI,
+            grant_type: 'authorization_code'
+          })
+        });
+        tokens = await tokenRes.json();
+        if (!tokens.access_token) {
+          return errorRedirect(res, 'Outlook no devolvió token: ' + (tokens.error_description || JSON.stringify(tokens).slice(0, 200)));
+        }
+      } catch (e) {
+        return errorRedirect(res, 'Error intercambiando código Outlook: ' + e.message);
+      }
+
+      let email = null;
+      try {
+        const profileRes = await fetch('https://graph.microsoft.com/v1.0/me', {
+          headers: { Authorization: `Bearer ${tokens.access_token}` }
+        });
+        const profile = await profileRes.json();
+        email = profile.mail || profile.userPrincipalName || null;
+      } catch (e) {
+        return errorRedirect(res, 'Error obteniendo perfil Outlook: ' + e.message);
+      }
+
+      if (!email) return errorRedirect(res, 'Outlook no devolvió email');
 
       const row = {
-        email,
-        tipo: 'outlook',
+        email, tipo: 'outlook',
         access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token,
-        token_expiry: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
+        refresh_token: tokens.refresh_token || null,
+        token_expiry: tokens.expires_in ? new Date(Date.now() + tokens.expires_in * 1000).toISOString() : null,
         activo: true
       };
       if (userId) row.user_id = userId;
       const onConflict = userId ? 'user_id,email' : 'email';
-      await supabase.from('email_accounts').upsert(row, { onConflict });
 
-      return res.redirect('/?auth_success=outlook&email=' + encodeURIComponent(email));
-    } else {
-      return res.redirect('/?auth_error=' + encodeURIComponent('Provider OAuth desconocido'));
+      try {
+        const { error: upsertError } = await supabase.from('email_accounts').upsert(row, { onConflict });
+        if (upsertError) return errorRedirect(res, 'Error guardando cuenta: ' + upsertError.message);
+      } catch (e) {
+        return errorRedirect(res, 'Error de base de datos: ' + e.message);
+      }
+
+      return safeRedirect(res, '/?auth_success=outlook&email=' + encodeURIComponent(email));
     }
+
+    return errorRedirect(res, 'Provider OAuth desconocido: ' + provider);
+
   } catch (err) {
-    console.error('Auth callback error:', err);
-    return res.redirect('/?auth_error=' + encodeURIComponent(err.message));
+    // Red de seguridad final: NUNCA debería llegar acá, pero por si acaso.
+    console.error('[auth-callback] UNCAUGHT:', err && err.stack || err);
+    return errorRedirect(res, 'Error interno: ' + (err && err.message ? err.message : String(err)));
   }
 };
