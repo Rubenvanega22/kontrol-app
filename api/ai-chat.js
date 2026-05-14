@@ -125,7 +125,8 @@ async function buildContexto(userId) {
     { data: pagos },
     { data: eventos },
     { data: cajas },
-    { data: metas }
+    { data: metas },
+    { data: recordatorios }
   ] = await Promise.all([
     supabase.from('accounts').select('*').eq('user_id', userId),
     supabase.from('movements').select('*').eq('user_id', userId)
@@ -137,7 +138,8 @@ async function buildContexto(userId) {
     supabase.from('events').select('*').eq('user_id', userId)
       .gte('fecha', new Date().toISOString().split('T')[0]).order('fecha').limit(10),
     supabase.from('cajas').select('*').eq('user_id', userId),
-    supabase.from('metas').select('*, micrometas(*)').eq('user_id', userId).eq('estado', 'activa')
+    supabase.from('metas').select('*, micrometas(*)').eq('user_id', userId).eq('estado', 'activa'),
+    supabase.from('reminders').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(20)
   ]);
 
   const totalSaldo = (cuentas || []).reduce((a, c) => a + parseFloat(c.saldo || 0), 0);
@@ -150,7 +152,8 @@ async function buildContexto(userId) {
     totalSaldo, totalCajas, ingresosMes, gastosMes,
     cuentas: cuentas || [], movimientos: movsMes || [],
     movsRecientes: movsRecientes || [], pagos: pagos || [],
-    eventos: eventos || [], cajas: cajas || [], metas: metas || []
+    eventos: eventos || [], cajas: cajas || [], metas: metas || [],
+    recordatorios: recordatorios || []
   };
 }
 
@@ -193,6 +196,12 @@ ${ctx.metas.map(m => {
   return `• ${m.titulo} — ${m.progreso||0}% [ID:${m.id}]${mms ? '\n' + mms : ''}`;
 }).join('\n') || 'ninguna'}
 
+Recordatorios recientes:
+${ctx.recordatorios.map(r => {
+  const tipoEmoji = r.tipo === 'lista' ? '✅' : r.tipo === 'definicion' ? '📖' : '📝';
+  return `• ${tipoEmoji} ${r.titulo} (${r.fecha || ''}) [ID:${r.id}]`;
+}).join('\n') || 'ninguno'}
+
 ═══ ACCIONES INVISIBLES — úsalas al final de tu respuesta ═══
 — Movimientos
 [ACCION:gasto|monto|descripcion|categoria|cuenta_id_opcional]
@@ -208,6 +217,8 @@ ${ctx.metas.map(m => {
 [ACCION:evento|titulo|YYYY-MM-DD|HH:MM]
 [ACCION:recordatorio|texto]
 [ACCION:borrar_evento|ID]
+[ACCION:borrar_recordatorio|ID]
+  Usa el ID del listado "Recordatorios recientes" de arriba.
 — Cuentas (no se crean desde aquí — el usuario las crea en Config)
 [ACCION:editar_cuenta|cuenta_id|nuevo_saldo|nuevo_nombre]
   Deja vacíos los campos que NO quieras cambiar. Ej: [ACCION:editar_cuenta|abc||Nuevo nombre]
@@ -366,6 +377,10 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
       } else if (accion === 'borrar_evento') {
         const { error } = await supabase.from('events').delete().eq('id', parts[1]).eq('user_id', userId);
         if (!error) ejecutadas.push({ accion: 'borrado', tipo: 'evento' });
+
+      } else if (accion === 'borrar_recordatorio') {
+        const { error } = await supabase.from('reminders').delete().eq('id', parts[1]).eq('user_id', userId);
+        if (!error) ejecutadas.push({ accion: 'borrado', tipo: 'recordatorio', id: parts[1] });
 
       } else if (accion === 'borrar_meta') {
         const { error } = await supabase.from('metas').delete().eq('id', parts[1]).eq('user_id', userId);

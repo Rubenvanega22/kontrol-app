@@ -511,6 +511,11 @@ select.form-inp option{background:#0c1228;}
           <button class="fbtn" onclick="setRecFiltro(this,'lista')">Listas</button>
           <button class="fbtn" onclick="setRecFiltro(this,'definicion')">Definiciones</button>
         </div>
+        <div class="filter-row" style="margin-top:6px">
+          <button class="fbtn on" id="ord-recientes" onclick="setRecOrden(this,'recientes')">Recientes</button>
+          <button class="fbtn" id="ord-antiguos" onclick="setRecOrden(this,'antiguos')">Antiguos</button>
+          <button class="fbtn" id="ord-tipo" onclick="setRecOrden(this,'tipo')">Por tipo</button>
+        </div>
         <div id="recordar-list"></div>
         <div style="height:80px"></div>
       </div>
@@ -1073,6 +1078,10 @@ select.form-inp option{background:#0c1228;}
       <label class="form-label">Definición / Significado</label>
       <textarea class="form-inp" id="rec-definicion" rows="3" placeholder="Definición…"></textarea>
     </div>
+    <div class="form-group">
+      <label class="form-label">Fecha (opcional)</label>
+      <input class="form-inp" id="rec-fecha" type="date"/>
+    </div>
     <button class="btn-primary" onclick="guardarRecordatorio()">Guardar</button>
     <button class="btn-secondary" onclick="hideModal('modal-nuevo-recordar')">Cancelar</button>
   </div>
@@ -1190,7 +1199,9 @@ async function syncDesdeSupabase() {
     }));
 
     if (recordatorios) DB.recordatorios = recordatorios.map(r => ({
-      id: r.id, tipo: r.tipo, titulo: r.titulo, fecha: r.fecha
+      id: r.id, tipo: r.tipo, titulo: r.titulo, fecha: r.fecha,
+      content: r.content || {}, status: r.status || 'open',
+      created_at: r.created_at
     }));
 
     save();
@@ -1964,6 +1975,7 @@ function renderCalendario(){
 // RECORDATORIOS
 // ════════════════════════════════════════
 let recFiltro = 'todo';
+let recOrden = 'recientes';
 let recDetalleId = null;
 
 function setRecFiltro(btn, f){
@@ -1994,8 +2006,10 @@ async function guardarRecordatorio(){
     content = { texto: titulo };
   }
 
+  const fechaInput = document.getElementById('rec-fecha').value;
+  const fecha = fechaInput || todayStr();
   const { error } = await supa.from('reminders').insert({
-    user_id: currentUser.id, tipo, titulo, content, fecha: todayStr()
+    user_id: currentUser.id, tipo, titulo, content, fecha
   });
   if(error){ toast('❌ Error: '+error.message,'var(--red)'); return; }
 
@@ -2003,63 +2017,96 @@ async function guardarRecordatorio(){
   document.getElementById('rec-titulo').value='';
   document.getElementById('rec-items').value='';
   document.getElementById('rec-definicion').value='';
+  document.getElementById('rec-fecha').value='';
   toast('✅ Recordatorio guardado','var(--green)');
   await syncDesdeSupabase();
 }
 
 function renderRecordatorios(){
-  let recs = DB.recordatorios;
+  let recs = [...DB.recordatorios];
   if(recFiltro!=='todo') recs = recs.filter(r=>r.tipo===recFiltro);
+
+  // Orden
+  const tsOf = r => r.created_at ? new Date(r.created_at).getTime() : (r.fecha ? new Date(r.fecha+'T12:00:00').getTime() : 0);
+  if(recOrden==='recientes') recs.sort((a,b)=> tsOf(b) - tsOf(a));
+  else if(recOrden==='antiguos') recs.sort((a,b)=> tsOf(a) - tsOf(b));
+  else if(recOrden==='tipo') recs.sort((a,b)=> (a.tipo||'').localeCompare(b.tipo||'') || (tsOf(b) - tsOf(a)));
+
   const el = document.getElementById('recordar-list');
   if(!recs.length){ el.innerHTML='<div class="empty"><div class="empty-ico">📌</div><div class="empty-txt">No hay recordatorios</div></div>'; return; }
 
   const tipoLabel = {nota:'📝 Nota',lista:'✅ Lista',definicion:'📖 Definición'};
   el.innerHTML = recs.map(r=>{
+    const content = r.content || {};
     let preview = '';
-    if(r.tipo==='lista') preview = r.content.items?r.content.items.map(it=>`<div class="rec-check" onclick="toggleRecItem(${r.id},'${it.text}')"><div class="rec-cb ${it.done?'done':''}">${it.done?'✓':''}</div><span class="rec-label ${it.done?'done':''}">${it.text}</span></div>`).join(''):'';
-    if(r.tipo==='definicion') preview = `<div style="font-size:11.5px;color:var(--t2);margin-top:4px">${r.content.definicion||''}</div>`;
-    return `<div class="rec-card" onclick="abrirRecDetalle(${r.id})">
-      <div class="rec-type">${tipoLabel[r.tipo]||r.tipo}</div>
-      <div class="rec-title">${r.titulo}</div>
+    if(r.tipo==='lista') preview = content.items?content.items.map(it=>`<div class="rec-check" onclick="event.stopPropagation();toggleRecItem('${r.id}','${(it.text||'').replace(/'/g,"\\'")}')"><div class="rec-cb ${it.done?'done':''}">${it.done?'✓':''}</div><span class="rec-label ${it.done?'done':''}">${it.text}</span></div>`).join(''):'';
+    if(r.tipo==='definicion') preview = `<div style="font-size:11.5px;color:var(--t2);margin-top:4px">${content.definicion||''}</div>`;
+    const fechaTxt = r.fecha ? fmtDate(r.fecha) : '';
+    return `<div class="rec-card" style="position:relative" onclick="abrirRecDetalle('${r.id}')">
+      <button onclick="event.stopPropagation();borrarRecordatorioRapido('${r.id}')" style="position:absolute;top:8px;right:8px;background:rgba(248,113,113,0.15);border:none;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:11px;padding:0" title="Eliminar">🗑️</button>
+      <div class="rec-type">${tipoLabel[r.tipo]||r.tipo}${fechaTxt?` · <span style="color:var(--t3);font-weight:400">${fechaTxt}</span>`:''}</div>
+      <div class="rec-title" style="padding-right:32px">${r.titulo}</div>
       ${preview}
     </div>`;
   }).join('');
 }
 
-function toggleRecItem(recId, itemText){
-  event.stopPropagation();
-  const rec = DB.recordatorios.find(r=>r.id===recId);
-  if(!rec||!rec.content.items) return;
-  const item = rec.content.items.find(it=>it.text===itemText);
-  if(item) item.done = !item.done;
-  save();
+function setRecOrden(btn, orden){
+  recOrden = orden;
+  document.querySelectorAll('#ord-recientes,#ord-antiguos,#ord-tipo').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
   renderRecordatorios();
+}
+
+async function borrarRecordatorioRapido(id){
+  const r = DB.recordatorios.find(x => String(x.id) === String(id));
+  if(!r){ toast('Recordatorio no encontrado', 'var(--red)'); return; }
+  if(!confirm(`¿Eliminar "${r.titulo}"?`)) return;
+  const { error } = await supa.from('reminders').delete().eq('id', id);
+  if(error){ toast('Error: '+error.message, 'var(--red)'); return; }
+  toast('🗑 Eliminado', 'var(--t2)');
+  await syncDesdeSupabase();
+}
+
+async function toggleRecItem(recId, itemText){
+  if(typeof event !== 'undefined' && event) event.stopPropagation();
+  const rec = DB.recordatorios.find(r => String(r.id) === String(recId));
+  if(!rec || !rec.content || !rec.content.items) return;
+  const item = rec.content.items.find(it => it.text === itemText);
+  if(!item) return;
+  item.done = !item.done;
+  renderRecordatorios();
+  // Persistir el content actualizado en Supabase
+  await supa.from('reminders').update({ content: rec.content }).eq('id', rec.id);
 }
 
 function abrirRecDetalle(id){
   recDetalleId = id;
-  const r = DB.recordatorios.find(x=>x.id===id);
+  const r = DB.recordatorios.find(x => String(x.id) === String(id));
   if(!r) return;
+  const content = r.content || {};
   document.getElementById('rec-detalle-titulo').textContent = r.titulo;
   let body = '';
-  if(r.tipo==='lista' && r.content.items){
-    body = r.content.items.map(it=>`<div class="rec-check" onclick="toggleRecItem(${r.id},'${it.text}')"><div class="rec-cb ${it.done?'done':''}">${it.done?'✓':''}</div><span class="rec-label ${it.done?'done':''}">${it.text}</span></div>`).join('');
+  if(r.tipo==='lista' && content.items){
+    body = content.items.map(it=>`<div class="rec-check" onclick="toggleRecItem('${r.id}','${(it.text||'').replace(/'/g,"\\'")}')"><div class="rec-cb ${it.done?'done':''}">${it.done?'✓':''}</div><span class="rec-label ${it.done?'done':''}">${it.text}</span></div>`).join('');
   } else if(r.tipo==='definicion'){
-    body = `<div style="font-size:14px;color:var(--t2);line-height:1.6">${r.content.definicion||''}</div>`;
+    body = `<div style="font-size:14px;color:var(--t2);line-height:1.6">${content.definicion||''}</div>`;
   } else {
-    body = `<div style="font-size:14px;color:var(--t2);line-height:1.6">${r.content.texto||r.titulo}</div>`;
+    body = `<div style="font-size:14px;color:var(--t2);line-height:1.6">${content.texto||r.titulo}</div>`;
   }
+  if(r.fecha) body = `<div style="font-size:11px;color:var(--t3);margin-bottom:8px">📅 ${fmtDate(r.fecha)}</div>` + body;
   document.getElementById('rec-detalle-body').innerHTML = body;
   showModal('modal-rec-detalle');
 }
 
-function eliminarRecordatorio(){
+async function eliminarRecordatorio(){
   if(!confirm('¿Eliminar este recordatorio?')) return;
-  DB.recordatorios = DB.recordatorios.filter(r=>r.id!==recDetalleId);
-  save();
+  const id = recDetalleId;
+  const { error } = await supa.from('reminders').delete().eq('id', id);
+  if(error){ toast('Error: '+error.message, 'var(--red)'); return; }
   hideModal('modal-rec-detalle');
-  toast('🗑 Eliminado','var(--red)');
-  renderRecordatorios();
+  toast('🗑 Eliminado','var(--t2)');
+  await syncDesdeSupabase();
 }
 
 // ════════════════════════════════════════
