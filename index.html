@@ -640,10 +640,10 @@ select.form-inp option{background:#0c1228;}
           <div class="sc" style="border-color:rgba(59,130,246,0.2)">
             <div class="sc-hdr"><div class="sc-ttl">✉️ Sincronización de correo</div></div>
             <div style="font-size:12px;color:var(--t3);margin-bottom:14px;line-height:1.6">
-              Kontrol puede leer tus notificaciones bancarias de Gmail/Outlook y detectar automáticamente ingresos y gastos. Configura tus correos abajo.
+              Conecta tu Gmail para que Kontrol detecte ingresos y gastos a partir de notificaciones bancarias. Las detecciones aparecerán en la Bandeja para que las confirmes.
             </div>
             <div id="correos-config-list"></div>
-            <button class="btn-secondary" style="margin-top:8px" onclick="showModal('modal-agregar-correo')">+ Agregar correo</button>
+            <button class="btn-primary" style="margin-top:10px" onclick="conectarGmail()">📧 Conectar Gmail</button>
           </div>
           <div class="sc" id="sc-correo-resultado" style="display:none">
             <div class="sc-hdr"><div class="sc-ttl">📨 Notificaciones detectadas</div></div>
@@ -755,12 +755,12 @@ select.form-inp option{background:#0c1228;}
         <!-- Correos bancarios -->
         <div class="config-section">
           <div class="config-section-ttl">✉️ Correos bancarios</div>
-          <p style="font-size:11.5px;color:var(--t3);margin-bottom:10px;line-height:1.5">Agrega los correos donde recibes notificaciones de Bancolombia, Nequi, Davivienda, Daviplata. Kontrol los revisará y te mostrará los movimientos para confirmar.</p>
+          <p style="font-size:11.5px;color:var(--t3);margin-bottom:10px;line-height:1.5">Conecta tu Gmail para que Kontrol detecte automáticamente notificaciones de Bancolombia, Nequi, Davivienda y Daviplata. Las detecciones aparecerán en la Bandeja para que las confirmes.</p>
           <div id="correos-list-config"></div>
-          <button class="btn-secondary" style="margin-top:6px" onclick="showModal('modal-agregar-correo')">+ Agregar correo</button>
+          <button class="btn-primary" style="margin-top:10px" onclick="conectarGmail()">📧 Conectar Gmail</button>
           <div style="margin-top:10px;padding:10px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:10px">
-            <div style="font-size:11px;color:var(--amber);font-weight:700;margin-bottom:4px">⚠️ Nota de privacidad</div>
-            <div style="font-size:11px;color:var(--t3);line-height:1.5">Kontrol solo lee asuntos y cuerpos de correos de remitentes bancarios. Nunca envía tus datos a terceros. Todo se procesa localmente o con la IA que configures.</div>
+            <div style="font-size:11px;color:var(--amber);font-weight:700;margin-bottom:4px">🔒 Privacidad</div>
+            <div style="font-size:11px;color:var(--t3);line-height:1.5">Kontrol pide permiso de solo lectura y filtra por remitentes bancarios. Nunca lee correos personales ni envía datos a terceros.</div>
           </div>
         </div>
 
