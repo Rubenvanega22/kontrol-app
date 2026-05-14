@@ -2372,6 +2372,7 @@ function crearRecognition(){
     if(vozProcesando) return;
 
     vozProcesando = true;
+    console.log('[mic] resultado:', txt);
     document.getElementById('mic-btn').textContent = '⏳';
     document.getElementById('ia-input').value = txt;
     // NO llamamos recognition.stop() — la dejamos abierta para evitar el chime
@@ -2442,6 +2443,7 @@ function interrumpirTTS(){
 // sigue abierta, así que NO necesitamos reiniciarla — solo limpiamos el estado.
 // Resetea también _ultimoTranscript para permitir repetir la misma frase.
 function vozReanudar(){
+  console.log('[voz] reanudar - vozProcesando:', vozProcesando, 'vozEscuchando:', vozEscuchando, 'ttsSpeaking:', ttsSpeaking);
   vozProcesando = false;
   _ultimoTranscript = '';
   document.getElementById('mic-btn').textContent = '🔴';
@@ -2469,6 +2471,7 @@ function hablarCorto(texto){
 }
 
 async function hablar(texto){
+  console.log('[tts] hablar llamado, ttsActivo:', ttsActivo);
   if(!ttsActivo){ vozReanudar(); return; }
   window.speechSynthesis.cancel();
   if(window._kontrolAudio){window._kontrolAudio.pause();window._kontrolAudio=null;}
@@ -2483,7 +2486,7 @@ async function hablar(texto){
     const url=URL.createObjectURL(blob);
     const audio=new Audio(url);
     window._kontrolAudio=audio;
-    audio.onended=()=>{ttsSpeaking=false;URL.revokeObjectURL(url);document.getElementById('mic-btn').style.background='';vozReanudar();};
+    audio.onended=()=>{console.log('[tts] audio terminado');ttsSpeaking=false;URL.revokeObjectURL(url);document.getElementById('mic-btn').style.background='';vozReanudar();};
     audio.onerror=()=>{ttsSpeaking=false;document.getElementById('mic-btn').style.background='';_hablarFallback(limpio);};
     await audio.play();
   } catch(e){ttsSpeaking=false;document.getElementById('mic-btn').style.background='';_hablarFallback(limpio);}
