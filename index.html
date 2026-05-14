@@ -2283,6 +2283,7 @@ function detenerVoz(){
   modoVozActivo = false;
   vozEscuchando = false;
   vozProcesando = false;
+  _ultimoTranscript = '';
   if(recognition){ try{ recognition.stop(); }catch(e){} recognition = null; }
   window.speechSynthesis.cancel();
   document.getElementById('mic-btn').classList.remove('active');
@@ -2327,18 +2328,17 @@ window.testChime = async function(){
   if(estabaActivo) console.log('[test] Vuelve a activar el modo voz con el botón 🎤');
 };
 
-// Recognition con continuous=false: una frase por sesión.
-// recognition.start() SOLO se llama desde:
-//   1. toggleMic (al activar el modo voz)
-//   2. vozReanudar (después de que la IA termina de hablar)
-//   3. onend/onerror('no-speech') con guard !ttsSpeaking (para que el mic siga disponible)
+// Recognition con continuous=true: la sesión queda abierta. recognition.start()
+// se llama EXACTAMENTE UNA VEZ por sesión de micrófono (al activar el modo voz).
+// continuous=true maneja el silencio nativamente, sin disparar no-speech ni cerrar.
+let _ultimoTranscript = '';
 function crearRecognition(){
   if(recognition) return recognition;
 
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new SR();
   recognition.lang = 'es-CO';
-  recognition.continuous = false;
+  recognition.continuous = true;
   recognition.interimResults = false;
   recognition.maxAlternatives = 1;
 
@@ -2348,12 +2348,20 @@ function crearRecognition(){
   };
 
   recognition.onresult = e => {
-    // Detener inmediatamente para evitar resultados duplicados o cortados
-    try { recognition.stop(); } catch(_) {}
-    const txt = (e.results[0]?.[0]?.transcript || '').trim();
+    // Tomar el resultado más reciente (continuous=true los acumula)
+    const ultimo = e.results[e.results.length - 1];
+    if(!ultimo || !ultimo.isFinal) return;
+    const txt = (ultimo[0]?.transcript || '').trim();
     if(!txt) return;
 
-    // Filtrar ruido: solo enviar si tiene al menos 3 palabras O 10 caracteres
+    // Prevención de duplicados: ignorar si el transcript es idéntico al anterior
+    if(txt === _ultimoTranscript){
+      console.log('[mic] duplicado ignorado:', JSON.stringify(txt));
+      return;
+    }
+    _ultimoTranscript = txt;
+
+    // Filtrar ruido: al menos 3 palabras O 10 caracteres
     const palabras = txt.split(/\s+/).filter(w => w.length > 0).length;
     if(palabras < 3 && txt.length < 10){
       console.log('[mic] descartado (muy corto):', JSON.stringify(txt));
@@ -2364,6 +2372,7 @@ function crearRecognition(){
     vozProcesando = true;
     document.getElementById('mic-btn').textContent = '⏳';
     document.getElementById('ia-input').value = txt;
+    // NO llamamos recognition.stop() — la dejamos abierta para evitar el chime
     sendIA();
   };
 
@@ -2371,18 +2380,21 @@ function crearRecognition(){
     vozEscuchando = false;
     if(e.error === 'aborted') return;
     console.log('[mic] onerror:', e.error);
-    // Si el usuario quedó callado, reiniciar para que pueda seguir hablando
-    if(e.error === 'no-speech'){
+    // continuous=true maneja el silencio nativamente — NO reiniciar en 'no-speech'.
+    // Solo reiniciar en errores reales que matan la sesión.
+    if(e.error === 'network' || e.error === 'audio-capture'){
       setTimeout(() => {
         if(modoVozActivo && !vozProcesando && !vozEscuchando && !ttsSpeaking) iniciarEscucha();
-      }, 500);
+      }, 1000);
     }
   };
 
   recognition.onend = () => {
     vozEscuchando = false;
-    // Reiniciar automáticamente si el modo voz sigue activo y no hay petición en curso.
-    // El guard !ttsSpeaking evita reiniciar mientras la IA habla.
+    console.log('[mic] 🔚 onend');
+    // Reiniciar SOLO si el modo voz sigue activo y no estamos procesando
+    // (muerte inesperada). Si vozProcesando=true, la IA está respondiendo;
+    // no reiniciamos hasta que vozReanudar limpie el estado.
     if(modoVozActivo && !vozProcesando){
       setTimeout(() => {
         if(modoVozActivo && !vozProcesando && !vozEscuchando && !ttsSpeaking) iniciarEscucha();
@@ -2424,14 +2436,11 @@ function interrumpirTTS(){
   if(btn) btn.style.background = '';
 }
 
-// Llamar esto cuando la IA termina de hablar. Es el ÚNICO lugar (junto con toggleMic)
-// que reinicia recognition.start(), para minimizar el chime del navegador.
+// Llamar esto cuando la IA termina de hablar. Con continuous=true la recognition
+// sigue abierta, así que NO necesitamos reiniciarla — solo limpiamos el estado.
 function vozReanudar(){
   vozProcesando = false;
   document.getElementById('mic-btn').textContent = '🔴';
-  if(modoVozActivo && !vozEscuchando && !ttsSpeaking){
-    setTimeout(iniciarEscucha, 300);
-  }
 }
 
 // Fin modo voz
