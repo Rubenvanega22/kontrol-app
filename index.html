@@ -2129,6 +2129,8 @@ async function sendIA(){
   } catch(e){
     hideTyping();
     addIAMsg('⚠️ Error: '+e.message,'bot');
+    // Reanudar siempre para no dejar vozProcesando colgado
+    vozReanudar();
   }
 }
 
@@ -2438,8 +2440,10 @@ function interrumpirTTS(){
 
 // Llamar esto cuando la IA termina de hablar. Con continuous=true la recognition
 // sigue abierta, así que NO necesitamos reiniciarla — solo limpiamos el estado.
+// Resetea también _ultimoTranscript para permitir repetir la misma frase.
 function vozReanudar(){
   vozProcesando = false;
+  _ultimoTranscript = '';
   document.getElementById('mic-btn').textContent = '🔴';
 }
 
@@ -2465,11 +2469,11 @@ function hablarCorto(texto){
 }
 
 async function hablar(texto){
-  if(!ttsActivo) return;
+  if(!ttsActivo){ vozReanudar(); return; }
   window.speechSynthesis.cancel();
   if(window._kontrolAudio){window._kontrolAudio.pause();window._kontrolAudio=null;}
   let limpio=texto.replace(/[\u{1F300}-\u{1FAFF}]/gu,'').replace(/[*_#`═\[\]]/g,'').replace(/\$/g,' pesos ').replace(/\s+/g,' ').trim();
-  if(!limpio) return;
+  if(!limpio){ vozReanudar(); return; }
   try{
     ttsSpeaking=true;
     document.getElementById('mic-btn').style.background='rgba(167,139,250,0.2)';
@@ -2485,7 +2489,7 @@ async function hablar(texto){
   } catch(e){ttsSpeaking=false;document.getElementById('mic-btn').style.background='';_hablarFallback(limpio);}
 }
 function _hablarFallback(texto){
-  if(!('speechSynthesis' in window)) return;
+  if(!('speechSynthesis' in window)){ vozReanudar(); return; }
 
   // Limpiar texto y convertir números a formato hablable
   let limpio = texto
