@@ -735,6 +735,23 @@ select.form-inp option{background:#0c1228;}
           <div id="ia-test-result" style="font-size:12px;margin-top:6px;text-align:center"></div>
         </div>
 
+        <!-- Mi perfil (nombre + teléfono para WhatsApp) -->
+        <div class="config-section">
+          <div class="config-section-ttl">👤 Mi perfil</div>
+          <div class="form-group">
+            <label class="form-label">Nombre</label>
+            <input class="form-inp" id="profile-nombre" placeholder="Tu nombre"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">📱 WhatsApp (con código país)</label>
+            <input class="form-inp" id="profile-telefono" type="tel" placeholder="+57 300 123 4567"/>
+            <div style="font-size:11px;color:var(--t3);margin-top:4px;line-height:1.4">
+              Kontrol te enviará recordatorios diarios de tu agenda a este número.
+            </div>
+          </div>
+          <button class="btn-primary" onclick="guardarPerfil()">Guardar perfil</button>
+        </div>
+
         <!-- Preferencias IA -->
         <div class="config-section">
           <div class="config-section-ttl">⚙️ Preferencias IA</div>
@@ -2679,6 +2696,12 @@ if('speechSynthesis' in window){
 // CONFIG
 // ════════════════════════════════════════
 function renderConfig(){
+  // Perfil
+  const inpNombre = document.getElementById('profile-nombre');
+  const inpTel = document.getElementById('profile-telefono');
+  if(inpNombre) inpNombre.value = currentProfile?.nombre || '';
+  if(inpTel) inpTel.value = currentProfile?.telefono || '';
+
   // Cuentas
   const el = document.getElementById('config-cuentas-list');
   if(!DB.cuentas.length){ el.innerHTML='<div style="font-size:12px;color:var(--t3);padding:8px 0">Sin cuentas. Agrega una.</div>'; }
@@ -2924,6 +2947,28 @@ function onIAProveedorChange(){
   el.innerHTML = `
     <div class="form-group"><label class="form-label">API Key</label><input class="form-inp" id="ia-apikey" type="password" placeholder="sk-…" value="${DB.ia.apiKey||''}"/></div>
     <div class="form-group"><label class="form-label">Modelo</label><select class="form-inp" id="ia-modelo">${opts}</select></div>`;
+}
+
+async function guardarPerfil(){
+  if(!currentUser){ toast('Inicia sesión primero','var(--red)'); return; }
+  const nombre = document.getElementById('profile-nombre').value.trim();
+  const telefonoRaw = document.getElementById('profile-telefono').value.trim();
+  // Normalizar teléfono: solo dígitos y un + opcional al inicio
+  const telefono = telefonoRaw ? telefonoRaw.replace(/[^\d+]/g, '') : null;
+  if(telefono && !/^\+?\d{8,15}$/.test(telefono)){
+    toast('⚠️ Teléfono inválido. Usa formato +57 300 123 4567','var(--amber)');
+    return;
+  }
+
+  const { error } = await supa.from('profiles')
+    .update({ nombre: nombre || null, telefono })
+    .eq('id', currentUser.id);
+  if(error){ toast('Error: '+error.message,'var(--red)'); return; }
+
+  // Refrescar currentProfile y DB.ia.usuarioNombre
+  currentProfile = { ...(currentProfile||{}), id: currentUser.id, nombre: nombre || null, telefono };
+  if(nombre) DB.ia.usuarioNombre = nombre;
+  toast('✅ Perfil guardado','var(--green)');
 }
 
 function guardarConfigIA(){

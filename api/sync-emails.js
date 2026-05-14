@@ -328,8 +328,7 @@ module.exports = async function handler(req, res) {
       detecciones = detecciones.concat(resultados);
     }
 
-    // Solo el cron verifica la agenda diaria
-    if (isCron) await verificarAgenda();
+    // (Recordatorios de agenda movidos a /api/reminders-cron)
 
     return res.json({
       ok: true,
@@ -345,34 +344,4 @@ module.exports = async function handler(req, res) {
   }
 };
 
-async function verificarAgenda() {
-  try {
-    const hoy = new Date().toISOString().split('T')[0];
-    const { data: eventos } = await supabase
-      .from('events')
-      .select('*')
-      .eq('fecha', hoy)
-      .eq('notificado', false);
-
-    for (const evento of (eventos || [])) {
-      const { data: cfgRow } = await supabase
-        .from('config').select('value').eq('key', 'notificaciones').single();
-      const cfg = cfgRow?.value || {};
-
-      if (cfg.whatsapp_enabled && cfg.whatsapp_numero) {
-        await supabase.from('whatsapp_alerts').insert({
-          tipo: 'agenda',
-          mensaje: `📅 *Recordatorio Kontrol*\n\nHoy tienes: *${evento.titulo}*${evento.hora ? ` a las ${evento.hora}` : ''}\n${evento.nota || ''}`,
-          telefono: cfg.whatsapp_numero,
-          enviado: false
-        });
-      }
-
-      await supabase.from('events')
-        .update({ notificado: true })
-        .eq('id', evento.id);
-    }
-  } catch (e) {
-    console.error('Error verificando agenda:', e.message);
-  }
-}
+// verificarAgenda removida — ahora vive en /api/reminders-cron con teléfonos por usuario
