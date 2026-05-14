@@ -12,6 +12,7 @@
     "googleapis": "^140.0.0",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "isomorphic-fetch": "^3.0.0",
-    "node-cron": "^3.0.3"
+    "node-cron": "^3.0.3",
+    "ws": "^8.18.0"
   }
 }
