@@ -2290,11 +2290,48 @@ function detenerVoz(){
   toast('🔇 Modo voz apagado','var(--t2)');
 }
 
+// NOTA: la Web Speech API estándar NO expone ninguna propiedad para extender
+// el timeout de no-speech (no existe recognition.silenceTimeout, noSpeechTimeout,
+// continuousTimeout, ni equivalentes en webkitSpeechRecognition). El timeout es
+// una decisión interna del navegador (~5-8s en Chrome). Único workaround práctico:
+// reproducir audio silencioso justo antes de start() para enmascarar el chime
+// del sistema en algunos dispositivos Android.
+
+// WAV silencioso de 0 muestras — el navegador "engancha" la sesión de audio
+// del output antes de que recognition.start() dispare el chime del sistema.
+const SILENT_WAV_URI = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+let _silentAudio = null;
+function reproducirSilencio(){
+  try {
+    if(!_silentAudio){
+      _silentAudio = new Audio(SILENT_WAV_URI);
+      _silentAudio.volume = 0;
+    }
+    _silentAudio.currentTime = 0;
+    const p = _silentAudio.play();
+    if(p && p.catch) p.catch(()=>{});
+  } catch(_) {}
+}
+
+// Función de prueba expuesta en consola: window.testChime()
+// Apaga el modo voz, reproduce TTS, y reporta. Si el chime persiste sin
+// recognition activa, el origen es ElevenLabs o el navegador al cerrar audio.
+window.testChime = async function(){
+  console.log('[test] Apagando modo voz...');
+  const estabaActivo = modoVozActivo;
+  if(estabaActivo) detenerVoz();
+  await new Promise(r => setTimeout(r, 500));
+  console.log('[test] Reproduciendo TTS de prueba (sin recognition)...');
+  await hablar('Esta es una prueba. Si oyes un sonido al terminar, viene del audio, no del micrófono.');
+  console.log('[test] TTS terminado. Si hubo chime → es de ElevenLabs/audio. Si no hubo → era de recognition.start().');
+  if(estabaActivo) console.log('[test] Vuelve a activar el modo voz con el botón 🎤');
+};
+
 // Recognition con continuous=false: una frase por sesión.
 // recognition.start() SOLO se llama desde:
 //   1. toggleMic (al activar el modo voz)
 //   2. vozReanudar (después de que la IA termina de hablar)
-// Nunca se reinicia automáticamente desde onend/onerror para evitar el chime del navegador.
+//   3. onend/onerror('no-speech') con guard !ttsSpeaking (para que el mic siga disponible)
 function crearRecognition(){
   if(recognition) return recognition;
 
@@ -2361,6 +2398,9 @@ function iniciarEscucha(){
   if(!modoVozActivo || vozEscuchando || vozProcesando || ttsSpeaking) return;
   const rec = crearRecognition();
   try {
+    // Reproducir audio silencioso ANTES de start() para enmascarar el chime
+    // del navegador en algunos dispositivos Android.
+    reproducirSilencio();
     rec.start();
   } catch(e){
     vozEscuchando = false;
