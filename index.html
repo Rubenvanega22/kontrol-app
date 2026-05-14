@@ -2267,8 +2267,16 @@ function toggleMic(){
     return;
   }
 
+  // Si el modo voz está activo PERO la recognition está pausada por silencio,
+  // tocar el botón la reactiva (en vez de apagar el modo voz).
+  if(modoVozActivo && !vozEscuchando && !vozProcesando && !ttsSpeaking){
+    toast('🎤 Escuchando de nuevo','var(--blue)');
+    iniciarEscucha();
+    return;
+  }
+
   if(modoVozActivo){
-    // APAGAR modo voz
+    // APAGAR modo voz (si está escuchando o hablando, cualquier toque la apaga)
     detenerVoz();
     return;
   }
@@ -2330,10 +2338,12 @@ window.testChime = async function(){
   if(estabaActivo) console.log('[test] Vuelve a activar el modo voz con el botón 🎤');
 };
 
-// Recognition con continuous=true: la sesión queda abierta. recognition.start()
-// se llama EXACTAMENTE UNA VEZ por sesión de micrófono (al activar el modo voz).
-// continuous=true maneja el silencio nativamente, sin disparar no-speech ni cerrar.
+// Recognition con continuous=true. En Android la sesión se cierra tras cada
+// resultado y también tras silencios cortos (no-speech timeout). Para evitar
+// el chime molesto cuando el usuario está en silencio, NO reiniciamos en onend
+// si la sesión terminó sin haber capturado ningún resultado.
 let _ultimoTranscript = '';
+let _huboResultadoEnSesion = false;
 function crearRecognition(){
   if(recognition) return recognition;
 
@@ -2346,6 +2356,7 @@ function crearRecognition(){
 
   recognition.onstart = () => {
     vozEscuchando = true;
+    _huboResultadoEnSesion = false; // nueva sesión, aún sin resultado
     document.getElementById('mic-btn').textContent = '👂';
   };
 
@@ -2372,6 +2383,7 @@ function crearRecognition(){
     if(vozProcesando) return;
 
     vozProcesando = true;
+    _huboResultadoEnSesion = true;
     console.log('[mic] resultado:', txt);
     document.getElementById('mic-btn').textContent = '⏳';
     document.getElementById('ia-input').value = txt;
@@ -2397,16 +2409,15 @@ function crearRecognition(){
 
   recognition.onend = () => {
     vozEscuchando = false; // reset SIEMPRE
-    console.log('[mic] 🔚 onend');
-    // Android: continuous=true puede cerrar la sesión inesperadamente.
-    // Reiniciar siempre que el modo voz siga activo y no estemos procesando.
-    if(modoVozActivo && !vozProcesando){
-      setTimeout(() => {
-        if(modoVozActivo && !vozProcesando && !ttsSpeaking){
-          vozEscuchando = false; // reset por si quedó algo colgado
-          iniciarEscucha();
-        }
-      }, 200);
+    console.log('[mic] 🔚 onend, huboResultado:', _huboResultadoEnSesion);
+    // CLAVE: solo reiniciar si NO hubo resultado en esta sesión (significaría
+    // que se cerró por silencio). Reiniciar ahí dispara un chime cada vez.
+    // Si hubo resultado, vozReanudar se encarga del restart tras la IA.
+    if(!_huboResultadoEnSesion && modoVozActivo && !vozProcesando){
+      // Indicador visual de que el mic está pausado por silencio
+      document.getElementById('mic-btn').textContent = '🔴';
+      // NO reiniciamos. El usuario puede tocar el botón mic para reactivar.
+      console.log('[mic] silencio detectado — pausa hasta que el usuario hable o toque el mic');
     }
   };
 
