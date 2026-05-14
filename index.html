@@ -2125,10 +2125,22 @@ async function sendIA(){
     iaHistory.push({role:'assistant',content:respText});
     hablar(respText);
     if(data.acciones && data.acciones.length > 0){
-      setTimeout(async () => {
-        await syncDesdeSupabase();
-        renderCurrentScreen();
-      }, 1000);
+      const navegarAction = data.acciones.find(a => a.accion === 'navegar');
+      const hayMutacion = data.acciones.some(a => a.accion !== 'navegar');
+
+      if(hayMutacion){
+        setTimeout(async () => {
+          await syncDesdeSupabase();
+          if(navegarAction && navegarAction.seccion){
+            goTab(navegarAction.seccion);
+          } else {
+            renderCurrentScreen();
+          }
+        }, 1000);
+      } else if(navegarAction && navegarAction.seccion){
+        // Solo navegar — no hay mutación, no esperar al sync
+        goTab(navegarAction.seccion);
+      }
     }
   } catch(e){
     hideTyping();

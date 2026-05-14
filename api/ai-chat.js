@@ -219,6 +219,19 @@ ${ctx.metas.map(m => {
 [ACCION:borrar_meta|ID]
 [ACCION:completar_micrometa|ID]
 
+— Navegación (cambiar la pantalla activa de la app)
+[ACCION:navegar|seccion]
+  Secciones válidas: resumen, movimientos, cajas, pagos, agenda, recordar, metas, ia
+  Úsala cuando el usuario diga "llévame a X", "abre Y", "muéstrame Z", "ve a W".
+  Ejemplos:
+    "llévame a pagos"        → [ACCION:navegar|pagos]
+    "abre la agenda"         → [ACCION:navegar|agenda]
+    "muéstrame mis metas"    → [ACCION:navegar|metas]
+    "ve a movimientos"       → [ACCION:navegar|movimientos]
+    "abre cajas"             → [ACCION:navegar|cajas]
+    "vuelve al resumen"      → [ACCION:navegar|resumen]
+    "ve a recordatorios"     → [ACCION:navegar|recordar]
+
 IMPORTANTE: si el usuario menciona una cuenta o caja específica por nombre, busca su ID en el listado de arriba y úsalo en la acción.
 
 ═══ REGLAS ═══
@@ -440,6 +453,14 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
             account_id: null, categoria: 'caja', source: 'ia'
           });
           ejecutadas.push({ accion, monto, desc, caja: caja.nombre });
+        }
+
+      } else if (accion === 'navegar') {
+        // No muta DB — solo devuelve la sección para que el frontend cambie de tab
+        const seccion = (parts[1] || '').trim();
+        const validas = ['resumen','movimientos','cajas','pagos','agenda','recordar','metas','ia'];
+        if (seccion && validas.includes(seccion)) {
+          ejecutadas.push({ accion, seccion });
         }
       }
     } catch(e) {
