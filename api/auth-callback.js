@@ -135,32 +135,53 @@ module.exports = async function handler(req, res) {
         activo: true
       };
       if (userId) row.user_id = userId;
-      const onConflict = userId ? 'user_id,email' : 'email';
 
-      console.log('[auth-callback] upserting row', {
+      console.log('[auth-callback] saving row', {
         email,
         tipo: 'gmail',
         hasAccessToken: !!row.access_token,
         hasRefreshToken: !!row.refresh_token,
         token_expiry: row.token_expiry,
-        user_id: row.user_id || null,
-        onConflict
+        user_id: row.user_id || null
       });
 
+      // SELECT-then-UPDATE/INSERT manual — funciona sin importar qué UNIQUE constraints
+      // existan en la tabla. Evita el error "no unique constraint matching ON CONFLICT".
       try {
-        const { error: upsertError } = await supabase.from('email_accounts').upsert(row, { onConflict });
-        if (upsertError) {
-          console.error('[auth-callback] supabase upsert error:', JSON.stringify({
-            message: upsertError.message,
-            code: upsertError.code,
-            details: upsertError.details,
-            hint: upsertError.hint
+        // 1. Buscar si ya existe una fila para este email + user_id
+        let findQuery = supabase.from('email_accounts').select('id').eq('email', email);
+        if (userId) findQuery = findQuery.eq('user_id', userId);
+        else findQuery = findQuery.is('user_id', null);
+
+        const { data: existing, error: findError } = await findQuery.maybeSingle();
+        if (findError) {
+          console.error('[auth-callback] select existing failed:', JSON.stringify(findError));
+          return errorRedirect(res, `Error consultando cuenta: [${findError.code || '?'}] ${findError.message}`);
+        }
+
+        let writeError;
+        if (existing && existing.id) {
+          // Actualizar existente — preserva refresh_token previo si Google no devuelve uno nuevo
+          const updateRow = { ...row };
+          if (!updateRow.refresh_token) delete updateRow.refresh_token;
+          const { error } = await supabase.from('email_accounts').update(updateRow).eq('id', existing.id);
+          writeError = error;
+          console.log('[auth-callback] updated existing row id=', existing.id);
+        } else {
+          const { error } = await supabase.from('email_accounts').insert(row);
+          writeError = error;
+          console.log('[auth-callback] inserted new row');
+        }
+
+        if (writeError) {
+          console.error('[auth-callback] write error:', JSON.stringify({
+            message: writeError.message, code: writeError.code,
+            details: writeError.details, hint: writeError.hint
           }));
-          const errCode = upsertError.code ? `[${upsertError.code}] ` : '';
-          return errorRedirect(res, `Error guardando cuenta: ${errCode}${upsertError.message}${upsertError.hint ? ' — ' + upsertError.hint : ''}`);
+          return errorRedirect(res, `Error guardando cuenta: [${writeError.code || '?'}] ${writeError.message}${writeError.hint ? ' — ' + writeError.hint : ''}`);
         }
       } catch (e) {
-        console.error('[auth-callback] supabase upsert threw:', e.stack || e.message);
+        console.error('[auth-callback] supabase threw:', e.stack || e.message);
         return errorRedirect(res, 'Error de base de datos: ' + e.message);
       }
 
@@ -216,11 +237,25 @@ module.exports = async function handler(req, res) {
         activo: true
       };
       if (userId) row.user_id = userId;
-      const onConflict = userId ? 'user_id,email' : 'email';
 
       try {
-        const { error: upsertError } = await supabase.from('email_accounts').upsert(row, { onConflict });
-        if (upsertError) return errorRedirect(res, 'Error guardando cuenta: ' + upsertError.message);
+        let findQuery = supabase.from('email_accounts').select('id').eq('email', email);
+        if (userId) findQuery = findQuery.eq('user_id', userId);
+        else findQuery = findQuery.is('user_id', null);
+        const { data: existing, error: findError } = await findQuery.maybeSingle();
+        if (findError) return errorRedirect(res, `Error consultando cuenta: [${findError.code || '?'}] ${findError.message}`);
+
+        let writeError;
+        if (existing && existing.id) {
+          const updateRow = { ...row };
+          if (!updateRow.refresh_token) delete updateRow.refresh_token;
+          const { error } = await supabase.from('email_accounts').update(updateRow).eq('id', existing.id);
+          writeError = error;
+        } else {
+          const { error } = await supabase.from('email_accounts').insert(row);
+          writeError = error;
+        }
+        if (writeError) return errorRedirect(res, `Error guardando cuenta: [${writeError.code || '?'}] ${writeError.message}`);
       } catch (e) {
         return errorRedirect(res, 'Error de base de datos: ' + e.message);
       }
