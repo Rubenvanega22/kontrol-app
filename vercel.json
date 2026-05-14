@@ -10,6 +10,7 @@
   "outputDirectory": ".",
   "crons": [
     { "path": "/api/sync-emails", "schedule": "0 8 * * *" },
+    { "path": "/api/sync-emails", "schedule": "0 20 * * *" },
     { "path": "/api/ai-analysis", "schedule": "0 9 * * *" }
   ]
 }

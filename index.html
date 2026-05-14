@@ -3356,6 +3356,8 @@ function addLogoutBtn() {
       window.history.replaceState({}, '', window.location.pathname);
       await syncDesdeSupabase();
       renderCorreosConfig();
+      // Disparar la primera sincronización automática tras conectar
+      setTimeout(() => { sincronizarCorreo(); }, 800);
     } else if (params.get('auth_error')) {
       toast(`⚠️ Error de OAuth: ${params.get('auth_error')}`, 'var(--red)');
       window.history.replaceState({}, '', window.location.pathname);
