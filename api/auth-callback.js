@@ -7,6 +7,19 @@ const { google } = require('googleapis');
 const supabase = require('../lib/supabase');
 const { verifyState } = require('../lib/oauth-state');
 
+// Convierte cualquier valor a ISO 8601 válido o null.
+// Si tokens.expiry_date llega como string/NaN/Infinity, NO lanza — devuelve null.
+function safeIsoDate(value){
+  if (value === null || value === undefined || value === '') return null;
+  try {
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return null;
+    return d.toISOString();
+  } catch (_) {
+    return null;
+  }
+}
+
 function safeRedirect(res, location){
   try { return res.redirect(location); }
   catch (_) {
@@ -118,20 +131,36 @@ module.exports = async function handler(req, res) {
         tipo: 'gmail',
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token || null,
-        token_expiry: tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null,
+        token_expiry: safeIsoDate(tokens.expiry_date),
         activo: true
       };
       if (userId) row.user_id = userId;
       const onConflict = userId ? 'user_id,email' : 'email';
 
+      console.log('[auth-callback] upserting row', {
+        email,
+        tipo: 'gmail',
+        hasAccessToken: !!row.access_token,
+        hasRefreshToken: !!row.refresh_token,
+        token_expiry: row.token_expiry,
+        user_id: row.user_id || null,
+        onConflict
+      });
+
       try {
         const { error: upsertError } = await supabase.from('email_accounts').upsert(row, { onConflict });
         if (upsertError) {
-          console.error('[auth-callback] supabase upsert error:', upsertError.message, upsertError.details);
-          return errorRedirect(res, 'Error guardando cuenta: ' + upsertError.message);
+          console.error('[auth-callback] supabase upsert error:', JSON.stringify({
+            message: upsertError.message,
+            code: upsertError.code,
+            details: upsertError.details,
+            hint: upsertError.hint
+          }));
+          const errCode = upsertError.code ? `[${upsertError.code}] ` : '';
+          return errorRedirect(res, `Error guardando cuenta: ${errCode}${upsertError.message}${upsertError.hint ? ' — ' + upsertError.hint : ''}`);
         }
       } catch (e) {
-        console.error('[auth-callback] supabase upsert threw:', e.message);
+        console.error('[auth-callback] supabase upsert threw:', e.stack || e.message);
         return errorRedirect(res, 'Error de base de datos: ' + e.message);
       }
 
@@ -183,7 +212,7 @@ module.exports = async function handler(req, res) {
         email, tipo: 'outlook',
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token || null,
-        token_expiry: tokens.expires_in ? new Date(Date.now() + tokens.expires_in * 1000).toISOString() : null,
+        token_expiry: tokens.expires_in ? safeIsoDate(Date.now() + Number(tokens.expires_in) * 1000) : null,
         activo: true
       };
       if (userId) row.user_id = userId;
