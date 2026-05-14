@@ -3,6 +3,7 @@
 
 const { google } = require('googleapis');
 const supabase = require('../lib/supabase');
+const { verifyState } = require('../lib/oauth-state');
 
 module.exports = async function handler(req, res) {
   const { code, state, error } = req.query;
@@ -11,8 +12,17 @@ module.exports = async function handler(req, res) {
     return res.redirect('/?auth_error=' + encodeURIComponent(error));
   }
 
+  // Verificar firma HMAC del state. Rechaza cualquier manipulación.
+  const payload = verifyState(state);
+  if (!payload) {
+    return res.redirect('/?auth_error=' + encodeURIComponent('Estado OAuth inválido o manipulado'));
+  }
+  const payloadParts = payload.split(':');
+  const provider = payloadParts[0];
+  const userId = (payloadParts[1] || '').trim() || null;
+
   try {
-    if (state === 'gmail' || !state || state.startsWith('gmail')) {
+    if (provider === 'gmail') {
       // Gmail OAuth
       const oauth2Client = new google.auth.OAuth2(
         process.env.GMAIL_CLIENT_ID,
@@ -27,12 +37,6 @@ module.exports = async function handler(req, res) {
       const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
       const { data: userInfo } = await oauth2.userinfo.get();
       const email = userInfo.email;
-
-      // Extraer user_id del state si viene como "gmail:UUID"
-      let userId = null;
-      if (state && state.startsWith('gmail:')) {
-        userId = state.substring(6).trim() || null;
-      }
 
       const row = {
         email,
@@ -50,7 +54,7 @@ module.exports = async function handler(req, res) {
 
       return res.redirect('/?auth_success=gmail&email=' + encodeURIComponent(email));
 
-    } else if (state === 'outlook') {
+    } else if (provider === 'outlook') {
       // Outlook OAuth
       const tokenRes = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
         method: 'POST',
@@ -72,16 +76,21 @@ module.exports = async function handler(req, res) {
       const profile = await profileRes.json();
       const email = profile.mail || profile.userPrincipalName;
 
-      await supabase.from('email_accounts').upsert({
+      const row = {
         email,
         tipo: 'outlook',
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token,
         token_expiry: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
         activo: true
-      }, { onConflict: 'email' });
+      };
+      if (userId) row.user_id = userId;
+      const onConflict = userId ? 'user_id,email' : 'email';
+      await supabase.from('email_accounts').upsert(row, { onConflict });
 
       return res.redirect('/?auth_success=outlook&email=' + encodeURIComponent(email));
+    } else {
+      return res.redirect('/?auth_error=' + encodeURIComponent('Provider OAuth desconocido'));
     }
   } catch (err) {
     console.error('Auth callback error:', err);
