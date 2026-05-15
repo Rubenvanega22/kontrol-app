@@ -2,13 +2,16 @@
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { texto } = req.body;
+  const { texto, voice_id } = req.body;
   if (!texto || !texto.trim()) {
     return res.status(400).json({ error: 'Sin texto' });
   }
 
+  // Validar voice_id: solo aceptamos IDs alfanuméricos de ElevenLabs (~20 chars)
+  const VOICE_ID = (voice_id && /^[A-Za-z0-9]{15,30}$/.test(voice_id))
+    ? voice_id
+    : (process.env.ELEVENLABS_VOICE_ID || '4vqDWmE9rvDX51nxtDbo');
   const API_KEY  = process.env.ELEVENLABS_API_KEY;
-  const VOICE_ID = process.env.ELEVENLABS_VOICE_ID || '4vqDWmE9rvDX51nxtDbo';
 
   if (!API_KEY) {
     return res.status(500).json({ error: 'ELEVENLABS_API_KEY no configurada' });
