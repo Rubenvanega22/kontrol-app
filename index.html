@@ -800,6 +800,13 @@ select.form-inp option{background:#0c1228;}
           </div>
         </div>
 
+        <!-- Feedback (beta) -->
+        <div class="config-section">
+          <div class="config-section-ttl">💬 Feedback</div>
+          <p style="font-size:11.5px;color:var(--t3);margin-bottom:10px;line-height:1.5">Estamos en beta. Tu opinión ayuda a mejorar Kontrol.</p>
+          <button class="btn-primary" onclick="showModal('modal-feedback')">💬 Enviar feedback</button>
+        </div>
+
         <div style="height:80px"></div>
       </div>
     </div>
@@ -1113,6 +1120,22 @@ select.form-inp option{background:#0c1228;}
     </div>
     <div id="rec-detalle-body"></div>
     <button class="btn-danger" style="margin-top:14px" onclick="eliminarRecordatorio()">🗑 Eliminar</button>
+  </div>
+</div>
+
+<!-- Modal Feedback (beta) -->
+<div class="modal-overlay hidden" id="modal-feedback" onclick="closeModalOutside(event,'modal-feedback')">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-ttl">💬 Feedback</span>
+      <button class="modal-close" onclick="hideModal('modal-feedback')">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">¿Qué mejorarías?</label>
+      <textarea class="form-inp" id="feedback-msg" rows="5" placeholder="Cuéntanos qué te gustaría que cambie, qué te confunde, qué te encanta..."></textarea>
+    </div>
+    <button class="btn-primary" onclick="enviarFeedback()">Enviar</button>
+    <button class="btn-secondary" style="margin-top:8px" onclick="hideModal('modal-feedback')">Cancelar</button>
   </div>
 </div>
 
@@ -2949,6 +2972,24 @@ function onIAProveedorChange(){
     <div class="form-group"><label class="form-label">Modelo</label><select class="form-inp" id="ia-modelo">${opts}</select></div>`;
 }
 
+async function enviarFeedback(){
+  if(!currentUser){ toast('Inicia sesión primero','var(--red)'); return; }
+  const msg = document.getElementById('feedback-msg').value.trim();
+  if(!msg){ toast('⚠️ Escribe algo primero','var(--amber)'); return; }
+  if(msg.length > 2000){ toast('⚠️ Máximo 2000 caracteres','var(--amber)'); return; }
+
+  const { error } = await supa.from('feedback').insert({
+    user_id: currentUser.id,
+    mensaje: msg
+    // fecha y resuelto usan DEFAULT en el schema
+  });
+  if(error){ toast('Error: '+error.message,'var(--red)'); return; }
+
+  document.getElementById('feedback-msg').value = '';
+  hideModal('modal-feedback');
+  toast('✅ Gracias por tu feedback','var(--green)');
+}
+
 async function guardarPerfil(){
   if(!currentUser){ toast('Inicia sesión primero','var(--red)'); return; }
   const nombre = document.getElementById('profile-nombre').value.trim();
@@ -3331,7 +3372,8 @@ async function doRegistro() {
   const codigo = document.getElementById('reg-codigo').value.trim().toUpperCase();
   if (!nombre || !email || !pass || !codigo) return authMsg('Completa todos los campos');
   if (pass.length < 6) return authMsg('La contraseña debe tener al menos 6 caracteres');
-  if (codigo !== 'RUBEN2026') return authMsg('Código de invitación inválido');
+  const CODIGOS_VALIDOS = ['RUBEN2026', 'BETA2026'];
+  if (!CODIGOS_VALIDOS.includes(codigo)) return authMsg('Código de invitación inválido');
   
   authMsg('Creando cuenta...', 'rgba(232,238,248,0.5)');
   try {
