@@ -1437,6 +1437,38 @@ function toast(msg, color){
 // NAVIGATION
 // ════════════════════════════════════════
 const TABS = ['resumen','movimientos','cajas','pagos','agenda','recordar','ia','inbox','config','metas','admin'];
+// Mapa de tipo de acción IA → pestaña donde el usuario ve el resultado.
+// Si la IA ejecutó varias acciones, se usa la primera coincidencia (orden de la lista).
+const AI_ACTION_TAB = {
+  gasto: 'resumen',
+  ingreso: 'resumen',
+  editar_movimiento: 'resumen',
+  borrar_movimiento: 'resumen',
+  caja_entrada: 'cajas',
+  caja_salida: 'cajas',
+  editar_caja: 'cajas',
+  pago: 'pagos',
+  marcar_pago_pagado: 'pagos',
+  borrar_pago: 'pagos',
+  evento: 'agenda',
+  borrar_evento: 'agenda',
+  recordatorio: 'recordar',
+  borrar_recordatorio: 'recordar',
+  meta: 'metas',
+  borrar_meta: 'metas',
+  completar_micrometa: 'metas'
+};
+
+function inferTabDestinoIA(acciones){
+  if(!Array.isArray(acciones)) return null;
+  for(const a of acciones){
+    if(!a || a.accion === 'navegar' || a.confirmacion_requerida) continue;
+    const tab = AI_ACTION_TAB[a.accion];
+    if(tab) return tab;
+  }
+  return null;
+}
+
 function goTab(id){
   TABS.forEach(t=>{
     const scr = document.getElementById('scr-'+t);
@@ -2555,10 +2587,16 @@ async function sendIA(opts){
         // En modo voz reducimos el delay para respuesta más rápida; en texto se mantiene seguro
         setTimeout(async () => {
           await syncDesdeSupabase();
+          // Prioridad de navegación:
+          //   1. [ACCION:navegar] explícita del usuario
+          //   2. Auto-navegación inferida del tipo de mutación
+          //   3. Solo re-render de la pantalla actual
           if(navegarAction && navegarAction.seccion){
             goTab(navegarAction.seccion);
           } else {
-            renderCurrentScreen();
+            const autoTab = inferTabDestinoIA(data.acciones);
+            if(autoTab) goTab(autoTab);
+            else renderCurrentScreen();
           }
           // Si el modal de detalle de caja está abierto, refrescar saldo + historial.
           // Sin esto, los caja_entrada/salida del IA quedan invisibles hasta cerrar y reabrir.
