@@ -72,7 +72,7 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { message, history = [], imagen_base64, user_id } = req.body;
+  const { message, history = [], imagen_base64, user_id, voz = false } = req.body;
   if (!message && !imagen_base64) return res.status(400).json({ error: 'Mensaje requerido' });
   if (!user_id) return res.status(400).json({ error: 'user_id requerido' });
 
@@ -91,10 +91,13 @@ module.exports = async function handler(req, res) {
     }
 
     // 3. Construir system prompt con contexto + memoria
-    const systemPrompt = buildSystemPrompt(contexto, memoria);
+    let systemPrompt = buildSystemPrompt(contexto, memoria);
+    if (voz) {
+      systemPrompt = `MODO VOZ: responde máximo 2 oraciones cortas y directas.\n\n${systemPrompt}`;
+    }
 
-    // 4. Llamar a Claude
-    const respuesta = await llamarClaude(systemPrompt, history, message, imagen_base64);
+    // 4. Llamar a Claude (max_tokens más bajo en modo voz para latencia menor)
+    const respuesta = await llamarClaude(systemPrompt, history, message, imagen_base64, voz ? 150 : 600);
     const respuestaLimpia = respuesta
       .replace(/\[ACCION:[^\]]+\]/g, '')
       .replace(/\n{3,}/g, '\n\n')
@@ -268,7 +271,7 @@ IMPORTANTE: si el usuario menciona una cuenta o caja específica por nombre, bus
 }
 
 // ═══ LLAMAR A CLAUDE ═══
-async function llamarClaude(system, history, message, imagen) {
+async function llamarClaude(system, history, message, imagen, maxTokens = 600) {
   const userContent = [];
   if (imagen) userContent.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: imagen } });
   userContent.push({ type: 'text', text: message || 'Analiza esta imagen' });
@@ -282,7 +285,7 @@ async function llamarClaude(system, history, message, imagen) {
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5',
-      max_tokens: 600,
+      max_tokens: maxTokens,
       system,
       messages: [...history.slice(-14), { role: 'user', content: userContent }]
     })

@@ -30,7 +30,8 @@ export default async function handler(req, res) {
     formData.append('file', blob, `audio.${ext}`);
     formData.append('model', 'whisper-large-v3-turbo');
     formData.append('language', 'es');
-    formData.append('response_format', 'json');
+    // response_format=text → cuerpo crudo (sin parseo JSON), más rápido
+    formData.append('response_format', 'text');
     formData.append('temperature', '0');
 
     const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
@@ -44,8 +45,8 @@ export default async function handler(req, res) {
       return res.status(response.status).json({ error: errText });
     }
 
-    const data = await response.json();
-    return res.json({ texto: (data.text || '').trim() });
+    const texto = (await response.text()).trim();
+    return res.json({ texto });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }

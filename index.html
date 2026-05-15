@@ -2306,7 +2306,8 @@ function showTyping(){
 }
 function hideTyping(){ const t=document.getElementById('ia-typing'); if(t)t.remove(); }
 
-async function sendIA(){
+async function sendIA(opts){
+  const voz = !!(opts && opts.voz);
   const inp = document.getElementById('ia-input');
   const msg = inp.value.trim();
   if(!msg) return;
@@ -2335,7 +2336,8 @@ async function sendIA(){
       body: JSON.stringify({
         message: msg,
         history: iaHistory.slice(-10),
-        user_id: currentUser?.id || null
+        user_id: currentUser?.id || null,
+        voz
       })
     });
     const data = await res.json();
@@ -2364,6 +2366,7 @@ async function sendIA(){
       }
 
       if(hayMutacion || accionesConfirmacion.length > 0){
+        // En modo voz reducimos el delay para respuesta más rápida; en texto se mantiene seguro
         setTimeout(async () => {
           await syncDesdeSupabase();
           if(navegarAction && navegarAction.seccion){
@@ -2371,7 +2374,7 @@ async function sendIA(){
           } else {
             renderCurrentScreen();
           }
-        }, 1000);
+        }, voz ? 200 : 1000);
       } else if(navegarAction && navegarAction.seccion){
         // Solo navegar — no hay mutación, no esperar al sync
         goTab(navegarAction.seccion);
@@ -2584,7 +2587,7 @@ async function startRecording(e){
         }
 
         document.getElementById('ia-input').value = texto;
-        sendIA();
+        sendIA({ voz: true });
       } catch(err){
         console.error('[transcribe] error:', err);
         toast('⚠️ Error transcribiendo: ' + err.message, 'var(--red)');
