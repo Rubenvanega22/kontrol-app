@@ -433,6 +433,59 @@ function parseMontoSeguro(s) {
   return limpio ? parseFloat(limpio) : 0;
 }
 
+// ═══ Helpers de saldo: SIEMPRE leer fresh de la DB antes de actualizar.
+// Esto evita drift contra contexto cacheado al inicio del request (race conditions
+// si el usuario hizo un cambio manual entre el buildContexto y el ejecutarAcciones).
+// Cada helper devuelve { antes, delta, despues, nombre } o null en caso de error.
+async function ajustarSaldo(tabla, id, userId, delta, opLabel) {
+  if (!id) { console.error(`[${opLabel}] sin id, no se ajusta saldo`); return null; }
+  const { data: row, error: ferr } = await supabase
+    .from(tabla)
+    .select('saldo, nombre')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (ferr || !row) {
+    console.error(`[${opLabel}] no se pudo leer ${tabla}#${id}:`, ferr?.message || 'no encontrado');
+    return null;
+  }
+  const antes = parseFloat(row.saldo || 0);
+  const despues = antes + delta;
+  const { error: uerr } = await supabase
+    .from(tabla)
+    .update({ saldo: despues })
+    .eq('id', id)
+    .eq('user_id', userId);
+  if (uerr) {
+    console.error(`[${opLabel}] update saldo ${tabla}#${id} falló:`, uerr.message);
+    return null;
+  }
+  console.log(`[saldo] ${opLabel} → ${tabla} "${row.nombre}" (id=${id}) | antes=${antes} | delta=${delta >= 0 ? '+' : ''}${delta} | después=${despues}`);
+  return { antes, delta, despues, nombre: row.nombre };
+}
+
+async function leerMovimientoFresh(movId, userId) {
+  const { data, error } = await supabase
+    .from('movements')
+    .select('id, tipo, monto, descripcion, account_id, fecha, categoria')
+    .eq('id', movId)
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) { console.error('[leerMovimientoFresh] error:', error.message); return null; }
+  return data;
+}
+
+async function leerCajaMovimientoFresh(movId, userId) {
+  const { data, error } = await supabase
+    .from('caja_movimientos')
+    .select('id, caja_id, tipo, monto, descripcion, fecha')
+    .eq('id', movId)
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) { console.error('[leerCajaMovimientoFresh] error:', error.message); return null; }
+  return data;
+}
+
 // ═══ EJECUTAR ACCIONES — todo queda visible en la app ═══
 async function ejecutarAcciones(respuesta, contexto, userId) {
   console.log('[ejecutarAcciones] respuesta cruda (longitud=' + respuesta.length + '):', JSON.stringify(respuesta));
@@ -451,35 +504,36 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
         const desc = (parts[2] || 'Sin descripción').trim();
         const cat = (parts[3] || 'otro').trim();
         const cuentaIdEspecificada = (parts[4] || '').trim();
-        if (!monto || monto <= 0) continue;
+        if (!monto || monto <= 0) { console.warn(`[${accion}] monto inválido, ignorado`); continue; }
 
         // 🛡️ Guardia defensiva: si Claude mete un caja_id en el slot de cuenta_id_opcional,
         // re-enruta a caja_salida/caja_entrada en vez de hacer un movements insert huérfano.
-        // Sintoma observado en logs: [ACCION:gasto|230000|odontologia|salud|4] donde 4 es caja.
+        // Síntoma observado en logs: [ACCION:gasto|230000|odontologia|salud|4] donde 4 es caja.
         if (cuentaIdEspecificada) {
           const matchCaja = contexto.cajas.find(c => String(c.id) === String(cuentaIdEspecificada));
           const matchCuenta = contexto.cuentas.find(c => String(c.id) === String(cuentaIdEspecificada));
           if (matchCaja && !matchCuenta) {
-            console.warn('[ejecutarAcciones] auto-reroute: gasto/ingreso con caja_id', cuentaIdEspecificada, '→ caja_salida/entrada');
-            const nuevoSaldo = accion === 'ingreso'
-              ? parseFloat(matchCaja.saldo) + monto
-              : parseFloat(matchCaja.saldo) - monto;
-            const tipoMov = accion;
+            console.warn(`[${accion}] auto-reroute → caja: id=${cuentaIdEspecificada}`);
+            const tipoMov = accion; // 'gasto' | 'ingreso'
             const { error: errCajaMov } = await supabase.from('caja_movimientos').insert({
               user_id: userId, caja_id: matchCaja.id, tipo: tipoMov,
               descripcion: desc, monto, fecha: new Date().toISOString().split('T')[0]
             });
             if (errCajaMov) { console.error('[auto-reroute] caja_movimientos insert error:', errCajaMov.message); continue; }
-            await supabase.from('cajas').update({ saldo: nuevoSaldo }).eq('id', matchCaja.id).eq('user_id', userId);
+            const delta = accion === 'ingreso' ? monto : -monto;
+            const ajuste = await ajustarSaldo('cajas', matchCaja.id, userId, delta, `auto-reroute ${accion}→caja`);
+            if (!ajuste) continue;
             ejecutadas.push({
               accion: accion === 'gasto' ? 'caja_salida' : 'caja_entrada',
-              monto, desc, caja: matchCaja.nombre, nuevo_saldo: nuevoSaldo,
+              monto, desc, caja: ajuste.nombre,
+              saldo_antes: ajuste.antes, saldo_despues: ajuste.despues,
               auto_rerouteado_desde: accion
             });
             continue;
           }
         }
 
+        // Resolver cuenta: la específica o la primera disponible
         const cuenta = cuentaIdEspecificada
           ? contexto.cuentas.find(c => String(c.id) === String(cuentaIdEspecificada))
           : contexto.cuentas[0];
@@ -494,52 +548,71 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
           })
           .select().single();
 
-        if (error) { console.error('Error movimiento:', error.message); continue; }
+        if (error) { console.error(`[${accion}] insert movements falló:`, error.message); continue; }
 
-        if (cuenta) {
-          const saldo = parseFloat(cuenta.saldo || 0);
-          const nuevo = accion === 'ingreso' ? saldo + monto : saldo - monto;
-          await supabase.from('accounts').update({ saldo: nuevo }).eq('id', cuenta.id).eq('user_id', userId);
+        let ajuste = null;
+        if (cuentaId) {
+          const delta = accion === 'ingreso' ? monto : -monto;
+          ajuste = await ajustarSaldo('accounts', cuentaId, userId, delta, accion);
         }
-        ejecutadas.push({ accion, monto, desc, id: mov.id, cuenta_id: cuentaId });
+        ejecutadas.push({
+          accion, monto, desc, id: mov.id, cuenta_id: cuentaId,
+          saldo_antes: ajuste?.antes, saldo_despues: ajuste?.despues
+        });
 
       } else if (accion === 'editar_movimiento') {
         const movId = parts[1];
         const nuevoMonto = parts[2] && parts[2].trim() ? parseMontoSeguro(parts[2]) : null;
         const nuevaDesc = (parts[3] || '').trim() || null;
         const nuevaFecha = (parts[4] || '').trim() || null;
-        const movActual = contexto.movimientos.find(m => String(m.id) === String(movId)) || contexto.movsRecientes.find(m => String(m.id) === String(movId));
+        // SIEMPRE leer fresh de la DB para tipo/monto/account_id confiables.
+        const movActual = await leerMovimientoFresh(movId, userId);
+        if (!movActual) { console.warn(`[editar_movimiento] mov ${movId} no encontrado`); continue; }
         const updates = {};
         if (nuevoMonto !== null) updates.monto = nuevoMonto;
         if (nuevaDesc) updates.descripcion = nuevaDesc;
         if (nuevaFecha) updates.fecha = nuevaFecha;
-        if (Object.keys(updates).length > 0) {
-          const { error } = await supabase.from('movements').update(updates).eq('id', movId).eq('user_id', userId);
-          if (!error) {
-            if (nuevoMonto !== null && movActual && movActual.account_id) {
-              const cuenta = contexto.cuentas.find(c => String(c.id) === String(movActual.account_id));
-              if (cuenta) {
-                const diff = nuevoMonto - parseFloat(movActual.monto);
-                const ajuste = movActual.tipo === 'ingreso' ? diff : -diff;
-                await supabase.from('accounts').update({ saldo: parseFloat(cuenta.saldo) + ajuste }).eq('id', cuenta.id);
-              }
-            }
-            ejecutadas.push({ accion, id: movId, cambios: updates });
-          }
+        if (Object.keys(updates).length === 0) { console.log(`[editar_movimiento] sin cambios`); continue; }
+        const { error } = await supabase.from('movements').update(updates).eq('id', movId).eq('user_id', userId);
+        if (error) { console.error(`[editar_movimiento] update falló:`, error.message); continue; }
+
+        let ajuste = null;
+        if (nuevoMonto !== null && movActual.account_id) {
+          const diff = nuevoMonto - parseFloat(movActual.monto);
+          // Si era ingreso, subir el saldo por el diff (positivo si sube, negativo si baja);
+          // si era gasto, bajar el saldo por el diff.
+          const delta = movActual.tipo === 'ingreso' ? diff : -diff;
+          ajuste = await ajustarSaldo('accounts', movActual.account_id, userId, delta, `editar_movimiento(${movActual.tipo})`);
         }
+        ejecutadas.push({
+          accion, id: movId, cambios: updates,
+          mov_anterior: { tipo: movActual.tipo, monto: parseFloat(movActual.monto) },
+          saldo_antes: ajuste?.antes, saldo_despues: ajuste?.despues
+        });
 
       } else if (accion === 'borrar_movimiento') {
         const movId = parts[1];
-        const mov = contexto.movimientos.find(m => String(m.id) === String(movId)) || contexto.movsRecientes.find(m => String(m.id) === String(movId));
-        if (mov && mov.account_id) {
-          const cuenta = contexto.cuentas.find(c => String(c.id) === String(mov.account_id));
-          if (cuenta) {
-            const ajuste = mov.tipo === 'ingreso' ? -parseFloat(mov.monto) : parseFloat(mov.monto);
-            await supabase.from('accounts').update({ saldo: parseFloat(cuenta.saldo) + ajuste }).eq('id', cuenta.id);
-          }
+        // 1. Leer fresh el movimiento de la DB ANTES de borrar.
+        const mov = await leerMovimientoFresh(movId, userId);
+        if (!mov) { console.warn(`[borrar_movimiento] mov ${movId} no encontrado`); continue; }
+
+        // 2. Revertir el saldo ANTES de borrar (si la reversión falla queremos saber, no borrar a ciegas).
+        let ajuste = null;
+        if (mov.account_id) {
+          // Reversa: si era gasto, devolver al saldo; si era ingreso, restar.
+          const delta = mov.tipo === 'ingreso' ? -parseFloat(mov.monto) : parseFloat(mov.monto);
+          ajuste = await ajustarSaldo('accounts', mov.account_id, userId, delta, `borrar_movimiento(reverso ${mov.tipo})`);
+          if (!ajuste) { console.error(`[borrar_movimiento] no se pudo revertir saldo, abortando borrado de ${movId}`); continue; }
         }
+
+        // 3. Solo ahora borrar la fila.
         const { error } = await supabase.from('movements').delete().eq('id', movId).eq('user_id', userId);
-        if (!error) ejecutadas.push({ accion: 'borrado', tipo: 'movimiento', id: movId });
+        if (error) { console.error(`[borrar_movimiento] delete falló:`, error.message); continue; }
+        ejecutadas.push({
+          accion: 'borrado', tipo: 'movimiento', id: movId,
+          mov_borrado: { tipo: mov.tipo, monto: parseFloat(mov.monto), descripcion: mov.descripcion },
+          saldo_antes: ajuste?.antes, saldo_despues: ajuste?.despues
+        });
 
       } else if (accion === 'borrar_pago') {
         const { error } = await supabase.from('payments').delete().eq('id', parts[1]).eq('user_id', userId);
@@ -601,84 +674,94 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
         const destinoTipo = (parts[3] || '').trim();
         const destinoId = (parts[4] || '').trim();
         const monto = parseMontoSeguro(parts[5]);
-        if (monto > 0 && (origenTipo === 'cuenta' || origenTipo === 'caja') && (destinoTipo === 'cuenta' || destinoTipo === 'caja')) {
-          const tablaOrigen = origenTipo === 'caja' ? 'cajas' : 'accounts';
-          const tablaDestino = destinoTipo === 'caja' ? 'cajas' : 'accounts';
-          const fuenteOrigen = origenTipo === 'caja' ? contexto.cajas : contexto.cuentas;
-          const fuenteDestino = destinoTipo === 'caja' ? contexto.cajas : contexto.cuentas;
-          const origen = fuenteOrigen.find(x => String(x.id) === String(origenId));
-          const destino = fuenteDestino.find(x => String(x.id) === String(destinoId));
-          if (origen && destino) {
-            await supabase.from(tablaOrigen).update({ saldo: parseFloat(origen.saldo) - monto }).eq('id', origenId);
-            await supabase.from(tablaDestino).update({ saldo: parseFloat(destino.saldo) + monto }).eq('id', destinoId);
-            const fecha = new Date().toISOString().split('T')[0];
-            await supabase.from('movements').insert([
-              {
-                user_id: userId, tipo: 'gasto',
-                descripcion: `Transferencia a ${destinoTipo} ${destino.nombre}`,
-                monto, fecha,
-                account_id: origenTipo === 'cuenta' ? origenId : null,
-                categoria: 'transferencia', source: 'ia'
-              },
-              {
-                user_id: userId, tipo: 'ingreso',
-                descripcion: `Transferencia desde ${origenTipo} ${origen.nombre}`,
-                monto, fecha,
-                account_id: destinoTipo === 'cuenta' ? destinoId : null,
-                categoria: 'transferencia', source: 'ia'
-              }
-            ]);
-            ejecutadas.push({ accion, monto, origen: `${origenTipo}:${origen.nombre}`, destino: `${destinoTipo}:${destino.nombre}` });
-          }
+        if (!(monto > 0)) { console.warn('[transferir] monto inválido'); continue; }
+        if (!['cuenta','caja'].includes(origenTipo) || !['cuenta','caja'].includes(destinoTipo)) {
+          console.warn('[transferir] tipos inválidos', { origenTipo, destinoTipo }); continue;
         }
+        const tablaOrigen = origenTipo === 'caja' ? 'cajas' : 'accounts';
+        const tablaDestino = destinoTipo === 'caja' ? 'cajas' : 'accounts';
+        const ajusteOrigen = await ajustarSaldo(tablaOrigen, origenId, userId, -monto, `transferir(origen ${origenTipo})`);
+        if (!ajusteOrigen) { console.error('[transferir] origen falló, abortando'); continue; }
+        const ajusteDestino = await ajustarSaldo(tablaDestino, destinoId, userId, +monto, `transferir(destino ${destinoTipo})`);
+        if (!ajusteDestino) {
+          console.error('[transferir] destino falló, REVIRTIENDO el origen');
+          await ajustarSaldo(tablaOrigen, origenId, userId, +monto, `transferir(rollback origen)`);
+          continue;
+        }
+        const fecha = new Date().toISOString().split('T')[0];
+        await supabase.from('movements').insert([
+          {
+            user_id: userId, tipo: 'gasto',
+            descripcion: `Transferencia a ${destinoTipo} ${ajusteDestino.nombre}`,
+            monto, fecha,
+            account_id: origenTipo === 'cuenta' ? origenId : null,
+            categoria: 'transferencia', source: 'ia'
+          },
+          {
+            user_id: userId, tipo: 'ingreso',
+            descripcion: `Transferencia desde ${origenTipo} ${ajusteOrigen.nombre}`,
+            monto, fecha,
+            account_id: destinoTipo === 'cuenta' ? destinoId : null,
+            categoria: 'transferencia', source: 'ia'
+          }
+        ]);
+        ejecutadas.push({
+          accion, monto,
+          origen: `${origenTipo}:${ajusteOrigen.nombre}`,
+          destino: `${destinoTipo}:${ajusteDestino.nombre}`,
+          saldos: {
+            origen_antes: ajusteOrigen.antes, origen_despues: ajusteOrigen.despues,
+            destino_antes: ajusteDestino.antes, destino_despues: ajusteDestino.despues
+          }
+        });
 
       } else if (accion === 'caja_entrada' || accion === 'caja_salida') {
         const cajaId = (parts[1] || '').trim();
         const monto = parseMontoSeguro(parts[2]);
         const desc = (parts[3] || (accion === 'caja_entrada' ? 'Entrada de caja' : 'Salida de caja')).trim();
-        const caja = contexto.cajas.find(c => String(c.id) === String(cajaId));
-        if (caja && monto > 0) {
-          const nuevoSaldo = accion === 'caja_entrada'
-            ? parseFloat(caja.saldo) + monto
-            : parseFloat(caja.saldo) - monto;
-          const tipoMov = accion === 'caja_entrada' ? 'ingreso' : 'gasto';
-          const { error: errMov } = await supabase.from('caja_movimientos').insert({
-            user_id: userId, caja_id: cajaId, tipo: tipoMov,
-            descripcion: desc, monto, fecha: new Date().toISOString().split('T')[0]
-          });
-          if (errMov) {
-            console.error('[ejecutarAcciones] caja_movimientos insert error:', errMov.message);
-            continue;
-          }
-          await supabase.from('cajas').update({ saldo: nuevoSaldo }).eq('id', cajaId).eq('user_id', userId);
-          ejecutadas.push({ accion, monto, desc, caja: caja.nombre, nuevo_saldo: nuevoSaldo });
+        if (!cajaId || !(monto > 0)) { console.warn(`[${accion}] datos inválidos`); continue; }
+        const tipoMov = accion === 'caja_entrada' ? 'ingreso' : 'gasto';
+        const { error: errMov } = await supabase.from('caja_movimientos').insert({
+          user_id: userId, caja_id: cajaId, tipo: tipoMov,
+          descripcion: desc, monto, fecha: new Date().toISOString().split('T')[0]
+        });
+        if (errMov) {
+          console.error(`[${accion}] insert caja_movimientos falló:`, errMov.message);
+          continue;
         }
+        const delta = accion === 'caja_entrada' ? +monto : -monto;
+        const ajuste = await ajustarSaldo('cajas', cajaId, userId, delta, accion);
+        if (!ajuste) continue;
+        ejecutadas.push({
+          accion, monto, desc, caja: ajuste.nombre,
+          saldo_antes: ajuste.antes, saldo_despues: ajuste.despues
+        });
 
       } else if (accion === 'borrar_caja_movimiento') {
         const movId = (parts[1] || '').trim();
-        if (!movId) continue;
-        const mov = (contexto.cajaMovimientos || []).find(m => String(m.id) === String(movId));
-        if (!mov) {
-          console.warn('[ejecutarAcciones] borrar_caja_movimiento: no encontrado id=', movId);
-          continue;
-        }
-        // Revertir el efecto del movimiento sobre la caja antes de borrar
-        const caja = (contexto.cajas || []).find(c => String(c.id) === String(mov.caja_id));
-        if (caja) {
-          const ajuste = mov.tipo === 'ingreso' ? -parseFloat(mov.monto) : parseFloat(mov.monto);
-          const nuevoSaldo = parseFloat(caja.saldo) + ajuste;
-          await supabase.from('cajas').update({ saldo: nuevoSaldo }).eq('id', caja.id).eq('user_id', userId);
-        }
+        if (!movId) { console.warn('[borrar_caja_movimiento] sin id'); continue; }
+        // 1. Leer fresh el movimiento.
+        const mov = await leerCajaMovimientoFresh(movId, userId);
+        if (!mov) { console.warn(`[borrar_caja_movimiento] mov ${movId} no encontrado`); continue; }
+
+        // 2. Revertir saldo de la caja ANTES de borrar.
+        const delta = mov.tipo === 'ingreso' ? -parseFloat(mov.monto) : parseFloat(mov.monto);
+        const ajuste = await ajustarSaldo('cajas', mov.caja_id, userId, delta, `borrar_caja_movimiento(reverso ${mov.tipo})`);
+        if (!ajuste) { console.error(`[borrar_caja_movimiento] reversión saldo falló, abortando borrado`); continue; }
+
+        // 3. Solo ahora borrar.
         const { error: errDel } = await supabase.from('caja_movimientos').delete().eq('id', movId).eq('user_id', userId);
         if (errDel) {
-          console.error('[ejecutarAcciones] borrar_caja_movimiento delete error:', errDel.message);
+          console.error(`[borrar_caja_movimiento] delete falló:`, errDel.message);
+          // Intentar rollback del saldo
+          await ajustarSaldo('cajas', mov.caja_id, userId, -delta, `borrar_caja_movimiento(rollback)`);
           continue;
         }
         ejecutadas.push({
           accion, id: movId,
-          tipo_revertido: mov.tipo, monto_revertido: parseFloat(mov.monto),
-          caja: caja ? caja.nombre : null,
-          descripcion: mov.descripcion
+          mov_borrado: { tipo: mov.tipo, monto: parseFloat(mov.monto), descripcion: mov.descripcion },
+          caja: ajuste.nombre,
+          saldo_antes: ajuste.antes, saldo_despues: ajuste.despues
         });
 
       } else if (accion === 'navegar') {
