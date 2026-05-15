@@ -1421,6 +1421,7 @@ const AI_ACTION_TAB = {
   caja_entrada: 'cajas',
   caja_salida: 'cajas',
   editar_caja: 'cajas',
+  borrar_caja_movimiento: 'cajas',
   pago: 'pagos',
   marcar_pago_pagado: 'pagos',
   borrar_pago: 'pagos',
@@ -2293,8 +2294,31 @@ function renderCajaEntries(){
       <div class="ce-dot" style="background:${color}"></div>
       <div class="ce-info"><div class="ce-note">${nota}</div><div class="ce-date">${fmtDate(e.fecha)}</div></div>
       <div class="ce-amt" style="color:${color}">${signo}${fmtCOP(e.monto)}</div>
+      <button onclick="event.stopPropagation();borrarCajaMovimiento('${e.id}')" style="background:rgba(248,113,113,0.15);border:none;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:12px;padding:0;margin-left:6px;flex-shrink:0" title="Eliminar">🗑️</button>
     </div>`;
   }).join('');
+}
+
+async function borrarCajaMovimiento(movId){
+  const mov = (DB.cajaMovimientos || []).find(m => String(m.id) === String(movId));
+  if(!mov){ toast('Movimiento no encontrado','var(--red)'); return; }
+  if(!confirm(`¿Eliminar "${mov.descripcion || 'este movimiento'}" por ${fmtCOP(mov.monto)}?`)) return;
+
+  const caja = (DB.cajas || []).find(c => String(c.id) === String(mov.caja_id));
+  // Revertir el efecto del movimiento sobre el saldo de la caja
+  if(caja){
+    const ajuste = mov.tipo === 'ingreso' ? -parseFloat(mov.monto) : parseFloat(mov.monto);
+    const nuevoSaldo = parseFloat(caja.saldo) + ajuste;
+    const { error: errCaja } = await supa.from('cajas').update({ saldo: nuevoSaldo }).eq('id', caja.id).eq('user_id', currentUser.id);
+    if(errCaja){ toast('❌ Error caja: '+errCaja.message,'var(--red)'); return; }
+  }
+  const { error: errDel } = await supa.from('caja_movimientos').delete().eq('id', movId).eq('user_id', currentUser.id);
+  if(errDel){ toast('❌ Error: '+errDel.message,'var(--red)'); return; }
+
+  toast('🗑️ Movimiento eliminado','var(--t2)');
+  await syncDesdeSupabase();
+  renderCajas();
+  renderCajaEntries();
 }
 
 // ════════════════════════════════════════

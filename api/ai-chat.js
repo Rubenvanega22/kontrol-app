@@ -147,6 +147,7 @@ module.exports = async function handler(req, res) {
 
 // ═══ CONTEXTO FINANCIERO COMPLETO ═══
 async function buildContexto(userId) {
+  const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
   const [
     { data: cuentas },
     { data: movsMes },
@@ -154,12 +155,13 @@ async function buildContexto(userId) {
     { data: pagos },
     { data: eventos },
     { data: cajas },
+    { data: cajaMovsMes, error: cajaMovsErr },
     { data: metas },
     { data: recordatorios }
   ] = await Promise.all([
     supabase.from('accounts').select('*').eq('user_id', userId),
     supabase.from('movements').select('*').eq('user_id', userId)
-      .gte('fecha', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0])
+      .gte('fecha', inicioMes)
       .order('fecha', { ascending: false }).limit(50),
     supabase.from('movements').select('*').eq('user_id', userId)
       .order('created_at', { ascending: false }).limit(5),
@@ -167,9 +169,13 @@ async function buildContexto(userId) {
     supabase.from('events').select('*').eq('user_id', userId)
       .gte('fecha', new Date().toISOString().split('T')[0]).order('fecha').limit(10),
     supabase.from('cajas').select('*').eq('user_id', userId),
+    supabase.from('caja_movimientos').select('*').eq('user_id', userId)
+      .gte('fecha', inicioMes)
+      .order('created_at', { ascending: false }).limit(50),
     supabase.from('metas').select('*, micrometas(*)').eq('user_id', userId).eq('estado', 'activa'),
     supabase.from('reminders').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(20)
   ]);
+  if (cajaMovsErr) console.warn('[buildContexto] caja_movimientos error:', cajaMovsErr.message);
 
   const totalSaldo = (cuentas || []).reduce((a, c) => a + parseFloat(c.saldo || 0), 0);
   const totalCajas = (cajas || []).reduce((a, c) => a + parseFloat(c.saldo || 0), 0);
@@ -181,8 +187,9 @@ async function buildContexto(userId) {
     totalSaldo, totalCajas, ingresosMes, gastosMes,
     cuentas: cuentas || [], movimientos: movsMes || [],
     movsRecientes: movsRecientes || [], pagos: pagos || [],
-    eventos: eventos || [], cajas: cajas || [], metas: metas || [],
-    recordatorios: recordatorios || []
+    eventos: eventos || [], cajas: cajas || [],
+    cajaMovimientos: cajaMovsMes || [],
+    metas: metas || [], recordatorios: recordatorios || []
   };
 }
 
@@ -208,6 +215,12 @@ TOTAL DISPONIBLE: ${fmt(ctx.totalSaldo + ctx.totalCajas)}
 Cuentas: ${ctx.cuentas.map(c => `${c.nombre}(${fmt(c.saldo)})[ID:${c.id}]`).join(' | ') || 'ninguna'}
 Cajas: ${ctx.cajas.map(c => `${c.nombre}(${fmt(c.saldo)})[ID:${c.id}]`).join(' | ') || 'ninguna'}
 Mes: Ingresos ${fmt(ctx.ingresosMes)} | Gastos ${fmt(ctx.gastosMes)} | Balance ${fmt(ctx.ingresosMes - ctx.gastosMes)}
+
+Movimientos de cajas este mes (usa el ID exacto cuando el usuario pida borrarlos):
+${(ctx.cajaMovimientos || []).map(cm => {
+  const cajaNom = (ctx.cajas.find(c => String(c.id) === String(cm.caja_id)) || {}).nombre || '?';
+  return `• ${cm.tipo==='ingreso'?'+':'-'}${fmt(cm.monto)} ${cm.descripcion||'(sin nota)'} en ${cajaNom} (${cm.fecha}) [ID:${cm.id}]`;
+}).join('\n') || 'ninguno'}
 
 Últimos movimientos:
 ${ctx.movsRecientes.map(m => `• ${m.tipo==='ingreso'?'↑':'↓'} ${fmt(m.monto)} — ${m.descripcion} (${m.fecha}) [ID:${m.id}]`).join('\n') || 'ninguno'}
@@ -313,6 +326,13 @@ usa gasto/ingreso. Nunca metas un caja_id en el campo cuenta_id_opcional de gast
   Deja vacíos los campos que NO quieras cambiar.
 [ACCION:borrar_caja|caja_id]
   ⚠️ REQUIERE confirmación del usuario en pantalla — solo emite la acción.
+[ACCION:borrar_caja_movimiento|caja_movimiento_id]
+  Borra un movimiento individual de una caja (no la caja entera). El sistema
+  revierte automáticamente el efecto sobre el saldo (si era gasto, suma de
+  vuelta; si era ingreso, resta). El ID es el del LISTADO "Movimientos de
+  cajas este mes" de arriba — NO confundas con el id de la caja.
+  Ejemplo: usuario dice "borra el gasto de odontología de la caja" →
+  buscas la fila de odontología en el listado → [ACCION:borrar_caja_movimiento|<id>]
 
 — Transferencias (entre cuentas o cajas)
 [ACCION:transferir|origen_tipo|origen_id|destino_tipo|destino_id|monto]
@@ -633,6 +653,33 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
           await supabase.from('cajas').update({ saldo: nuevoSaldo }).eq('id', cajaId).eq('user_id', userId);
           ejecutadas.push({ accion, monto, desc, caja: caja.nombre, nuevo_saldo: nuevoSaldo });
         }
+
+      } else if (accion === 'borrar_caja_movimiento') {
+        const movId = (parts[1] || '').trim();
+        if (!movId) continue;
+        const mov = (contexto.cajaMovimientos || []).find(m => String(m.id) === String(movId));
+        if (!mov) {
+          console.warn('[ejecutarAcciones] borrar_caja_movimiento: no encontrado id=', movId);
+          continue;
+        }
+        // Revertir el efecto del movimiento sobre la caja antes de borrar
+        const caja = (contexto.cajas || []).find(c => String(c.id) === String(mov.caja_id));
+        if (caja) {
+          const ajuste = mov.tipo === 'ingreso' ? -parseFloat(mov.monto) : parseFloat(mov.monto);
+          const nuevoSaldo = parseFloat(caja.saldo) + ajuste;
+          await supabase.from('cajas').update({ saldo: nuevoSaldo }).eq('id', caja.id).eq('user_id', userId);
+        }
+        const { error: errDel } = await supabase.from('caja_movimientos').delete().eq('id', movId).eq('user_id', userId);
+        if (errDel) {
+          console.error('[ejecutarAcciones] borrar_caja_movimiento delete error:', errDel.message);
+          continue;
+        }
+        ejecutadas.push({
+          accion, id: movId,
+          tipo_revertido: mov.tipo, monto_revertido: parseFloat(mov.monto),
+          caja: caja ? caja.nombre : null,
+          descripcion: mov.descripcion
+        });
 
       } else if (accion === 'navegar') {
         // No muta DB — solo devuelve la sección para que el frontend cambie de tab
