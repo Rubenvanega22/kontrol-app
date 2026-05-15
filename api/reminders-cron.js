@@ -38,6 +38,8 @@ async function modoResumenDiario(res) {
   const hoy = colombiaDateString(ahora);
   const manana = colombiaDateString(new Date(ahora.getTime() + 24 * 3600 * 1000));
 
+  console.log('[reminders-cron daily] buscando eventos para fechas Colombia:', { hoy, manana, utcNow: ahora.toISOString() });
+
   const { data: eventos, error: eventsError } = await supabase
     .from('events')
     .select('*')
@@ -49,8 +51,10 @@ async function modoResumenDiario(res) {
     return res.status(500).json({ error: eventsError.message });
   }
 
+  console.log('[reminders-cron daily] eventos encontrados:', (eventos || []).length);
+
   if (!eventos || !eventos.length) {
-    return res.json({ ok: true, modo: 'diario', message: 'Sin eventos', alertas_creadas: 0 });
+    return res.json({ ok: true, modo: 'diario', message: 'Sin eventos', alertas_creadas: 0, hoy, manana });
   }
 
   const porUsuario = {};
@@ -120,6 +124,8 @@ async function modoUnaHoraAntes(res) {
   const hoyCol = colombiaDateString(ahora);
   const nowMs = ahora.getTime();
 
+  console.log('[reminders-cron 1h] buscando eventos para fecha Colombia:', { hoyCol, utcNow: ahora.toISOString() });
+
   const { data: eventos, error: eventsError } = await supabase
     .from('events')
     .select('*')
@@ -137,6 +143,8 @@ async function modoUnaHoraAntes(res) {
     return res.status(500).json({ error: eventsError.message });
   }
 
+  console.log('[reminders-cron 1h] eventos del día encontrados:', (eventos || []).length);
+
   // Filtrar a los que ocurren entre 30 y 90 min desde ahora (ventana de 60 min centrada en 1h)
   const candidatos = (eventos || []).filter(e => {
     if (!e.hora) return false;
@@ -146,8 +154,10 @@ async function modoUnaHoraAntes(res) {
     return diffMin >= 30 && diffMin <= 90;
   });
 
+  console.log('[reminders-cron 1h] candidatos en ventana 30-90 min:', candidatos.length);
+
   if (!candidatos.length) {
-    return res.json({ ok: true, modo: '1h', message: 'Sin eventos en la próxima hora', alertas_creadas: 0 });
+    return res.json({ ok: true, modo: '1h', message: 'Sin eventos en la próxima hora', alertas_creadas: 0, hoyCol });
   }
 
   const porUsuario = {};

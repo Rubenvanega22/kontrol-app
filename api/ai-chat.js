@@ -108,15 +108,36 @@ module.exports = async function handler(req, res) {
       .trim();
 
     // 5. Ejecutar acciones (registrar gastos, eventos, etc.)
+    const accionesIntencion = [...respuesta.matchAll(/\[ACCION:([^\]]+)\]/g)].length;
     const acciones = await ejecutarAcciones(respuesta, contexto, user_id);
+
+    // 5b. Verificación con Claude — si hubo intención de ejecutar acciones,
+    // pedirle que confirme con base en lo que realmente se ejecutó.
+    let respuestaFinal = respuestaLimpia;
+    if (accionesIntencion > 0) {
+      if (acciones.length === 0) {
+        respuestaFinal = 'No se pudo ejecutar el cambio.';
+      } else if (!voz) {
+        // En modo voz no hacemos segunda llamada para mantener latencia baja
+        try {
+          const verifSys = `Eres Ana, agente financiero. Recibes el resultado REAL de acciones ejecutadas en la base de datos. Confirma al usuario en MÁXIMO 2 LÍNEAS exactamente lo que se hizo, basándote SOLO en los datos del array. No inventes. Si el array está vacío o algún campo dice error, di "No se pudo ejecutar el cambio". Sin emojis salvo ✅. Español colombiano cálido.`;
+          const verifUser = `Mi respuesta intencional fue: "${respuestaLimpia}"\n\nAcciones REALMENTE ejecutadas (JSON): ${JSON.stringify(acciones)}\n\nConfirma al usuario.`;
+          const verif = await llamarClaude(verifSys, [], verifUser, null, 200);
+          const verifLimpia = (verif || '').replace(/\[ACCION:[^\]]+\]/g, '').trim();
+          if (verifLimpia) respuestaFinal = verifLimpia;
+        } catch (e) {
+          console.error('Verificación falló:', e.message);
+        }
+      }
+    }
 
     // 6. Guardar en Mem0 en segundo plano — no bloquea la respuesta
     mem0Guardar(user_id, [
       { role: 'user', content: message },
-      { role: 'assistant', content: respuestaLimpia }
+      { role: 'assistant', content: respuestaFinal }
     ]).catch(e => console.log('Mem0 guardar falló silenciosamente:', e.message));
 
-    return res.json({ ok: true, respuesta: respuestaLimpia, acciones });
+    return res.json({ ok: true, respuesta: respuestaFinal, acciones });
   } catch (error) {
     console.error('AI chat error:', error);
     return res.status(500).json({ error: error.message });
@@ -169,7 +190,9 @@ function buildSystemPrompt(ctx, memoria) {
   const fmt = n => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n);
   const hoy = new Date().toLocaleDateString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-  return `Eres Ana, agente financiero personal. Tienes MEMORIA COMPLETA del usuario y acceso TOTAL a sus finanzas.
+  return `⚠️ REGLA DE ORO (PRIORIDAD MÁXIMA): Cuando el usuario mencione un gasto, SIEMPRE pregunta primero de qué cuenta o caja sale el dinero, listando las cuentas disponibles con sus saldos. NUNCA ejecutes [ACCION:gasto] sin que el usuario haya confirmado la fuente. Excepción: si el usuario ya mencionó explícitamente la cuenta en el mismo mensaje.
+
+Eres Ana, agente financiero personal. Tienes MEMORIA COMPLETA del usuario y acceso TOTAL a sus finanzas.
 
 HOY: ${hoy}
 
@@ -512,11 +535,11 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
           const tipoMov = accion === 'caja_entrada' ? 'ingreso' : 'gasto';
           await supabase.from('movements').insert({
             user_id: userId, tipo: tipoMov,
-            descripcion: `${desc} — ${caja.nombre}`,
+            descripcion: `${desc} — ${caja.nombre} [caja:${cajaId}]`,
             monto, fecha: new Date().toISOString().split('T')[0],
             account_id: null, categoria: 'caja', source: 'ia'
           });
-          ejecutadas.push({ accion, monto, desc, caja: caja.nombre });
+          ejecutadas.push({ accion, monto, desc, caja: caja.nombre, nuevo_saldo: nuevoSaldo });
         }
 
       } else if (accion === 'navegar') {
