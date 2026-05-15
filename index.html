@@ -2657,22 +2657,108 @@ function hablarCorto(texto){
 async function hablar(texto){
   if(!ttsActivo) return;
   window.speechSynthesis.cancel();
-  if(window._kontrolAudio){window._kontrolAudio.pause();window._kontrolAudio=null;}
-  let limpio=texto.replace(/[\u{1F300}-\u{1FAFF}]/gu,'').replace(/[*_#`═\[\]]/g,'').replace(/\$/g,' pesos ').replace(/\s+/g,' ').trim();
+  if(window._kontrolAudio){ try{window._kontrolAudio.pause();}catch(_){} window._kontrolAudio=null; }
+  const limpio = texto.replace(/[\u{1F300}-\u{1FAFF}]/gu,'').replace(/[*_#`═\[\]]/g,'').replace(/\$/g,' pesos ').replace(/\s+/g,' ').trim();
   if(!limpio) return;
-  try{
-    ttsSpeaking=true;
-    document.getElementById('mic-btn').style.background='rgba(167,139,250,0.2)';
-    const res=await fetch('/api/tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({texto:limpio, voice_id: currentProfile?.voz_id || null})});
-    if(!res.ok) throw new Error('TTS error');
-    const blob=await res.blob();
-    const url=URL.createObjectURL(blob);
-    const audio=new Audio(url);
-    window._kontrolAudio=audio;
-    audio.onended=()=>{ttsSpeaking=false;URL.revokeObjectURL(url);document.getElementById('mic-btn').style.background='';};
-    audio.onerror=()=>{ttsSpeaking=false;document.getElementById('mic-btn').style.background='';_hablarFallback(limpio);};
-    await audio.play();
-  } catch(e){ttsSpeaking=false;document.getElementById('mic-btn').style.background='';_hablarFallback(limpio);}
+
+  ttsSpeaking = true;
+  document.getElementById('mic-btn').style.background='rgba(167,139,250,0.2)';
+
+  try {
+    const res = await fetch('/api/tts', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ texto: limpio, voice_id: currentProfile?.voz_id || null })
+    });
+    if(!res.ok) throw new Error('TTS error: '+res.status);
+
+    const soportaMSE = typeof MediaSource !== 'undefined'
+      && MediaSource.isTypeSupported
+      && MediaSource.isTypeSupported('audio/mpeg')
+      && res.body && typeof res.body.getReader === 'function';
+
+    if(soportaMSE){
+      _hablarStreaming(res); // fire & forget — gestiona ttsSpeaking internamente
+    } else {
+      await _hablarBlob(res, limpio);
+    }
+  } catch(e){
+    ttsSpeaking = false;
+    document.getElementById('mic-btn').style.background='';
+    _hablarFallback(limpio);
+  }
+}
+
+async function _hablarBlob(res, limpio){
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const audio = new Audio(url);
+  window._kontrolAudio = audio;
+  audio.onended = () => { ttsSpeaking=false; URL.revokeObjectURL(url); document.getElementById('mic-btn').style.background=''; };
+  audio.onerror = () => { ttsSpeaking=false; document.getElementById('mic-btn').style.background=''; _hablarFallback(limpio); };
+  await audio.play();
+}
+
+function _hablarStreaming(res){
+  const ms = new MediaSource();
+  const audio = new Audio();
+  audio.src = URL.createObjectURL(ms);
+  window._kontrolAudio = audio;
+
+  audio.onended = () => {
+    ttsSpeaking = false;
+    try { URL.revokeObjectURL(audio.src); } catch(_) {}
+    document.getElementById('mic-btn').style.background = '';
+  };
+  audio.onerror = () => {
+    console.warn('[tts] audio.onerror (streaming)');
+    ttsSpeaking = false;
+    document.getElementById('mic-btn').style.background = '';
+  };
+
+  ms.addEventListener('sourceopen', () => {
+    let sb;
+    try { sb = ms.addSourceBuffer('audio/mpeg'); }
+    catch(e){ console.error('[tts] addSourceBuffer:', e); ttsSpeaking=false; return; }
+
+    const reader = res.body.getReader();
+    const queue = [];
+    let readingDone = false;
+
+    function feedNext(){
+      if (sb.updating) return;
+      if (queue.length > 0) {
+        try { sb.appendBuffer(queue.shift()); } catch(e){ console.warn('[tts] appendBuffer:', e.message); }
+      } else if (readingDone && ms.readyState === 'open') {
+        try { ms.endOfStream(); } catch(_) {}
+      }
+    }
+    sb.addEventListener('updateend', feedNext);
+
+    (async () => {
+      let inicioReproduccion = false;
+      while (true) {
+        try {
+          const { done, value } = await reader.read();
+          if (done) {
+            readingDone = true;
+            feedNext();
+            break;
+          }
+          queue.push(value);
+          if (!sb.updating) feedNext();
+          if (!inicioReproduccion) {
+            inicioReproduccion = true;
+            audio.play().catch(e => console.warn('[tts] play():', e.message));
+          }
+        } catch (e) {
+          console.error('[tts] reader.read:', e);
+          ttsSpeaking = false;
+          break;
+        }
+      }
+    })();
+  });
 }
 function _hablarFallback(texto){
   if(!('speechSynthesis' in window)) return;

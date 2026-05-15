@@ -38,7 +38,7 @@ export default async function handler(req, res) {
         },
         body: JSON.stringify({
           text: limpio,
-          model_id: 'eleven_turbo_v2_5',
+          model_id: 'eleven_flash_v2_5', // ~2× más rápido que turbo, calidad similar
           voice_settings: {
             stability: 0.45,
             similarity_boost: 0.80,
@@ -54,13 +54,32 @@ export default async function handler(req, res) {
       return res.status(response.status).json({ error: errorText });
     }
 
-    const audioBuffer = await response.arrayBuffer();
+    // ── Streaming passthrough ──
+    // En vez de esperar audio completo (arrayBuffer), reenviamos cada chunk
+    // tan pronto ElevenLabs lo genere. El cliente con MediaSource puede
+    // empezar a reproducir desde el primer chunk (~300-500ms TTFT).
     res.setHeader('Content-Type', 'audio/mpeg');
     res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Content-Length', audioBuffer.byteLength);
-    res.send(Buffer.from(audioBuffer));
+    res.setHeader('X-Accel-Buffering', 'no'); // hint para deshabilitar buffering en proxies
+
+    const reader = response.body.getReader();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        res.write(Buffer.from(value));
+      }
+      res.end();
+    } catch (e) {
+      console.error('TTS stream interrupted:', e.message);
+      try { res.end(); } catch (_) {}
+    }
 
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    if (!res.headersSent) {
+      res.status(500).json({ error: e.message });
+    } else {
+      try { res.end(); } catch (_) {}
+    }
   }
-} 
+}
