@@ -2560,6 +2560,15 @@ async function sendIA(opts){
           } else {
             renderCurrentScreen();
           }
+          // Si el modal de detalle de caja está abierto, refrescar saldo + historial.
+          // Sin esto, los caja_entrada/salida del IA quedan invisibles hasta cerrar y reabrir.
+          const cajaModal = document.getElementById('modal-caja-detalle');
+          if(cajaModal && !cajaModal.classList.contains('hidden') && cajaDetalleId){
+            const cajaAct = DB.cajas.find(c => String(c.id) === String(cajaDetalleId));
+            const saldoEl = document.getElementById('caja-detalle-saldo');
+            if(saldoEl) saldoEl.textContent = fmtCOP(cajaAct ? cajaAct.saldo : 0);
+            renderCajaEntries();
+          }
         }, voz ? 200 : 1000);
       } else if(navegarAction && navegarAction.seccion){
         // Solo navegar — no hay mutación, no esperar al sync
