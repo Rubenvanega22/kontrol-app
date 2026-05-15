@@ -1570,7 +1570,7 @@ async function guardarMovimiento(){
 
   // Actualizar saldo de cuenta en Supabase
   if(cuentaId){
-    const cuenta = DB.cuentas.find(c=>c.id===cuentaId);
+    const cuenta = DB.cuentas.find(c=>String(c.id)===String(cuentaId));
     if(cuenta){
       const nuevoSaldo = movTipo==='ingreso' ? cuenta.saldo+monto : cuenta.saldo-monto;
       await supa.from('accounts').update({ saldo: nuevoSaldo }).eq('id', cuentaId).eq('user_id', currentUser.id);
@@ -1672,7 +1672,7 @@ function renderMovimientos(){
   el.innerHTML = movs.map(m=>{
     const color = m.tipo==='ingreso'?'var(--green)':'var(--red)';
     const signo = m.tipo==='ingreso'?'+':'-';
-    const cuenta = DB.cuentas.find(c=>c.id===m.cuentaId);
+    const cuenta = DB.cuentas.find(c=>String(c.id)===String(m.cuentaId));
     return `<div class="mov-row">
       <div class="mov-ico" style="background:${m.tipo==='ingreso'?'rgba(74,222,128,0.1)':'rgba(248,113,113,0.1)'}">${catIco[m.categoria]||'📦'}</div>
       <div class="mov-info">
@@ -1967,12 +1967,12 @@ function renderPagos(){
 
 function abrirPagoDetalle(id){
   pagoDetalleId = id;
-  const p = DB.pagos.find(x=>x.id===id);
+  const p = DB.pagos.find(x=>String(x.id)===String(id));
   if(!p) return;
   document.getElementById('pago-detalle-nombre').textContent = p.nombre;
   const hoyStr = todayStr();
   const diff = Math.floor((new Date(p.fechaLimite+'T12:00:00')-new Date(hoyStr+'T12:00:00'))/(1000*60*60*24));
-  const cuenta = DB.cuentas.find(c=>c.id===p.cuentaId);
+  const cuenta = DB.cuentas.find(c=>String(c.id)===String(p.cuentaId));
   document.getElementById('pago-detalle-body').innerHTML = `
     <div style="margin-bottom:12px">
       <div style="font-size:26px;font-family:'Syne',sans-serif;font-weight:900;color:var(--t1)">${fmtCOP(p.monto)}</div>
@@ -1985,13 +1985,13 @@ function abrirPagoDetalle(id){
 }
 
 function marcarPagado(){
-  const p = DB.pagos.find(x=>x.id===pagoDetalleId);
+  const p = DB.pagos.find(x=>String(x.id)===String(pagoDetalleId));
   if(!p){ hideModal('modal-pago-detalle'); return; }
   if(p.status==='pagado'){ toast('Ya está marcado como pagado','var(--amber)'); return; }
 
   p.status = 'pagado';
   // Crear movimiento automático
-  const cuenta = DB.cuentas.find(c=>c.id===p.cuentaId);
+  const cuenta = DB.cuentas.find(c=>String(c.id)===String(p.cuentaId));
   if(cuenta) cuenta.saldo -= p.monto;
   DB.movimientos.unshift({ id:uid(), tipo:'gasto', descripcion:'Pago: '+p.nombre, monto:p.monto, fecha:todayStr(), cuentaId:p.cuentaId, categoria:'servicios', nota:'Pago automático', source:'pago' });
   save();
@@ -2138,8 +2138,8 @@ async function borrarCajaLocal(id){
 
 function abrirCajaDetalle(id){
   cajaDetalleId = id;
-  const c = DB.cajas.find(x=>x.id===id);
-  if(!c) return;
+  const c = DB.cajas.find(x=>String(x.id)===String(id));
+  if(!c){ console.warn('[abrirCajaDetalle] caja no encontrada id=', id, 'DB.cajas ids=', DB.cajas.map(x=>x.id)); toast('Caja no encontrada', 'var(--red)'); return; }
   document.getElementById('caja-detalle-nombre').textContent = c.nombre;
   document.getElementById('caja-detalle-saldo').textContent = fmtCOP(c.saldo);
   renderCajaEntries();
@@ -2156,7 +2156,7 @@ async function guardarCajaEntry(){
   const monto = parseCOP(document.getElementById('ce-monto').value);
   const nota = document.getElementById('ce-nota').value.trim();
   if(!monto){ toast('⚠️ Ingresa un monto','var(--amber)'); return; }
-  const caja = DB.cajas.find(c=>c.id===cajaDetalleId);
+  const caja = DB.cajas.find(c=>String(c.id)===String(cajaDetalleId));
   if(!caja){ toast('Caja no encontrada','var(--red)'); return; }
 
   const tipoMov = ceTipo === 'in' ? 'ingreso' : 'gasto';
@@ -2180,7 +2180,7 @@ async function guardarCajaEntry(){
   document.getElementById('ce-nota').value='';
   toast('✅ Registrado','var(--green)');
   await syncDesdeSupabase();
-  const cajaAct = DB.cajas.find(c=>c.id===cajaDetalleId);
+  const cajaAct = DB.cajas.find(c=>String(c.id)===String(cajaDetalleId));
   document.getElementById('caja-detalle-saldo').textContent = fmtCOP(cajaAct ? cajaAct.saldo : 0);
   renderCajaEntries();
 }
@@ -3704,7 +3704,7 @@ function guardarMovimientoScan(){
   if(!monto){ toast('⚠️ Ingresa un monto válido','var(--amber)'); return; }
 
   DB.movimientos.unshift({id:uid(), tipo:'gasto', descripcion:desc, monto, fecha, cuentaId, categoria, nota:'Escaneado con IA', source:'scan'});
-  const cuenta = DB.cuentas.find(c=>c.id===cuentaId);
+  const cuenta = DB.cuentas.find(c=>String(c.id)===String(cuentaId));
   if(cuenta) cuenta.saldo -= monto;
   save();
   toast('✅ Gasto registrado desde factura','var(--green)');

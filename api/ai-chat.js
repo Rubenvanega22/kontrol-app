@@ -416,7 +416,7 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
         if (!monto || monto <= 0) continue;
 
         const cuenta = cuentaIdEspecificada
-          ? contexto.cuentas.find(c => c.id === cuentaIdEspecificada)
+          ? contexto.cuentas.find(c => String(c.id) === String(cuentaIdEspecificada))
           : contexto.cuentas[0];
         const cuentaId = cuenta?.id || null;
 
@@ -443,7 +443,7 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
         const nuevoMonto = parts[2] && parts[2].trim() ? parseMontoSeguro(parts[2]) : null;
         const nuevaDesc = (parts[3] || '').trim() || null;
         const nuevaFecha = (parts[4] || '').trim() || null;
-        const movActual = contexto.movimientos.find(m => m.id === movId) || contexto.movsRecientes.find(m => m.id === movId);
+        const movActual = contexto.movimientos.find(m => String(m.id) === String(movId)) || contexto.movsRecientes.find(m => String(m.id) === String(movId));
         const updates = {};
         if (nuevoMonto !== null) updates.monto = nuevoMonto;
         if (nuevaDesc) updates.descripcion = nuevaDesc;
@@ -452,7 +452,7 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
           const { error } = await supabase.from('movements').update(updates).eq('id', movId).eq('user_id', userId);
           if (!error) {
             if (nuevoMonto !== null && movActual && movActual.account_id) {
-              const cuenta = contexto.cuentas.find(c => c.id === movActual.account_id);
+              const cuenta = contexto.cuentas.find(c => String(c.id) === String(movActual.account_id));
               if (cuenta) {
                 const diff = nuevoMonto - parseFloat(movActual.monto);
                 const ajuste = movActual.tipo === 'ingreso' ? diff : -diff;
@@ -465,9 +465,9 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
 
       } else if (accion === 'borrar_movimiento') {
         const movId = parts[1];
-        const mov = contexto.movimientos.find(m => m.id === movId) || contexto.movsRecientes.find(m => m.id === movId);
+        const mov = contexto.movimientos.find(m => String(m.id) === String(movId)) || contexto.movsRecientes.find(m => String(m.id) === String(movId));
         if (mov && mov.account_id) {
-          const cuenta = contexto.cuentas.find(c => c.id === mov.account_id);
+          const cuenta = contexto.cuentas.find(c => String(c.id) === String(mov.account_id));
           if (cuenta) {
             const ajuste = mov.tipo === 'ingreso' ? -parseFloat(mov.monto) : parseFloat(mov.monto);
             await supabase.from('accounts').update({ saldo: parseFloat(cuenta.saldo) + ajuste }).eq('id', cuenta.id);
@@ -541,8 +541,8 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
           const tablaDestino = destinoTipo === 'caja' ? 'cajas' : 'accounts';
           const fuenteOrigen = origenTipo === 'caja' ? contexto.cajas : contexto.cuentas;
           const fuenteDestino = destinoTipo === 'caja' ? contexto.cajas : contexto.cuentas;
-          const origen = fuenteOrigen.find(x => x.id === origenId);
-          const destino = fuenteDestino.find(x => x.id === destinoId);
+          const origen = fuenteOrigen.find(x => String(x.id) === String(origenId));
+          const destino = fuenteDestino.find(x => String(x.id) === String(destinoId));
           if (origen && destino) {
             await supabase.from(tablaOrigen).update({ saldo: parseFloat(origen.saldo) - monto }).eq('id', origenId);
             await supabase.from(tablaDestino).update({ saldo: parseFloat(destino.saldo) + monto }).eq('id', destinoId);
@@ -571,7 +571,7 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
         const cajaId = (parts[1] || '').trim();
         const monto = parseMontoSeguro(parts[2]);
         const desc = (parts[3] || (accion === 'caja_entrada' ? 'Entrada de caja' : 'Salida de caja')).trim();
-        const caja = contexto.cajas.find(c => c.id === cajaId);
+        const caja = contexto.cajas.find(c => String(c.id) === String(cajaId));
         if (caja && monto > 0) {
           const nuevoSaldo = accion === 'caja_entrada'
             ? parseFloat(caja.saldo) + monto
@@ -624,7 +624,7 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
       } else if (accion === 'borrar_cuenta') {
         // NO eliminar acá — devolver confirmación requerida para el frontend
         const cuentaId = (parts[1] || '').trim();
-        const cuenta = contexto.cuentas.find(c => c.id === cuentaId);
+        const cuenta = contexto.cuentas.find(c => String(c.id) === String(cuentaId));
         if (cuenta) {
           ejecutadas.push({
             accion,
@@ -638,7 +638,7 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
       } else if (accion === 'borrar_caja') {
         // NO eliminar acá — devolver confirmación requerida para el frontend
         const cajaId = (parts[1] || '').trim();
-        const caja = contexto.cajas.find(c => c.id === cajaId);
+        const caja = contexto.cajas.find(c => String(c.id) === String(cajaId));
         if (caja) {
           ejecutadas.push({
             accion,
