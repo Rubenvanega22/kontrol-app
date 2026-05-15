@@ -266,6 +266,24 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
   ❌ ACCION:gasto|25000|mercado                  (faltan los corchetes)
   ❌ [ACCION:gasto|25000|mercado|alimentacion|Bancolombia]  (usa el ID, no el nombre)
 
+🚨 REGLA CRÍTICA: CUENTA vs CAJA — NUNCA LAS CONFUNDAS 🚨
+
+Mira el listado de "Cuentas: …" y "Cajas: …" más arriba. Cada uno está separado.
+- Si la fuente del dinero está en el listado de CUENTAS (banco/billetera/efectivo):
+    → [ACCION:gasto|monto|desc|cat|<cuenta_id>]
+    → [ACCION:ingreso|monto|desc|cat|<cuenta_id>]
+- Si la fuente del dinero está en el listado de CAJAS:
+    → [ACCION:caja_salida|<caja_id>|monto|desc]   (NUNCA gasto)
+    → [ACCION:caja_entrada|<caja_id>|monto|desc]  (NUNCA ingreso)
+
+❌ NUNCA hagas esto: [ACCION:gasto|230000|odontologia|salud|4]  cuando "4" es una CAJA.
+   El sistema lo va a registrar como gasto normal sin descontar de la caja.
+✅ Hazlo así:        [ACCION:caja_salida|4|230000|odontologia]  ← descuenta de la caja correctamente.
+
+Cómo distinguirlas: revisa los IDs listados arriba. Si el ID que mencionó el usuario
+aparece en la línea "Cajas:", usa caja_salida/caja_entrada. Si aparece en "Cuentas:",
+usa gasto/ingreso. Nunca metas un caja_id en el campo cuenta_id_opcional de gasto/ingreso.
+
 — Movimientos
 [ACCION:gasto|monto|descripcion|categoria|cuenta_id_opcional]
 [ACCION:ingreso|monto|descripcion|categoria|cuenta_id_opcional]
@@ -414,6 +432,33 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
         const cat = (parts[3] || 'otro').trim();
         const cuentaIdEspecificada = (parts[4] || '').trim();
         if (!monto || monto <= 0) continue;
+
+        // 🛡️ Guardia defensiva: si Claude mete un caja_id en el slot de cuenta_id_opcional,
+        // re-enruta a caja_salida/caja_entrada en vez de hacer un movements insert huérfano.
+        // Sintoma observado en logs: [ACCION:gasto|230000|odontologia|salud|4] donde 4 es caja.
+        if (cuentaIdEspecificada) {
+          const matchCaja = contexto.cajas.find(c => String(c.id) === String(cuentaIdEspecificada));
+          const matchCuenta = contexto.cuentas.find(c => String(c.id) === String(cuentaIdEspecificada));
+          if (matchCaja && !matchCuenta) {
+            console.warn('[ejecutarAcciones] auto-reroute: gasto/ingreso con caja_id', cuentaIdEspecificada, '→ caja_salida/entrada');
+            const nuevoSaldo = accion === 'ingreso'
+              ? parseFloat(matchCaja.saldo) + monto
+              : parseFloat(matchCaja.saldo) - monto;
+            const tipoMov = accion;
+            const { error: errCajaMov } = await supabase.from('caja_movimientos').insert({
+              user_id: userId, caja_id: matchCaja.id, tipo: tipoMov,
+              descripcion: desc, monto, fecha: new Date().toISOString().split('T')[0]
+            });
+            if (errCajaMov) { console.error('[auto-reroute] caja_movimientos insert error:', errCajaMov.message); continue; }
+            await supabase.from('cajas').update({ saldo: nuevoSaldo }).eq('id', matchCaja.id).eq('user_id', userId);
+            ejecutadas.push({
+              accion: accion === 'gasto' ? 'caja_salida' : 'caja_entrada',
+              monto, desc, caja: matchCaja.nombre, nuevo_saldo: nuevoSaldo,
+              auto_rerouteado_desde: accion
+            });
+            continue;
+          }
+        }
 
         const cuenta = cuentaIdEspecificada
           ? contexto.cuentas.find(c => String(c.id) === String(cuentaIdEspecificada))
