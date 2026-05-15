@@ -96,8 +96,12 @@ module.exports = async function handler(req, res) {
       systemPrompt = `MODO VOZ: responde máximo 2 oraciones cortas y directas.\n\n${systemPrompt}`;
     }
 
-    // 4. Llamar a Claude (max_tokens más bajo en modo voz para latencia menor)
-    const respuesta = await llamarClaude(systemPrompt, history, message, imagen_base64, voz ? 150 : 600);
+    // 4. Llamar al LLM
+    //    - voz=true sin imagen → Groq llama-3.1-8b-instant (más rápido, ~300-800ms)
+    //    - cualquier otro caso → Claude (default, soporta visión)
+    const respuesta = (voz && !imagen_base64)
+      ? await llamarGroq(systemPrompt, history, message, 150)
+      : await llamarClaude(systemPrompt, history, message, imagen_base64, voz ? 150 : 600);
     const respuestaLimpia = respuesta
       .replace(/\[ACCION:[^\]]+\]/g, '')
       .replace(/\n{3,}/g, '\n\n')
@@ -293,6 +297,37 @@ async function llamarClaude(system, history, message, imagen, maxTokens = 600) {
   const data = await response.json();
   if (data.error) throw new Error(data.error.message);
   return data.content[0].text;
+}
+
+// ═══ LLAMAR A GROQ (modo voz — más rápido que Claude) ═══
+async function llamarGroq(system, history, message, maxTokens = 150) {
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) throw new Error('GROQ_API_KEY no configurada');
+
+  // Groq usa formato OpenAI: system va dentro de messages, content como string
+  const messages = [
+    { role: 'system', content: system },
+    ...history.slice(-14).map(h => ({ role: h.role, content: typeof h.content === 'string' ? h.content : '' })),
+    { role: 'user', content: message || '' }
+  ];
+
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: 'llama-3.1-8b-instant',
+      max_tokens: maxTokens,
+      temperature: 0.5,
+      messages
+    })
+  });
+
+  const data = await response.json();
+  if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+  return data.choices?.[0]?.message?.content || '';
 }
 
 // ═══ EJECUTAR ACCIONES — todo queda visible en la app ═══
