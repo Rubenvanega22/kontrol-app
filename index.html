@@ -159,8 +159,11 @@ html,body{width:100%;height:100%;background:var(--bg);font-family:'DM Sans',sans
 .bb-inp::placeholder{color:var(--t3);}
 .bb-send{font-size:13px;color:var(--blue);flex-shrink:0;cursor:pointer;}
 .bb-send-btn{background:none;border:none;font-size:16px;color:var(--blue);flex-shrink:0;cursor:pointer;padding:2px 4px;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
-.bb-mic{width:38px;height:38px;border-radius:50%;background:var(--card2);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:17px;cursor:pointer;flex-shrink:0;transition:all 0.15s;}
-.bb-mic.active{background:rgba(248,113,113,0.2);border-color:var(--red);animation:pulse 1s infinite;}
+.bb-mic{width:38px;height:38px;border-radius:50%;background:var(--card2);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all 0.15s;color:var(--t1);-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+.bb-mic.active{background:rgba(248,113,113,0.2);border-color:var(--red);color:var(--red);animation:pulse 1s infinite;}
+.rec-led{position:fixed;top:max(8px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);width:10px;height:10px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e, 0 0 18px rgba(34,197,94,0.6);display:none;z-index:9999;pointer-events:none;}
+.rec-led.on{display:block;animation:rec-pulse 1s ease-in-out infinite;}
+@keyframes rec-pulse{0%,100%{opacity:1;transform:translateX(-50%) scale(1);}50%{opacity:0.55;transform:translateX(-50%) scale(1.3);}}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(248,113,113,0.4);}50%{box-shadow:0 0 0 8px rgba(248,113,113,0);}}
 
 /* MODALS */
@@ -851,8 +854,15 @@ select.form-inp option{background:#0c1228;}
            onmouseleave="stopRecordingAndSend(event)"
            ontouchstart="startRecording(event)" ontouchend="stopRecordingAndSend(event)"
            ontouchcancel="stopRecordingAndSend(event)"
-           title="Mantén presionado para hablar">🎤</div>
-      <div class="bb-mic" id="tts-btn" onclick="toggleTTS()" title="Voz activa" style="font-size:15px">🔊</div>
+           title="Mantén presionado para hablar">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" id="mic-wave-icon">
+          <line x1="4" y1="11" x2="4" y2="13"/>
+          <line x1="8" y1="8" x2="8" y2="16"/>
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="16" y1="8" x2="16" y2="16"/>
+          <line x1="20" y1="11" x2="20" y2="13"/>
+        </svg>
+      </div>
     </div>
   </div>
 
@@ -860,6 +870,9 @@ select.form-inp option{background:#0c1228;}
 
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
+
+<!-- LED de grabación: aparece arriba al centro mientras el usuario mantiene el botón mic -->
+<div class="rec-led" id="rec-led" aria-hidden="true"></div>
 
 <!-- ══ MODALES ══ -->
 
@@ -2485,9 +2498,8 @@ async function startRecording(e){
       const audioBlob = new Blob(audioChunks, { type: blobType });
       audioChunks = [];
 
-      // Indicador visual de transcripción en curso
-      const micBtn = document.getElementById('mic-btn');
-      if(micBtn) micBtn.textContent = '⏳';
+      // El LED y el estado .active ya se apagaron en stopRecordingAndSend().
+      // No se cambia el icono — se mantiene el SVG de onda.
 
       try {
         const res = await fetch('/api/transcribe', {
@@ -2517,10 +2529,9 @@ async function startRecording(e){
     mediaRecorder.start();
     isRecording = true;
     const micBtn = document.getElementById('mic-btn');
-    if(micBtn){
-      micBtn.classList.add('active');
-      micBtn.textContent = '🔴';
-    }
+    if(micBtn) micBtn.classList.add('active');
+    const led = document.getElementById('rec-led');
+    if(led) led.classList.add('on');
   } catch(err){
     console.error('[mic] no se pudo abrir el micrófono:', err);
     toast('⚠️ No se pudo acceder al mic: ' + (err.message || err.name), 'var(--red)');
@@ -2532,6 +2543,11 @@ function stopRecordingAndSend(e){
   if(e){ e.preventDefault(); e.stopPropagation(); }
   if(!isRecording) return;
   isRecording = false;
+  // Apagar feedback visual al soltar
+  const micBtn = document.getElementById('mic-btn');
+  if(micBtn) micBtn.classList.remove('active');
+  const led = document.getElementById('rec-led');
+  if(led) led.classList.remove('on');
   try {
     if(mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
   } catch(_) {}
@@ -2542,9 +2558,10 @@ function resetMicUI(){
   const micBtn = document.getElementById('mic-btn');
   if(micBtn){
     micBtn.classList.remove('active');
-    micBtn.textContent = '🎤';
     micBtn.style.background = '';
   }
+  const led = document.getElementById('rec-led');
+  if(led) led.classList.remove('on');
 }
 
 // Fin push-to-talk
