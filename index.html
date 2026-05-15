@@ -1146,32 +1146,6 @@ select.form-inp option{background:#0c1228;}
   </div>
 </div>
 
-<!-- Detalle Caja -->
-<div class="modal-overlay hidden" id="modal-caja-detalle" onclick="closeModalOutside(event,'modal-caja-detalle')">
-  <div class="modal">
-    <div class="modal-hdr">
-      <span class="modal-ttl" id="caja-detalle-nombre">Caja</span>
-      <button class="modal-close" onclick="hideModal('modal-caja-detalle')">✕</button>
-    </div>
-    <div id="caja-detalle-saldo" style="font-family:'Syne',sans-serif;font-size:26px;font-weight:900;color:#4ade80;margin-bottom:16px"></div>
-    <div class="tipo-row" style="margin-bottom:14px">
-      <button class="tipo-btn on-ingreso" id="ce-tipo-in" onclick="setCETipo('in')">📥 Entrada</button>
-      <button class="tipo-btn" id="ce-tipo-out" onclick="setCETipo('out')">📤 Retiro</button>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Monto (COP)</label>
-      <input class="form-inp" id="ce-monto" type="text" inputmode="numeric" placeholder="0" oninput="formatMonto(this)"/>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Motivo / Nota</label>
-      <input class="form-inp" id="ce-nota" placeholder="¿Para qué?"/>
-    </div>
-    <button class="btn-primary" onclick="guardarCajaEntry()">Registrar</button>
-    <div class="sc-hdr" style="margin-top:14px"><div class="sc-ttl">Historial</div></div>
-    <div id="caja-entries-list"></div>
-  </div>
-</div>
-
 <!-- Nuevo Evento Agenda -->
 <div class="modal-overlay hidden" id="modal-nuevo-evento" onclick="closeModalOutside(event,'modal-nuevo-evento')">
   <div class="modal">
@@ -1521,7 +1495,6 @@ function showModal(id){
     document.getElementById('pago-fecha').value = todayStr();
     populateCuentasSelect('pago-cuenta');
   }
-  if(id==='modal-caja-detalle') renderCajaEntries();
   document.getElementById(id).classList.remove('hidden');
 }
 function hideModal(id){ document.getElementById(id).classList.add('hidden'); }
@@ -1636,10 +1609,6 @@ function abrirQuickMov(tipo, id, tipoInicial){
   document.getElementById('qm-categoria').value = tipo === 'caja' ? 'otro' : 'otro';
   setQMTipo(tipoInicial === 'ingreso' ? 'ingreso' : 'gasto');
   showModal('modal-quick-mov');
-}
-
-function abrirQuickMovCaja(id, tipo){
-  abrirQuickMov('caja', id, tipo);
 }
 
 function setQMTipo(t){
@@ -2088,9 +2057,14 @@ async function guardarCaja(){
 
 function renderCajas(){
   const el = document.getElementById('cajas-grid');
-  const cajas = DB.cajas;
-  const cards = cajas.map(c=>`
-    <div class="caja-card" style="position:relative" onclick="abrirCajaDetalle('${c.id}')">
+  if(!el) return;
+  const cajas = DB.cajas || [];
+  const cards = cajas.map(c => {
+    const expanded = String(cajaDetalleId) === String(c.id);
+    if(expanded) return renderCajaExpandida(c);
+    // Card colapsada (vista normal del grid)
+    return `
+    <div class="caja-card" style="position:relative" onclick="toggleCajaExpand('${c.id}')">
       <div style="position:absolute;top:6px;right:6px;display:flex;gap:4px">
         <button onclick="event.stopPropagation();editarCaja('${c.id}')" style="background:rgba(255,255,255,0.08);border:none;border-radius:6px;width:24px;height:24px;cursor:pointer;font-size:11px;padding:0" title="Editar">✏️</button>
         <button onclick="event.stopPropagation();borrarCajaLocal('${c.id}')" style="background:rgba(248,113,113,0.15);border:none;border-radius:6px;width:24px;height:24px;cursor:pointer;font-size:11px;padding:0" title="Eliminar">🗑️</button>
@@ -2100,13 +2074,62 @@ function renderCajas(){
       <div class="caja-amt">${fmtCOP(c.saldo)}</div>
       <div class="caja-bar"><div class="caja-fill" style="width:60%;background:var(--blue)"></div></div>
       <div style="display:flex;gap:5px;margin-top:7px">
-        <button onclick="event.stopPropagation();abrirQuickMovCaja('${c.id}','ingreso')" style="flex:1;background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.25);border-radius:7px;padding:5px 0;color:#4ade80;font-size:10.5px;font-weight:700;cursor:pointer">+ Ingreso</button>
-        <button onclick="event.stopPropagation();abrirQuickMovCaja('${c.id}','gasto')" style="flex:1;background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.25);border-radius:7px;padding:5px 0;color:#f87171;font-size:10.5px;font-weight:700;cursor:pointer">− Gasto</button>
+        <button onclick="event.stopPropagation();expandirCajaConTipo('${c.id}','ingreso')" style="flex:1;background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.25);border-radius:7px;padding:5px 0;color:#4ade80;font-size:10.5px;font-weight:700;cursor:pointer">+ Ingreso</button>
+        <button onclick="event.stopPropagation();expandirCajaConTipo('${c.id}','gasto')" style="flex:1;background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.25);border-radius:7px;padding:5px 0;color:#f87171;font-size:10.5px;font-weight:700;cursor:pointer">− Gasto</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   el.innerHTML = cards + `<div class="caja-card" style="border-style:dashed;background:transparent;display:flex;align-items:center;justify-content:center;flex-direction:column;min-height:110px" onclick="showModal('modal-nueva-caja')">
     <div style="font-size:24px;color:var(--t3)">+</div>
     <div style="font-size:10px;color:var(--t3);margin-top:4px">Nueva caja</div>
+  </div>`;
+
+  // Tras pintar, si hay caja expandida con tipo preseleccionado por
+  // expandirCajaConTipo, aplicarlo al toggle de tipo.
+  if(cajaDetalleId && cajaPendienteTipo){
+    setCETipo(cajaPendienteTipo === 'ingreso' ? 'in' : 'out');
+    cajaPendienteTipo = null;
+    const inp = document.getElementById('ce-monto');
+    if(inp) inp.focus();
+  }
+}
+
+// HTML de una caja en estado expandido — ocupa el ancho completo del grid (ambas columnas).
+// Muestra: header (nombre, saldo, botones de editar/borrar/cerrar), form de registro y historial mensual.
+function renderCajaExpandida(c){
+  return `
+  <div class="caja-card caja-card-expandida" style="grid-column:1/-1;position:relative;padding:14px;border-color:var(--blue)" onclick="event.stopPropagation()">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:18px">🏦</span>
+          <span style="font-size:13px;font-weight:700;color:var(--t1);overflow:hidden;text-overflow:ellipsis">${c.nombre}</span>
+        </div>
+        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:900;color:#4ade80;margin-top:4px" id="caja-exp-saldo-${c.id}">${fmtCOP(c.saldo)}</div>
+      </div>
+      <div style="display:flex;gap:4px">
+        <button onclick="event.stopPropagation();editarCaja('${c.id}')" style="background:rgba(255,255,255,0.08);border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:12px;padding:0" title="Editar">✏️</button>
+        <button onclick="event.stopPropagation();borrarCajaLocal('${c.id}')" style="background:rgba(248,113,113,0.15);border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:12px;padding:0" title="Eliminar">🗑️</button>
+        <button onclick="event.stopPropagation();toggleCajaExpand('${c.id}')" style="background:rgba(255,255,255,0.08);border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:13px;padding:0;color:var(--t2)" title="Cerrar">✕</button>
+      </div>
+    </div>
+
+    <div class="tipo-row" style="margin-bottom:10px">
+      <button class="tipo-btn on-ingreso" id="ce-tipo-in" onclick="event.stopPropagation();setCETipo('in')">📥 Entrada</button>
+      <button class="tipo-btn" id="ce-tipo-out" onclick="event.stopPropagation();setCETipo('out')">📤 Retiro</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Monto (COP)</label>
+      <input class="form-inp" id="ce-monto" type="text" inputmode="numeric" placeholder="0" oninput="formatMonto(this)" onclick="event.stopPropagation()"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Motivo / Nota</label>
+      <input class="form-inp" id="ce-nota" placeholder="¿Para qué?" onclick="event.stopPropagation()"/>
+    </div>
+    <button class="btn-primary" onclick="event.stopPropagation();guardarCajaEntry()">Registrar</button>
+
+    <div class="sc-hdr" style="margin-top:14px"><div class="sc-ttl">Historial del mes</div></div>
+    <div id="caja-entries-list"></div>
   </div>`;
 }
 
@@ -2168,20 +2191,48 @@ async function borrarCajaLocal(id){
   toast('🗑️ Caja eliminada', 'var(--t2)');
 }
 
-function abrirCajaDetalle(id){
-  cajaDetalleId = id;
-  const c = DB.cajas.find(x=>String(x.id)===String(id));
-  if(!c){ console.warn('[abrirCajaDetalle] caja no encontrada id=', id, 'DB.cajas ids=', DB.cajas.map(x=>x.id)); toast('Caja no encontrada', 'var(--red)'); return; }
-  document.getElementById('caja-detalle-nombre').textContent = c.nombre;
-  document.getElementById('caja-detalle-saldo').textContent = fmtCOP(c.saldo);
-  renderCajaEntries();
-  showModal('modal-caja-detalle');
+// Tipo pendiente cuando se llama expandirCajaConTipo desde un card colapsado:
+// renderCajas() lo lee tras pintar para aplicarlo al toggle in/out de la caja recién expandida.
+let cajaPendienteTipo = null;
+
+// Solo una caja puede estar expandida a la vez. Tocar la misma la colapsa.
+function toggleCajaExpand(id){
+  const c = DB.cajas.find(x => String(x.id) === String(id));
+  if(!c){ toast('Caja no encontrada', 'var(--red)'); return; }
+  cajaDetalleId = (String(cajaDetalleId) === String(id)) ? null : id;
+  renderCajas();
+  if(cajaDetalleId){
+    renderCajaEntries();
+    // Scroll para asegurar que la caja expandida quede visible
+    const node = document.querySelector('.caja-card-expandida');
+    if(node && node.scrollIntoView){
+      setTimeout(()=>node.scrollIntoView({behavior:'smooth', block:'center'}), 50);
+    }
+  }
+}
+
+// Expande la caja y selecciona el tipo (ingreso/gasto) en el toggle.
+function expandirCajaConTipo(id, tipo){
+  cajaPendienteTipo = tipo;
+  if(String(cajaDetalleId) === String(id)){
+    // Ya está expandida — solo cambiar tipo
+    setCETipo(tipo === 'ingreso' ? 'in' : 'out');
+    cajaPendienteTipo = null;
+    const inp = document.getElementById('ce-monto');
+    if(inp) inp.focus();
+  } else {
+    cajaDetalleId = id;
+    renderCajas();
+    renderCajaEntries();
+  }
 }
 
 function setCETipo(t){
   ceTipo = t;
-  document.getElementById('ce-tipo-in').className='tipo-btn'+(t==='in'?' on-ingreso':'');
-  document.getElementById('ce-tipo-out').className='tipo-btn'+(t==='out'?' on-gasto':'');
+  const inEl = document.getElementById('ce-tipo-in');
+  const outEl = document.getElementById('ce-tipo-out');
+  if(inEl) inEl.className='tipo-btn'+(t==='in'?' on-ingreso':'');
+  if(outEl) outEl.className='tipo-btn'+(t==='out'?' on-gasto':'');
 }
 
 async function guardarCajaEntry(){
@@ -2208,12 +2259,14 @@ async function guardarCajaEntry(){
   const { error: errCaja } = await supa.from('cajas').update({ saldo: nuevoSaldo }).eq('id', cajaDetalleId).eq('user_id', currentUser.id);
   if(errCaja){ toast('❌ Error caja: '+errCaja.message,'var(--red)'); return; }
 
-  document.getElementById('ce-monto').value='';
-  document.getElementById('ce-nota').value='';
+  const monEl = document.getElementById('ce-monto');
+  const notaEl = document.getElementById('ce-nota');
+  if(monEl) monEl.value='';
+  if(notaEl) notaEl.value='';
   toast('✅ Registrado','var(--green)');
   await syncDesdeSupabase();
-  const cajaAct = DB.cajas.find(c=>String(c.id)===String(cajaDetalleId));
-  document.getElementById('caja-detalle-saldo').textContent = fmtCOP(cajaAct ? cajaAct.saldo : 0);
+  // El re-render de cajas reconstruye la card expandida con saldo nuevo + repinta historial.
+  renderCajas();
   renderCajaEntries();
 }
 
@@ -2598,13 +2651,10 @@ async function sendIA(opts){
             if(autoTab) goTab(autoTab);
             else renderCurrentScreen();
           }
-          // Si el modal de detalle de caja está abierto, refrescar saldo + historial.
-          // Sin esto, los caja_entrada/salida del IA quedan invisibles hasta cerrar y reabrir.
-          const cajaModal = document.getElementById('modal-caja-detalle');
-          if(cajaModal && !cajaModal.classList.contains('hidden') && cajaDetalleId){
-            const cajaAct = DB.cajas.find(c => String(c.id) === String(cajaDetalleId));
-            const saldoEl = document.getElementById('caja-detalle-saldo');
-            if(saldoEl) saldoEl.textContent = fmtCOP(cajaAct ? cajaAct.saldo : 0);
+          // Si hay una caja expandida inline en la pantalla de cajas, repintarla con
+          // el saldo nuevo + historial actualizado tras la acción IA.
+          if(cajaDetalleId){
+            renderCajas();
             renderCajaEntries();
           }
         }, voz ? 200 : 1000);
