@@ -96,20 +96,21 @@ module.exports = async function handler(req, res) {
       systemPrompt = `MODO VOZ: responde máximo 2 oraciones cortas y directas.\n\n${systemPrompt}`;
     }
 
-    // 4. Llamar al LLM
-    //    - voz=true sin imagen → Groq llama-3.1-8b-instant (más rápido, ~300-800ms)
-    //    - cualquier otro caso → Claude (default, soporta visión)
-    const respuesta = (voz && !imagen_base64)
-      ? await llamarGroq(systemPrompt, history, message, 150)
-      : await llamarClaude(systemPrompt, history, message, imagen_base64, voz ? 150 : 600);
+    // 4. Llamar al LLM — siempre Claude Haiku (fiabilidad sobre velocidad)
+    //    Groq llama-3.1-8b no seguía consistentemente el formato [ACCION:...]
+    const respuesta = await llamarClaude(systemPrompt, history, message, imagen_base64, voz ? 200 : 600);
+    console.log('[ai-chat] RAW LLM response:', JSON.stringify(respuesta));
     const respuestaLimpia = respuesta
       .replace(/\[ACCION:[^\]]+\]/g, '')
       .replace(/\n{3,}/g, '\n\n')
       .trim();
 
     // 5. Ejecutar acciones (registrar gastos, eventos, etc.)
-    const accionesIntencion = [...respuesta.matchAll(/\[ACCION:([^\]]+)\]/g)].length;
+    const accionMatches = [...respuesta.matchAll(/\[ACCION:([^\]]+)\]/g)];
+    const accionesIntencion = accionMatches.length;
+    console.log('[ai-chat] markers [ACCION:] encontrados:', accionesIntencion, accionMatches.map(m => m[0]));
     const acciones = await ejecutarAcciones(respuesta, contexto, user_id);
+    console.log('[ai-chat] acciones realmente ejecutadas:', acciones.length, JSON.stringify(acciones));
 
     // 5b. Verificación con Claude — si hubo intención de ejecutar acciones,
     // pedirle que confirme con base en lo que realmente se ejecutó.
@@ -233,6 +234,38 @@ ${ctx.recordatorios.map(r => {
 }).join('\n') || 'ninguno'}
 
 ═══ ACCIONES INVISIBLES — úsalas al final de tu respuesta ═══
+
+⚠️ FORMATO OBLIGATORIO Y EXACTO ⚠️
+- Cada acción va en una línea APARTE al final del mensaje.
+- Empieza con corchete abierto [ACCION: y termina con corchete cerrado ].
+- Los campos van separados por el carácter pipe |  (NO uses comas, NO uses dos puntos).
+- Los montos van en NÚMEROS PUROS sin separadores ni símbolos: 50000 (no 50.000, no $50.000, no "50 mil").
+- NUNCA muestres el bloque [ACCION:...] al usuario en tu texto visible. El sistema lo lee y lo elimina.
+- Si emites una acción, ESCRÍBELA TEXTUAL — el sistema la parsea con regex /\[ACCION:([^\]]+)\]/.
+
+EJEMPLOS CORRECTOS (copia exactamente este formato):
+
+Usuario: "gasté 25000 en mercado de Bancolombia"
+Tu respuesta:
+  ✅ Listo, registré $25.000 en mercado desde Bancolombia.
+  [ACCION:gasto|25000|mercado|alimentacion|abc-123-id-bancolombia]
+
+Usuario: "anota un ingreso de 500000 de freelance en Nequi"
+Tu respuesta:
+  ✅ Ingreso de $500.000 registrado en Nequi.
+  [ACCION:ingreso|500000|freelance|freelance|xyz-456-id-nequi]
+
+Usuario: "saca 30000 de mi caja diaria para gasolina"
+Tu respuesta:
+  ✅ Saqué $30.000 de Caja diaria para gasolina.
+  [ACCION:caja_salida|caja-789-id|30000|gasolina]
+
+EJEMPLOS INCORRECTOS (NO hagas esto):
+  ❌ [ACCION: gasto, 25000, mercado]            (usa pipe, no comas; sin espacios sobrantes)
+  ❌ [ACCION:gasto|$25.000|mercado]              (monto sin símbolos ni puntos)
+  ❌ ACCION:gasto|25000|mercado                  (faltan los corchetes)
+  ❌ [ACCION:gasto|25000|mercado|alimentacion|Bancolombia]  (usa el ID, no el nombre)
+
 — Movimientos
 [ACCION:gasto|monto|descripcion|categoria|cuenta_id_opcional]
 [ACCION:ingreso|monto|descripcion|categoria|cuenta_id_opcional]
@@ -353,10 +386,22 @@ async function llamarGroq(system, history, message, maxTokens = 150) {
   return data.choices?.[0]?.message?.content || '';
 }
 
+// ═══ Parser robusto de montos — Claude a veces escribe "25.000" (punto como separador de miles)
+// parseFloat("25.000") = 25, lo cual es un bug crítico. Aquí strippeamos todo lo no-numérico.
+function parseMontoSeguro(s) {
+  if (typeof s === 'number') return s;
+  if (s === null || s === undefined) return 0;
+  const limpio = String(s).replace(/[^\d]/g, '');
+  return limpio ? parseFloat(limpio) : 0;
+}
+
 // ═══ EJECUTAR ACCIONES — todo queda visible en la app ═══
 async function ejecutarAcciones(respuesta, contexto, userId) {
+  console.log('[ejecutarAcciones] respuesta cruda (longitud=' + respuesta.length + '):', JSON.stringify(respuesta));
   const matches = [...respuesta.matchAll(/\[ACCION:([^\]]+)\]/g)];
+  console.log('[ejecutarAcciones] matches encontrados:', matches.length, matches.map(m => m[0]));
   const ejecutadas = [];
+  const errores = [];
 
   for (const match of matches) {
     const parts = match[1].split('|');
@@ -364,7 +409,7 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
 
     try {
       if (accion === 'gasto' || accion === 'ingreso') {
-        const monto = parseFloat(parts[1]);
+        const monto = parseMontoSeguro(parts[1]);
         const desc = (parts[2] || 'Sin descripción').trim();
         const cat = (parts[3] || 'otro').trim();
         const cuentaIdEspecificada = (parts[4] || '').trim();
@@ -395,7 +440,7 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
 
       } else if (accion === 'editar_movimiento') {
         const movId = parts[1];
-        const nuevoMonto = parts[2] && !isNaN(parseFloat(parts[2])) ? parseFloat(parts[2]) : null;
+        const nuevoMonto = parts[2] && parts[2].trim() ? parseMontoSeguro(parts[2]) : null;
         const nuevaDesc = (parts[3] || '').trim() || null;
         const nuevaFecha = (parts[4] || '').trim() || null;
         const movActual = contexto.movimientos.find(m => m.id === movId) || contexto.movsRecientes.find(m => m.id === movId);
@@ -450,7 +495,7 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
       } else if (accion === 'pago') {
         const { error } = await supabase.from('payments').insert({
           user_id: userId, nombre: parts[1],
-          monto: parseFloat(parts[2]), fecha_limite: parts[3], status: 'pendiente'
+          monto: parseMontoSeguro(parts[2]), fecha_limite: parts[3], status: 'pendiente'
         });
         if (!error) ejecutadas.push({ accion, detalle: parts[1] });
 
@@ -475,7 +520,7 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
       } else if (accion === 'meta') {
         const { error } = await supabase.from('metas').insert({
           user_id: userId, titulo: parts[1], tipo: parts[2] || 'personal',
-          monto_objetivo: parseFloat(parts[3]) || null,
+          monto_objetivo: parseMontoSeguro(parts[3]) || null,
           fecha_limite: parts[4] || null,
           año: new Date().getFullYear(), estado: 'activa', progreso: 0
         });
@@ -490,7 +535,7 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
         const origenId = (parts[2] || '').trim();
         const destinoTipo = (parts[3] || '').trim();
         const destinoId = (parts[4] || '').trim();
-        const monto = parseFloat(parts[5]);
+        const monto = parseMontoSeguro(parts[5]);
         if (monto > 0 && (origenTipo === 'cuenta' || origenTipo === 'caja') && (destinoTipo === 'cuenta' || destinoTipo === 'caja')) {
           const tablaOrigen = origenTipo === 'caja' ? 'cajas' : 'accounts';
           const tablaDestino = destinoTipo === 'caja' ? 'cajas' : 'accounts';
@@ -524,7 +569,7 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
 
       } else if (accion === 'caja_entrada' || accion === 'caja_salida') {
         const cajaId = (parts[1] || '').trim();
-        const monto = parseFloat(parts[2]);
+        const monto = parseMontoSeguro(parts[2]);
         const desc = (parts[3] || (accion === 'caja_entrada' ? 'Entrada de caja' : 'Salida de caja')).trim();
         const caja = contexto.cajas.find(c => c.id === cajaId);
         if (caja && monto > 0) {
@@ -555,7 +600,7 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
         const nuevoSaldoStr = (parts[2] || '').trim();
         const nuevoNombre = (parts[3] || '').trim();
         const updates = {};
-        if (nuevoSaldoStr && !isNaN(parseFloat(nuevoSaldoStr))) updates.saldo = parseFloat(nuevoSaldoStr);
+        if (nuevoSaldoStr) updates.saldo = parseMontoSeguro(nuevoSaldoStr);
         if (nuevoNombre) updates.nombre = nuevoNombre;
         if (Object.keys(updates).length > 0) {
           const { error } = await supabase.from('accounts').update(updates).eq('id', cuentaId).eq('user_id', userId);
@@ -567,7 +612,7 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
         const nuevoSaldoStr = (parts[2] || '').trim();
         const nuevoNombre = (parts[3] || '').trim();
         const updates = {};
-        if (nuevoSaldoStr && !isNaN(parseFloat(nuevoSaldoStr))) updates.saldo = parseFloat(nuevoSaldoStr);
+        if (nuevoSaldoStr) updates.saldo = parseMontoSeguro(nuevoSaldoStr);
         if (nuevoNombre) updates.nombre = nuevoNombre;
         if (Object.keys(updates).length > 0) {
           const { error } = await supabase.from('cajas').update(updates).eq('id', cajaId).eq('user_id', userId);
@@ -603,8 +648,15 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
         }
       }
     } catch(e) {
-      console.error('Error acción:', accion, e.message);
+      console.error('[ejecutarAcciones] Error acción:', accion, e.message, e.stack);
+      errores.push({ accion, error: e.message });
     }
   }
+  if (matches.length > 0 && ejecutadas.length === 0) {
+    console.warn('[ejecutarAcciones] ⚠️ se encontraron', matches.length, 'markers pero NINGUNO se ejecutó. Errores:', JSON.stringify(errores));
+  } else if (errores.length > 0) {
+    console.warn('[ejecutarAcciones] errores parciales:', JSON.stringify(errores));
+  }
+  console.log('[ejecutarAcciones] total ejecutadas:', ejecutadas.length, 'de', matches.length, 'markers');
   return ejecutadas;
 }
