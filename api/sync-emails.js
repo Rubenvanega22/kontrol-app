@@ -6,6 +6,56 @@ const { google } = require('googleapis');
 const supabase = require('../lib/supabase');
 const { parsearEmail, BANCOS } = require('../lib/email-parser');
 
+// ─── Helpers de saldo (mismo patrón que api/ai-chat.js: leer fresh antes de actualizar) ───
+
+// Busca la cuenta del usuario cuyo nombre contiene el nombre del banco (case-insensitive).
+// Si hay varias devuelve la primera y loguea warning.
+async function findAccountForBanco(userId, bancoNombre) {
+  if (!userId || !bancoNombre) return null;
+  const { data, error } = await supabase
+    .from('accounts')
+    .select('id, nombre, saldo')
+    .eq('user_id', userId)
+    .ilike('nombre', `%${bancoNombre}%`);
+  if (error) {
+    console.error('[sync] findAccountForBanco error:', error.message);
+    return null;
+  }
+  if (!data || data.length === 0) return null;
+  if (data.length > 1) {
+    console.warn(`[sync] múltiples cuentas matchean "${bancoNombre}" para user ${userId}: ${data.map(a=>a.nombre).join(', ')}. Usando la primera.`);
+  }
+  return data[0];
+}
+
+// Lee saldo fresh, suma delta, hace UPDATE, loguea antes/delta/después.
+// Devuelve {antes, delta, despues, nombre} o null en error.
+async function ajustarSaldoCuenta(userId, accountId, delta, opLabel) {
+  const { data: row, error: ferr } = await supabase
+    .from('accounts')
+    .select('saldo, nombre')
+    .eq('id', accountId)
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (ferr || !row) {
+    console.error(`[sync] ${opLabel}: no se pudo leer cuenta ${accountId}:`, ferr?.message || 'no encontrada');
+    return null;
+  }
+  const antes = parseFloat(row.saldo || 0);
+  const despues = antes + delta;
+  const { error: uerr } = await supabase
+    .from('accounts')
+    .update({ saldo: despues })
+    .eq('id', accountId)
+    .eq('user_id', userId);
+  if (uerr) {
+    console.error(`[sync] ${opLabel}: update saldo falló:`, uerr.message);
+    return null;
+  }
+  console.log(`[sync] ${opLabel}: cuenta "${row.nombre}" saldo antes=${antes} delta=${delta >= 0 ? '+' : ''}${delta} después=${despues}`);
+  return { antes, delta, despues, nombre: row.nombre };
+}
+
 // ─── Gmail ────────────────────────────────────────────────
 async function syncGmail(emailAccount) {
   try {
@@ -91,7 +141,26 @@ async function syncGmail(emailAccount) {
       });
 
       if (parsed) {
-        // Guardar movimiento
+        // Buscar cuenta del usuario que matchee el banco detectado.
+        const cuenta = await findAccountForBanco(emailAccount.user_id, parsed.bancoNombre);
+
+        // Aplicar el delta sobre el saldo de la cuenta antes de insertar el movimiento.
+        // 'gasto' y 'retiro' restan; 'ingreso' suma.
+        let ajuste = null;
+        if (cuenta) {
+          const esEgreso = parsed.tipo === 'gasto' || parsed.tipo === 'retiro';
+          const delta = esEgreso ? -parsed.monto : +parsed.monto;
+          ajuste = await ajustarSaldoCuenta(
+            emailAccount.user_id,
+            cuenta.id,
+            delta,
+            `${parsed.bancoNombre} ${parsed.tipo}`
+          );
+        } else {
+          console.warn(`[sync] ${parsed.bancoNombre}: usuario ${emailAccount.user_id} no tiene cuenta con nombre que matchee "${parsed.bancoNombre}". Movimiento se guarda sin ajustar saldo.`);
+        }
+
+        // Guardar movimiento — confirmado=true porque el banco ya confirmó la operación.
         const { data: movement } = await supabase.from('movements').insert({
           tipo: parsed.tipo,
           descripcion: parsed.descripcion,
@@ -101,7 +170,8 @@ async function syncGmail(emailAccount) {
           nota: `Auto-detectado de ${parsed.bancoNombre}`,
           source: 'email',
           email_id: msg.id,
-          confirmado: false,
+          account_id: cuenta ? cuenta.id : null,
+          confirmado: !!cuenta,  // solo confirmamos si el saldo se ajustó
           user_id: emailAccount.user_id || null
         }).select().single();
 
@@ -115,7 +185,7 @@ async function syncGmail(emailAccount) {
         // Crear alerta WhatsApp
         await crearAlertaWhatsApp(parsed, movement);
 
-        results.push(parsed);
+        results.push({ ...parsed, ajuste, account_id: cuenta?.id || null });
       }
     }
 
@@ -197,6 +267,22 @@ async function syncOutlook(emailAccount) {
       });
 
       if (parsed) {
+        // Misma lógica que syncGmail: encontrar la cuenta del banco y ajustar saldo.
+        const cuenta = await findAccountForBanco(emailAccount.user_id, parsed.bancoNombre);
+        let ajuste = null;
+        if (cuenta) {
+          const esEgreso = parsed.tipo === 'gasto' || parsed.tipo === 'retiro';
+          const delta = esEgreso ? -parsed.monto : +parsed.monto;
+          ajuste = await ajustarSaldoCuenta(
+            emailAccount.user_id,
+            cuenta.id,
+            delta,
+            `${parsed.bancoNombre} ${parsed.tipo}`
+          );
+        } else {
+          console.warn(`[sync] ${parsed.bancoNombre}: usuario ${emailAccount.user_id} no tiene cuenta con nombre que matchee "${parsed.bancoNombre}".`);
+        }
+
         const { data: movement } = await supabase.from('movements').insert({
           tipo: parsed.tipo,
           descripcion: parsed.descripcion,
@@ -206,7 +292,8 @@ async function syncOutlook(emailAccount) {
           nota: `Auto-detectado de ${parsed.bancoNombre}`,
           source: 'email',
           email_id: msg.id,
-          confirmado: false,
+          account_id: cuenta ? cuenta.id : null,
+          confirmado: !!cuenta,
           user_id: emailAccount.user_id || null
         }).select().single();
 
@@ -217,7 +304,7 @@ async function syncOutlook(emailAccount) {
         }
 
         await crearAlertaWhatsApp(parsed, movement);
-        results.push(parsed);
+        results.push({ ...parsed, ajuste, account_id: cuenta?.id || null });
       }
     }
 
