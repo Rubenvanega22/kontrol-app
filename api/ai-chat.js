@@ -576,14 +576,16 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
           const nuevoSaldo = accion === 'caja_entrada'
             ? parseFloat(caja.saldo) + monto
             : parseFloat(caja.saldo) - monto;
-          await supabase.from('cajas').update({ saldo: nuevoSaldo }).eq('id', cajaId);
           const tipoMov = accion === 'caja_entrada' ? 'ingreso' : 'gasto';
-          await supabase.from('movements').insert({
-            user_id: userId, tipo: tipoMov,
-            descripcion: `${desc} — ${caja.nombre} [caja:${cajaId}]`,
-            monto, fecha: new Date().toISOString().split('T')[0],
-            account_id: null, categoria: 'caja', source: 'ia'
+          const { error: errMov } = await supabase.from('caja_movimientos').insert({
+            user_id: userId, caja_id: cajaId, tipo: tipoMov,
+            descripcion: desc, monto, fecha: new Date().toISOString().split('T')[0]
           });
+          if (errMov) {
+            console.error('[ejecutarAcciones] caja_movimientos insert error:', errMov.message);
+            continue;
+          }
+          await supabase.from('cajas').update({ saldo: nuevoSaldo }).eq('id', cajaId).eq('user_id', userId);
           ejecutadas.push({ accion, monto, desc, caja: caja.nombre, nuevo_saldo: nuevoSaldo });
         }
 

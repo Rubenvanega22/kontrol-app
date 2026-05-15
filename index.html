@@ -1316,6 +1316,7 @@ async function syncDesdeSupabase() {
       { data: movimientos },
       { data: pagos },
       { data: cajas },
+      { data: cajaMovs, error: cajaMovsErr },
       { data: eventos },
       { data: recordatorios },
       { data: emailAccounts }
@@ -1324,10 +1325,12 @@ async function syncDesdeSupabase() {
       supa.from('movements').select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(200),
       supa.from('payments').select('*').eq('user_id', uid),
       supa.from('cajas').select('*').eq('user_id', uid),
+      supa.from('caja_movimientos').select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(500),
       supa.from('events').select('*').eq('user_id', uid),
       supa.from('reminders').select('*').eq('user_id', uid),
       supa.from('email_accounts').select('*').eq('user_id', uid).eq('activo', true)
     ]);
+    if (cajaMovsErr) console.warn('[sync] caja_movimientos error (¿falta tabla?):', cajaMovsErr.message);
 
     // Actualizar DB local con datos de Supabase
     if (cuentas) DB.cuentas = cuentas.map(c => ({
@@ -1350,6 +1353,13 @@ async function syncDesdeSupabase() {
 
     if (cajas) DB.cajas = cajas.map(c => ({
       id: c.id, nombre: c.nombre, saldo: parseFloat(c.saldo || 0)
+    }));
+
+    DB.cajaMovimientos = (cajaMovs || []).map(cm => ({
+      id: cm.id, caja_id: cm.caja_id, tipo: cm.tipo,
+      monto: parseFloat(cm.monto || 0),
+      descripcion: cm.descripcion || '',
+      fecha: cm.fecha, created_at: cm.created_at
     }));
 
     if (eventos) DB.eventos = eventos.map(e => ({
@@ -1375,7 +1385,7 @@ function defaultDB(){
     movimientos: [],
     pagos: [],
     cajas: [],
-    cajaEntries: [],
+    cajaMovimientos: [],
     eventos: [],
     recordatorios: [],
     inboxDetected: [],
@@ -1581,9 +1591,8 @@ async function guardarMovimiento(){
 let qmFuente = null; // { tipo: 'cuenta'|'caja', id }
 let qmTipo = 'gasto';
 
-function abrirQuickMov(tipo, id){
+function abrirQuickMov(tipo, id, tipoInicial){
   qmFuente = { tipo, id };
-  qmTipo = 'gasto';
   const fuente = tipo === 'caja'
     ? (DB.cajas || []).find(c => String(c.id) === String(id))
     : (DB.cuentas || []).find(c => String(c.id) === String(id));
@@ -1592,9 +1601,13 @@ function abrirQuickMov(tipo, id){
   document.getElementById('qm-subt').textContent = `Saldo actual: ${fmtCOP(fuente.saldo)}`;
   document.getElementById('qm-desc').value = '';
   document.getElementById('qm-monto').value = '';
-  document.getElementById('qm-categoria').value = 'otro';
-  setQMTipo('gasto');
+  document.getElementById('qm-categoria').value = tipo === 'caja' ? 'otro' : 'otro';
+  setQMTipo(tipoInicial === 'ingreso' ? 'ingreso' : 'gasto');
   showModal('modal-quick-mov');
+}
+
+function abrirQuickMovCaja(id, tipo){
+  abrirQuickMov('caja', id, tipo);
 }
 
 function setQMTipo(t){
@@ -1625,11 +1638,13 @@ async function guardarMovimientoQuick(){
   } else {
     const caja = DB.cajas.find(c => String(c.id) === String(qmFuente.id));
     if(!caja){ toast('Caja no encontrada','var(--red)'); return; }
-    const descCompleta = `${desc} — ${caja.nombre} [caja:${caja.id}]`;
-    const { error } = await supa.from('movements').insert({
-      user_id: currentUser.id, tipo: qmTipo,
-      descripcion: descCompleta, monto, fecha: todayStr(),
-      account_id: null, categoria: 'caja', source: 'manual'
+    const { error } = await supa.from('caja_movimientos').insert({
+      user_id: currentUser.id,
+      caja_id: caja.id,
+      tipo: qmTipo,
+      descripcion: desc,
+      monto,
+      fecha: todayStr()
     });
     if(error){ toast('❌ Error: '+error.message,'var(--red)'); return; }
     const nuevoSaldo = parseFloat(caja.saldo) + (qmTipo === 'ingreso' ? monto : -monto);
@@ -1643,7 +1658,7 @@ async function guardarMovimientoQuick(){
 
 function renderMovimientos(){
   const search = (document.getElementById('mov-search')||{}).value||'';
-  let movs = filtrarMovsPorPeriodo(DB.movimientos);
+  let movs = filtrarMovsPorPeriodo((DB.movimientos||[]).filter(m => m.categoria !== 'caja' && m.categoria !== 'transferencia'));
   if(movFiltro!=='todo') movs = movs.filter(m=>m.tipo===movFiltro);
   if(search) movs = movs.filter(m=>m.descripcion.toLowerCase().includes(search.toLowerCase()));
 
@@ -1775,9 +1790,11 @@ function renderResumen(){
     }
   }
 
-  // Actividad reciente
+  // Actividad reciente (excluye cajas y transferencias)
   const arEl = document.getElementById('actividad-reciente-list');
-  const recientes = DB.movimientos.slice(0,5);
+  const recientes = (DB.movimientos||[])
+    .filter(m => m.categoria !== 'caja' && m.categoria !== 'transferencia')
+    .slice(0,5);
   if(!recientes.length){
     arEl.innerHTML = `<div class="empty"><div class="empty-ico">📊</div><div class="empty-txt">Sin movimientos aún</div></div>`;
   } else {
@@ -2050,6 +2067,10 @@ function renderCajas(){
       <div class="caja-name">${c.nombre}</div>
       <div class="caja-amt">${fmtCOP(c.saldo)}</div>
       <div class="caja-bar"><div class="caja-fill" style="width:60%;background:var(--blue)"></div></div>
+      <div style="display:flex;gap:5px;margin-top:7px">
+        <button onclick="event.stopPropagation();abrirQuickMovCaja('${c.id}','ingreso')" style="flex:1;background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.25);border-radius:7px;padding:5px 0;color:#4ade80;font-size:10.5px;font-weight:700;cursor:pointer">+ Ingreso</button>
+        <button onclick="event.stopPropagation();abrirQuickMovCaja('${c.id}','gasto')" style="flex:1;background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.25);border-radius:7px;padding:5px 0;color:#f87171;font-size:10.5px;font-weight:700;cursor:pointer">− Gasto</button>
+      </div>
     </div>`).join('');
   el.innerHTML = cards + `<div class="caja-card" style="border-style:dashed;background:transparent;display:flex;align-items:center;justify-content:center;flex-direction:column;min-height:110px" onclick="showModal('modal-nueva-caja')">
     <div style="font-size:24px;color:var(--t3)">+</div>
@@ -2140,18 +2161,15 @@ async function guardarCajaEntry(){
 
   const tipoMov = ceTipo === 'in' ? 'ingreso' : 'gasto';
   const desc = nota || (tipoMov === 'ingreso' ? 'Entrada de caja' : 'Salida de caja');
-  const descCompleta = `${desc} — ${caja.nombre} [caja:${cajaDetalleId}]`;
   const nuevoSaldo = parseFloat(caja.saldo) + (ceTipo === 'in' ? monto : -monto);
 
-  const { error: errMov } = await supa.from('movements').insert({
+  const { error: errMov } = await supa.from('caja_movimientos').insert({
     user_id: currentUser.id,
+    caja_id: cajaDetalleId,
     tipo: tipoMov,
-    descripcion: descCompleta,
+    descripcion: desc,
     monto,
-    fecha: todayStr(),
-    account_id: null,
-    categoria: 'caja',
-    source: 'manual'
+    fecha: todayStr()
   });
   if(errMov){ toast('❌ Error: '+errMov.message,'var(--red)'); return; }
 
@@ -2171,19 +2189,19 @@ function renderCajaEntries(){
   const el = document.getElementById('caja-entries-list');
   if(!el) return;
   if(!cajaDetalleId){ el.innerHTML=''; return; }
-  const marker = `[caja:${cajaDetalleId}]`;
   const hoy = new Date();
   const mes = hoy.getMonth(), anio = hoy.getFullYear();
-  const entries = (DB.movimientos||[])
-    .filter(m => m.categoria === 'caja' && typeof m.descripcion === 'string' && m.descripcion.includes(marker))
-    .filter(m => {
-      const d = new Date(m.fecha+'T12:00:00');
+  const entries = (DB.cajaMovimientos||[])
+    .filter(cm => String(cm.caja_id) === String(cajaDetalleId))
+    .filter(cm => {
+      if(!cm.fecha) return false;
+      const d = new Date(cm.fecha+'T12:00:00');
       return d.getMonth() === mes && d.getFullYear() === anio;
     })
-    .sort((a,b)=>b.fecha.localeCompare(a.fecha));
+    .sort((a,b)=>String(b.fecha||'').localeCompare(String(a.fecha||'')));
   if(!entries.length){ el.innerHTML='<div class="empty"><div class="empty-ico">📋</div><div class="empty-txt">Sin movimientos este mes</div></div>'; return; }
   el.innerHTML = entries.map(e=>{
-    const nota = (e.descripcion||'').split(' — ')[0] || '—';
+    const nota = e.descripcion || '—';
     const color = e.tipo==='ingreso' ? 'var(--green)' : 'var(--red)';
     const signo = e.tipo==='ingreso' ? '+' : '-';
     return `<div class="caja-entry">
@@ -2562,7 +2580,7 @@ function buildIASystem(){
   var esReal = function(m){return m.categoria!=='caja' && m.categoria!=='transferencia';};
   var ingresos = movsDelMes.filter(function(m){return m.tipo==='ingreso' && esReal(m);}).reduce(function(a,m){return a+m.monto;},0);
   var gastos2 = movsDelMes.filter(function(m){return m.tipo==='gasto' && esReal(m);}).reduce(function(a,m){return a+m.monto;},0);
-  var movsTxt = DB.movimientos.slice(0,6).map(function(m){return (m.tipo==='ingreso'?'+':'-')+fmtCOP(m.monto)+' '+m.descripcion;}).join(' | ');
+  var movsTxt = DB.movimientos.filter(esReal).slice(0,6).map(function(m){return (m.tipo==='ingreso'?'+':'-')+fmtCOP(m.monto)+' '+m.descripcion;}).join(' | ');
   var pagosTxt = DB.pagos.filter(function(p){return p.status!=='pagado';}).map(function(p){return p.nombre+' '+fmtCOP(p.monto)+' vence '+fmtDate(p.fechaLimite);}).join(' | ');
   var eventosTxt = DB.eventos.filter(function(e){return new Date(e.fecha+'T12:00:00')>=new Date();}).slice(0,5).map(function(e){return e.titulo+' el '+fmtDate(e.fecha)+(e.hora?' a las '+e.hora:'');}).join(' | ');
   var recsTxt = DB.recordatorios.filter(function(r){return r.status==='open';}).slice(0,5).map(function(r){return '['+r.tipo+'] '+r.titulo;}).join(' | ');

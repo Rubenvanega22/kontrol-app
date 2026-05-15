@@ -1,5 +1,31 @@
 # kontrolv1.0
 
+## Migración: tabla `caja_movimientos` (REQUERIDA)
+
+Las cajas usan una tabla **separada** de `movements`. Antes del primer
+despliegue de esta versión, ejecuta este SQL en el SQL Editor de Supabase:
+
+```sql
+CREATE TABLE IF NOT EXISTS caja_movimientos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES auth.users(id),
+  caja_id uuid REFERENCES cajas(id),
+  tipo text CHECK (tipo IN ('ingreso','gasto')),
+  monto numeric NOT NULL,
+  descripcion text,
+  fecha date DEFAULT CURRENT_DATE,
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE caja_movimientos ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "users own caja_movimientos" ON caja_movimientos
+  FOR ALL USING (auth.uid() = user_id);
+```
+
+> Limpieza opcional: si ya tenías registros viejos con `categoria='caja'`
+> dentro de `movements` (de versiones anteriores), bórralos para que no
+> ensucien históricos: `DELETE FROM movements WHERE categoria='caja';`
+> El frontend ya los filtra defensivamente, pero limpiarlos es lo correcto.
+
 ## Crons configurados en `vercel.json`
 
 | Path                    | UTC         | Hora Colombia (UTC-5) |
