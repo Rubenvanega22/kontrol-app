@@ -1687,6 +1687,167 @@ async function guardarMovimientoQuick(){
   await syncDesdeSupabase();
 }
 
+// ════════════════════════════════════════
+// EDITAR / BORRAR MOVIMIENTOS (UI manual)
+// ════════════════════════════════════════
+// ID del movimiento expandido en modo edición (o null si ninguno). Misma variable usada por
+// renderMovimientos y por el listado "Actividad reciente" del resumen — solo uno se edita
+// a la vez para evitar inputs simultáneos.
+let movEditId = null;
+// Tipo seleccionado en el toggle gasto/ingreso del form de edición (clave por id de mov).
+const editTipoState = {};
+
+// Escapa caracteres peligrosos para meter dentro de un atributo HTML value="..."
+function escAttr(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// HTML del formulario de edición inline. Se inserta debajo de la fila del mov cuando
+// movEditId === mov.id. Cubre tipo, descripcion, monto, fecha, categoria y cuenta.
+function renderEditFormMov(m) {
+  const cats = ['alimentacion','transporte','servicios','salud','educacion','hogar','entretenimiento','salario','freelance','negocio','otro'];
+  const catLabels = {alimentacion:'🍔 Alimentación',transporte:'🚗 Transporte',servicios:'💡 Servicios',salud:'🏥 Salud',educacion:'📚 Educación',hogar:'🏠 Hogar',entretenimiento:'🎮 Entretenimiento',salario:'💼 Salario',freelance:'💻 Freelance',negocio:'🏪 Negocio',otro:'📦 Otro'};
+  const catOpts = cats.map(c => `<option value="${c}"${m.categoria===c?' selected':''}>${catLabels[c]}</option>`).join('');
+  const cuentasOpts = (DB.cuentas || []).map(c =>
+    `<option value="${c.id}"${String(c.id)===String(m.cuentaId)?' selected':''}>${escAttr(c.nombre)}</option>`
+  ).join('');
+  const tipo = editTipoState[m.id] || m.tipo;
+  return `<div onclick="event.stopPropagation()" style="background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.2);border-radius:10px;padding:10px;margin:6px 0 10px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
+      <button onclick="event.stopPropagation();setEditTipo('${m.id}','gasto')" id="edit-tipo-gasto-${m.id}" class="tipo-btn${tipo==='gasto'?' on-gasto':''}">📤 Gasto</button>
+      <button onclick="event.stopPropagation();setEditTipo('${m.id}','ingreso')" id="edit-tipo-ingreso-${m.id}" class="tipo-btn${tipo==='ingreso'?' on-ingreso':''}">📥 Ingreso</button>
+    </div>
+    <input class="form-inp" id="edit-desc-${m.id}" value="${escAttr(m.descripcion)}" placeholder="Descripción" style="margin-bottom:6px;padding:8px;font-size:12.5px"/>
+    <input class="form-inp" id="edit-monto-${m.id}" type="text" inputmode="numeric" value="${parseInt(m.monto||0,10).toLocaleString('es-CO')}" placeholder="Monto" oninput="formatMonto(this)" style="margin-bottom:6px;padding:8px;font-size:12.5px"/>
+    <input class="form-inp" id="edit-fecha-${m.id}" type="date" value="${escAttr(m.fecha)}" style="margin-bottom:6px;padding:8px;font-size:12.5px"/>
+    <select class="form-inp" id="edit-categoria-${m.id}" style="margin-bottom:6px;padding:8px;font-size:12.5px">${catOpts}</select>
+    <select class="form-inp" id="edit-cuenta-${m.id}" style="margin-bottom:8px;padding:8px;font-size:12.5px">
+      <option value=""${!m.cuentaId?' selected':''}>Sin cuenta asociada</option>
+      ${cuentasOpts}
+    </select>
+    <div style="display:flex;gap:6px">
+      <button onclick="event.stopPropagation();guardarEditMov('${m.id}')" class="btn-primary" style="flex:1;padding:8px;font-size:12.5px;margin:0">Guardar</button>
+      <button onclick="event.stopPropagation();toggleEditMov('${m.id}')" class="btn-secondary" style="flex:1;padding:8px;font-size:12.5px;margin:0">Cancelar</button>
+    </div>
+  </div>`;
+}
+
+function setEditTipo(id, tipo) {
+  editTipoState[id] = tipo;
+  const g = document.getElementById('edit-tipo-gasto-' + id);
+  const i = document.getElementById('edit-tipo-ingreso-' + id);
+  if (g) g.className = 'tipo-btn' + (tipo === 'gasto' ? ' on-gasto' : '');
+  if (i) i.className = 'tipo-btn' + (tipo === 'ingreso' ? ' on-ingreso' : '');
+}
+
+// Abre o cierra el form de edición para el id dado. Tap a la misma fila colapsa.
+function toggleEditMov(id) {
+  if (String(movEditId) === String(id)) {
+    movEditId = null;
+    delete editTipoState[id];
+  } else {
+    movEditId = id;
+    const m = (DB.movimientos || []).find(x => String(x.id) === String(id));
+    if (m) editTipoState[id] = m.tipo;
+  }
+  renderMovimientos();
+  renderResumen();  // actividad reciente puede tener el mismo mov expandido
+}
+
+// Calcula el ajuste neto sobre la cuenta cuando cambian campos del movimiento
+// (incluyendo posiblemente la cuenta destino). Mantiene la consistencia matemática
+// del saldo igual que api/ai-chat.js editar_movimiento.
+async function guardarEditMov(id) {
+  const mov = (DB.movimientos || []).find(m => String(m.id) === String(id));
+  if (!mov) { toast('Movimiento no encontrado','var(--red)'); return; }
+
+  const nuevoDesc = (document.getElementById('edit-desc-' + id) || {}).value || '';
+  const nuevoMonto = parseCOP((document.getElementById('edit-monto-' + id) || {}).value);
+  const nuevoFecha = (document.getElementById('edit-fecha-' + id) || {}).value || mov.fecha;
+  const nuevoCat = (document.getElementById('edit-categoria-' + id) || {}).value || mov.categoria;
+  const nuevoCuentaId = (document.getElementById('edit-cuenta-' + id) || {}).value || null;
+  const nuevoTipo = editTipoState[id] || mov.tipo;
+
+  if (!nuevoDesc.trim()) { toast('Escribe una descripción','var(--amber)'); return; }
+  if (!nuevoMonto || nuevoMonto <= 0) { toast('Monto inválido','var(--amber)'); return; }
+
+  // Impacto previo y nuevo sobre el saldo de la(s) cuenta(s).
+  // ingreso: + monto al saldo. gasto: - monto al saldo.
+  const prevImpact = mov.tipo === 'ingreso' ? +parseFloat(mov.monto) : -parseFloat(mov.monto);
+  const newImpact = nuevoTipo === 'ingreso' ? +nuevoMonto : -nuevoMonto;
+  const prevCuentaId = mov.cuentaId || null;
+
+  const mismaCuenta = String(prevCuentaId || '') === String(nuevoCuentaId || '');
+
+  // Aplicar ajustes ANTES de actualizar el movimiento, para que si algo falla la fila
+  // del movimiento original siga reflejando lo que realmente quedó en saldo.
+  if (mismaCuenta && nuevoCuentaId) {
+    const delta = newImpact - prevImpact;
+    if (delta !== 0) {
+      const c = DB.cuentas.find(x => String(x.id) === String(nuevoCuentaId));
+      if (c) {
+        const { error } = await supa.from('accounts').update({ saldo: c.saldo + delta }).eq('id', c.id).eq('user_id', currentUser.id);
+        if (error) { toast('Error saldo: ' + error.message,'var(--red)'); return; }
+      }
+    }
+  } else {
+    // Cambio de cuenta — revertir vieja, aplicar nueva.
+    if (prevCuentaId) {
+      const cVieja = DB.cuentas.find(x => String(x.id) === String(prevCuentaId));
+      if (cVieja) {
+        const { error } = await supa.from('accounts').update({ saldo: cVieja.saldo - prevImpact }).eq('id', cVieja.id).eq('user_id', currentUser.id);
+        if (error) { toast('Error saldo anterior: ' + error.message,'var(--red)'); return; }
+      }
+    }
+    if (nuevoCuentaId) {
+      const cNueva = DB.cuentas.find(x => String(x.id) === String(nuevoCuentaId));
+      if (cNueva) {
+        const { error } = await supa.from('accounts').update({ saldo: cNueva.saldo + newImpact }).eq('id', cNueva.id).eq('user_id', currentUser.id);
+        if (error) { toast('Error saldo nuevo: ' + error.message,'var(--red)'); return; }
+      }
+    }
+  }
+
+  const { error } = await supa.from('movements').update({
+    tipo: nuevoTipo,
+    descripcion: nuevoDesc.trim(),
+    monto: nuevoMonto,
+    fecha: nuevoFecha,
+    categoria: nuevoCat,
+    account_id: nuevoCuentaId
+  }).eq('id', id).eq('user_id', currentUser.id);
+  if (error) { toast('Error: ' + error.message,'var(--red)'); return; }
+
+  movEditId = null;
+  delete editTipoState[id];
+  toast('✅ Movimiento actualizado','var(--green)');
+  await syncDesdeSupabase();
+}
+
+async function borrarMovimientoUI(id) {
+  const mov = (DB.movimientos || []).find(m => String(m.id) === String(id));
+  if (!mov) { toast('Movimiento no encontrado','var(--red)'); return; }
+  if (!confirm(`¿Eliminar este movimiento de ${fmtCOP(mov.monto)}? Esto revertirá el saldo.`)) return;
+
+  // Revertir saldo PRIMERO; si falla no borramos para no perder consistencia.
+  if (mov.cuentaId) {
+    const c = DB.cuentas.find(x => String(x.id) === String(mov.cuentaId));
+    if (c) {
+      const ajuste = mov.tipo === 'ingreso' ? -parseFloat(mov.monto) : +parseFloat(mov.monto);
+      const { error: errC } = await supa.from('accounts').update({ saldo: c.saldo + ajuste }).eq('id', c.id).eq('user_id', currentUser.id);
+      if (errC) { toast('Error saldo: ' + errC.message,'var(--red)'); return; }
+    }
+  }
+  const { error } = await supa.from('movements').delete().eq('id', id).eq('user_id', currentUser.id);
+  if (error) { toast('Error: ' + error.message,'var(--red)'); return; }
+
+  if (String(movEditId) === String(id)) movEditId = null;
+  toast('🗑️ Movimiento eliminado','var(--t2)');
+  await syncDesdeSupabase();
+}
+
 function renderMovimientos(){
   const search = (document.getElementById('mov-search')||{}).value||'';
   let movs = filtrarMovsPorPeriodo((DB.movimientos||[]).filter(m => m.categoria !== 'caja' && m.categoria !== 'transferencia'));
@@ -1704,14 +1865,17 @@ function renderMovimientos(){
     const color = m.tipo==='ingreso'?'var(--green)':'var(--red)';
     const signo = m.tipo==='ingreso'?'+':'-';
     const cuenta = DB.cuentas.find(c=>String(c.id)===String(m.cuentaId));
-    return `<div class="mov-row">
+    const editing = String(movEditId) === String(m.id);
+    return `<div class="mov-row" onclick="toggleEditMov('${m.id}')" style="cursor:pointer">
       <div class="mov-ico" style="background:${m.tipo==='ingreso'?'rgba(74,222,128,0.1)':'rgba(248,113,113,0.1)'}">${catIco[m.categoria]||'📦'}</div>
       <div class="mov-info">
         <div class="mov-name">${m.descripcion}</div>
         <div class="mov-sub">${fmtDate(m.fecha)}${cuenta?' · '+cuenta.nombre:''}</div>
       </div>
       <div class="mov-amt" style="color:${color}">${signo}${fmtCOP(m.monto)}</div>
-    </div>`;
+      <button onclick="event.stopPropagation();borrarMovimientoUI('${m.id}')" title="Eliminar" style="background:rgba(248,113,113,0.12);border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:12px;padding:0;margin-left:6px;flex-shrink:0">🗑️</button>
+    </div>
+    ${editing ? renderEditFormMov(m) : ''}`;
   }).join('');
 }
 
@@ -1783,7 +1947,7 @@ function renderResumen(){
     document.getElementById('sc-atencion').style.display='none';
   }
 
-  // Cuentas
+  // Cuentas — tap abre quick-mov, ✏️ (con stopPropagation) abre editarCuenta (prompts).
   const ctEl = document.getElementById('cuentas-resumen-list');
   if(!DB.cuentas.length){
     ctEl.innerHTML = `<div class="empty"><div class="empty-ico">💳</div><div class="empty-txt">Agrega tu primera cuenta</div></div>`;
@@ -1792,7 +1956,8 @@ function renderResumen(){
     ctEl.innerHTML = `<div class="wrow">${DB.cuentas.slice(0,3).map(c=>{
       const pct = Math.min(100,Math.max(0,(c.saldo/total)*100));
       const color = tipoColor[c.tipo]||'#3b82f6';
-      return `<div class="wc" onclick="abrirQuickMov('cuenta','${c.id}')">
+      return `<div class="wc" onclick="abrirQuickMov('cuenta','${c.id}')" style="position:relative">
+        <button onclick="event.stopPropagation();editarCuenta('${c.id}')" title="Editar cuenta" style="position:absolute;top:4px;right:4px;background:rgba(255,255,255,0.06);border:none;border-radius:5px;width:22px;height:22px;cursor:pointer;font-size:10px;padding:0;color:var(--t2)">✏️</button>
         <div class="wc-top"><div class="wc-name">${c.nombre}</div><div class="wc-pct" style="color:${color}">${tipoIco[c.tipo]||'💳'}</div></div>
         <div class="wc-amt">${fmtCOP(c.saldo)}</div>
         <div class="wbar"><div class="wfill" style="width:${pct}%;background:${color}"></div></div>
@@ -1821,7 +1986,8 @@ function renderResumen(){
     }
   }
 
-  // Actividad reciente (excluye cajas y transferencias)
+  // Actividad reciente (excluye cajas y transferencias).
+  // Tap a la fila expande/colapsa el form de edición. El 🗑️ borra directo con confirm.
   const arEl = document.getElementById('actividad-reciente-list');
   const recientes = (DB.movimientos||[])
     .filter(m => m.categoria !== 'caja' && m.categoria !== 'transferencia')
@@ -1833,11 +1999,14 @@ function renderResumen(){
     arEl.innerHTML = recientes.map(m=>{
       const color = m.tipo==='ingreso'?'var(--green)':'var(--red)';
       const signo = m.tipo==='ingreso'?'+':'-';
-      return `<div class="ar">
+      const editing = String(movEditId) === String(m.id);
+      return `<div class="ar" onclick="toggleEditMov('${m.id}')" style="cursor:pointer">
         <div class="ar-ico" style="background:${m.tipo==='ingreso'?'rgba(74,222,128,0.1)':'rgba(248,113,113,0.1)'}">${catIco[m.categoria]||'📦'}</div>
         <div class="ar-info"><div class="ar-name">${m.descripcion}</div><div class="ar-sub">${fmtDate(m.fecha)}</div></div>
         <div class="ar-amt" style="color:${color}">${signo}${fmtCOP(m.monto)}</div>
-      </div>`;
+        <button onclick="event.stopPropagation();borrarMovimientoUI('${m.id}')" title="Eliminar" style="background:rgba(248,113,113,0.12);border:none;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:11px;padding:0;margin-left:6px;flex-shrink:0">🗑️</button>
+      </div>
+      ${editing ? renderEditFormMov(m) : ''}`;
     }).join('');
   }
 
