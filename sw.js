@@ -7,7 +7,7 @@
 // El nombre del cache lleva versión: bump CACHE_VERSION cuando cambie la estructura
 // del SW o se quiera invalidar todo lo cacheado.
 
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const CACHE_NAME = `kontrol-${CACHE_VERSION}`;
 
 // Recursos a pre-cachear en install. Estos son los que bloquean el primer paint.

@@ -1827,26 +1827,58 @@ async function guardarEditMov(id) {
 }
 
 async function borrarMovimientoUI(id) {
+  console.log('[borrarMovimiento] called with id=', id, 'type=', typeof id);
   const mov = (DB.movimientos || []).find(m => String(m.id) === String(id));
-  if (!mov) { toast('Movimiento no encontrado','var(--red)'); return; }
-  if (!confirm(`¿Eliminar este movimiento de ${fmtCOP(mov.monto)}? Esto revertirá el saldo.`)) return;
+  console.log('[borrarMovimiento] mov found in DB?', !!mov, mov ? { id: mov.id, tipo: mov.tipo, monto: mov.monto, cuentaId: mov.cuentaId } : null);
+  if (!mov) {
+    console.warn('[borrarMovimiento] no encontrado. IDs disponibles:', (DB.movimientos || []).slice(0, 5).map(m => m.id));
+    toast('Movimiento no encontrado','var(--red)');
+    return;
+  }
+
+  const confirmMsg = `¿Eliminar este movimiento de ${fmtCOP(mov.monto)}? Esto revertirá el saldo.`;
+  const userConfirmed = confirm(confirmMsg);
+  console.log('[borrarMovimiento] confirm respondido:', userConfirmed);
+  if (!userConfirmed) return;
 
   // Revertir saldo PRIMERO; si falla no borramos para no perder consistencia.
   if (mov.cuentaId) {
     const c = DB.cuentas.find(x => String(x.id) === String(mov.cuentaId));
+    console.log('[borrarMovimiento] cuenta a ajustar:', c ? { id: c.id, nombre: c.nombre, saldo: c.saldo } : 'NO ENCONTRADA');
     if (c) {
       const ajuste = mov.tipo === 'ingreso' ? -parseFloat(mov.monto) : +parseFloat(mov.monto);
-      const { error: errC } = await supa.from('accounts').update({ saldo: c.saldo + ajuste }).eq('id', c.id).eq('user_id', currentUser.id);
+      const nuevoSaldo = c.saldo + ajuste;
+      console.log('[borrarMovimiento] saldo antes=' + c.saldo + ' ajuste=' + (ajuste >= 0 ? '+' : '') + ajuste + ' después=' + nuevoSaldo);
+      const { error: errC } = await supa.from('accounts').update({ saldo: nuevoSaldo }).eq('id', c.id).eq('user_id', currentUser.id);
+      console.log('[borrarMovimiento] update saldo result:', errC ? 'ERROR: ' + errC.message : 'OK');
       if (errC) { toast('Error saldo: ' + errC.message,'var(--red)'); return; }
     }
+  } else {
+    console.log('[borrarMovimiento] mov sin cuentaId, no se ajusta ningún saldo');
   }
-  const { error } = await supa.from('movements').delete().eq('id', id).eq('user_id', currentUser.id);
+
+  console.log('[borrarMovimiento] eliminando fila de movements id=' + id);
+  const { error, data } = await supa.from('movements').delete().eq('id', id).eq('user_id', currentUser.id).select();
+  console.log('[borrarMovimiento] delete result:', error ? 'ERROR: ' + error.message : 'OK, filas borradas=' + (data ? data.length : '?'));
   if (error) { toast('Error: ' + error.message,'var(--red)'); return; }
+  if (data && data.length === 0) {
+    console.warn('[borrarMovimiento] DELETE devolvió 0 filas — posible RLS o id no matchea user_id=' + currentUser.id);
+    toast('Sin permiso para eliminar este movimiento','var(--red)');
+    return;
+  }
 
   if (String(movEditId) === String(id)) movEditId = null;
   toast('🗑️ Movimiento eliminado','var(--t2)');
+  console.log('[borrarMovimiento] iniciando sync para refrescar UI');
   await syncDesdeSupabase();
+  console.log('[borrarMovimiento] flow completo');
 }
+
+// Aliases para que cualquier referencia (manual, IA, copy-paste de otra parte) caiga
+// en la misma implementación. Las antiguas borrarCuentaLocal/borrarCajaLocal usan el
+// sufijo "Local"; mantenemos consistencia exponiendo ambos nombres.
+const borrarMovimiento = borrarMovimientoUI;
+const borrarMovimientoLocal = borrarMovimientoUI;
 
 function renderMovimientos(){
   const search = (document.getElementById('mov-search')||{}).value||'';
