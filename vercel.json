@@ -5,8 +5,21 @@
   },
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/$1" },
-    { "src": "/sw\\.js", "dest": "/sw.js" },
-    { "src": "/(.*)", "dest": "/index.html" }
+    {
+      "src": "/sw\\.js",
+      "dest": "/sw.js",
+      "headers": {
+        "Cache-Control": "public, max-age=0, must-revalidate",
+        "Service-Worker-Allowed": "/"
+      }
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html",
+      "headers": {
+        "Cache-Control": "public, max-age=0, must-revalidate, stale-while-revalidate=86400"
+      }
+    }
   ],
   "outputDirectory": ".",
   "crons": [
