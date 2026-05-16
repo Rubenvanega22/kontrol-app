@@ -2519,39 +2519,6 @@ async function eliminarRecordatorio(){
 // ════════════════════════════════════════
 // BANDEJA DETECCIONES
 // ════════════════════════════════════════
-function parsearDeteccion(){
-  const texto = document.getElementById('inbox-texto').value.trim();
-  if(!texto){ toast('⚠️ Pega el texto del banco','var(--amber)'); return; }
-
-  // Parseo básico pero funcional
-  const montoMatch = texto.match(/[\$]?\s*([\d]{1,3}(?:[.,]\d{3})*(?:[.,]\d{1,2})?)/);
-  const monto = montoMatch ? parseCOP(montoMatch[1]) : 0;
-
-  const esIngreso = /recib|crédito|consignación|abono|depósito|ingres/i.test(texto);
-  const tipo = esIngreso ? 'ingreso' : 'gasto';
-
-  const banco = texto.match(/bancolombia|nequi|daviplata|bbva|davivienda|colpatria/i)?.[0] || 'Banco';
-
-  const entry = { id:uid(), raw:texto, monto, tipo, banco, status:'pending', fecha:todayStr() };
-  DB.inboxDetected.push(entry);
-  save();
-
-  const el = document.getElementById('inbox-result-list');
-  el.innerHTML = `<div class="inbox-card">
-    <div style="font-size:12px;font-weight:700;color:var(--amber)">Detección</div>
-    <div class="inbox-raw">${texto.substring(0,200)}</div>
-    <div style="font-size:13px;color:var(--t1);margin-top:6px">
-      Tipo: <b style="color:${tipo==='ingreso'?'var(--green)':'var(--red)'}">${tipo==='ingreso'?'📥 Ingreso':'📤 Gasto'}</b><br/>
-      Monto: <b>${fmtCOP(monto)}</b><br/>
-      Banco: <b>${banco}</b>
-    </div>
-    <div class="inbox-actions">
-      <button class="inbox-btn-ok" onclick="confirmarDeteccion(${entry.id})">✅ Confirmar</button>
-      <button class="inbox-btn-ko" onclick="rechazarDeteccion(${entry.id})">✕ Rechazar</button>
-    </div>
-  </div>` + el.innerHTML;
-}
-
 function confirmarDeteccion(id){
   const e = DB.inboxDetected.find(x=>x.id===id);
   if(!e) return;
@@ -2693,36 +2660,6 @@ async function sendIA(opts){
   }
 }
 
-function buildIASystem(){
-  var total = DB.cuentas.reduce(function(a,c){return a+c.saldo;},0);
-  var hoy = new Date();
-  var mes = hoy.getMonth(), anio = hoy.getFullYear();
-  var movsDelMes = DB.movimientos.filter(function(m){ var d=new Date(m.fecha+'T12:00:00'); return d.getMonth()===mes&&d.getFullYear()===anio; });
-  var esReal = function(m){return m.categoria!=='caja' && m.categoria!=='transferencia';};
-  var ingresos = movsDelMes.filter(function(m){return m.tipo==='ingreso' && esReal(m);}).reduce(function(a,m){return a+m.monto;},0);
-  var gastos2 = movsDelMes.filter(function(m){return m.tipo==='gasto' && esReal(m);}).reduce(function(a,m){return a+m.monto;},0);
-  var movsTxt = DB.movimientos.filter(esReal).slice(0,6).map(function(m){return (m.tipo==='ingreso'?'+':'-')+fmtCOP(m.monto)+' '+m.descripcion;}).join(' | ');
-  var pagosTxt = DB.pagos.filter(function(p){return p.status!=='pagado';}).map(function(p){return p.nombre+' '+fmtCOP(p.monto)+' vence '+fmtDate(p.fechaLimite);}).join(' | ');
-  var eventosTxt = DB.eventos.filter(function(e){return new Date(e.fecha+'T12:00:00')>=new Date();}).slice(0,5).map(function(e){return e.titulo+' el '+fmtDate(e.fecha)+(e.hora?' a las '+e.hora:'');}).join(' | ');
-  var recsTxt = DB.recordatorios.filter(function(r){return r.status==='open';}).slice(0,5).map(function(r){return '['+r.tipo+'] '+r.titulo;}).join(' | ');
-  var cajasTxt = DB.cajas.map(function(c){return c.nombre+': '+fmtCOP(c.saldo);}).join(', ');
-  var cuentasTxt = DB.cuentas.map(function(c){return c.nombre+'('+fmtCOP(c.saldo)+')';}).join(', ')||'ninguna';
-  var nombre = DB.ia.usuarioNombre||'usuario';
-  var iaName = DB.ia.nombre||'Kontrol';
-  var mesStr = String(mes+1).padStart(2,'0');
-  return 'Eres '+iaName+', asistente financiero de '+nombre+'. ACCESO COMPLETO. '+
-    'Saldo='+fmtCOP(total)+' Cuentas='+cuentasTxt+' Cajas='+(cajasTxt||'ninguna')+' '+
-    'Ingresos mes='+fmtCOP(ingresos)+' Gastos mes='+fmtCOP(gastos2)+'. '+
-    'Movimientos: '+(movsTxt||'ninguno')+'. '+
-    'Pagos pendientes: '+(pagosTxt||'ninguno')+'. '+
-    'Agenda: '+(eventosTxt||'ninguno')+'. '+
-    'Recordatorios: '+(recsTxt||'ninguno')+'. '+
-    'ACCIONES (pon al final): [ACCION:gasto|50000|desc|categoria] [ACCION:ingreso|100000|desc|cat] '+
-    '[ACCION:pago|nombre|monto|'+anio+'-'+mesStr+'-DD] [ACCION:evento|titulo|'+anio+'-'+mesStr+'-DD|HH:MM] '+
-    '[ACCION:recordatorio|nota|titulo] [ACCION:lista|titulo|item1,item2] [ACCION:navegar|pagos]. '+
-    'Responde en espanol, amigable. Confirma cuando ejecutes algo.';
-}
-
 function intentLocal(msg){
   var m = msg.toLowerCase();
   var total = DB.cuentas.reduce(function(a,c){return a+c.saldo;},0);
@@ -2779,41 +2716,6 @@ function intentLocal(msg){
     if(/config/i.test(m)){goTab('config');return 'Aqui esta la configuracion.';}
   }
   return null;
-}
-
-function ejecutarAccionesIA(resp, originalMsg){
-  var matches = [];
-  var re = /\[ACCION:([^\]]+)\]/g;
-  var match;
-  while((match = re.exec(resp)) !== null){ matches.push(match); }
-  if(!matches.length) return;
-  matches.forEach(function(match){
-    var parts = match[1].split('|');
-    var accion = parts[0];
-    try{
-      if(accion==='gasto'||accion==='ingreso'){
-        var mo=parseCOP(parts[1]),desc=parts[2]||'Sin descripcion',cat=parts[3]||'otro';
-        if(mo>0){ DB.movimientos.unshift({id:uid(),tipo:accion,descripcion:desc,monto:mo,fecha:todayStr(),cuentaId:DB.cuentas[0]?DB.cuentas[0].id:0,categoria:cat,nota:'IA',source:'ia'}); if(DB.cuentas[0])DB.cuentas[0].saldo+=(accion==='ingreso'?mo:-mo); save();renderResumen(); }
-      } else if(accion==='pago'){
-        var nom=parts[1],mo2=parseCOP(parts[2]),fec=parts[3]||todayStr();
-        if(nom&&mo2>0){ DB.pagos.push({id:uid(),nombre:nom,monto:mo2,fechaLimite:fec,categoria:'otro',cuentaId:DB.cuentas[0]?DB.cuentas[0].id:0,fijo:false,status:'pendiente'}); save();renderPagos(); }
-      } else if(accion==='evento'){
-        var tit=parts[1],fec2=parts[2]||todayStr(),hor=parts[3]||'';
-        if(tit){ DB.eventos.push({id:uid(),titulo:tit,fecha:fec2,hora:hor,nota:'IA'}); save();renderAgenda();goTab('agenda'); }
-      } else if(accion==='recordatorio'){
-        var tipo2=parts[1]||'nota',tit2=parts[2];
-        if(tit2){ DB.recordatorios.push({id:uid(),tipo:tipo2,titulo:tit2,content:{texto:tit2},fecha:todayStr(),status:'open'}); save();renderRecordatorios(); }
-      } else if(accion==='lista'){
-        var tit3=parts[1]||'Lista',items2=(parts[2]||'').split(',').map(function(s){return s.trim();}).filter(Boolean);
-        DB.recordatorios.push({id:uid(),tipo:'lista',titulo:tit3,content:{items:items2.map(function(it){return {text:it,done:false};})},fecha:todayStr(),status:'open'}); save();renderRecordatorios();goTab('recordar');
-      } else if(accion==='navegar'){
-        if(parts[1]) goTab(parts[1]);
-      } else if(accion==='pagarpago'){
-        var p=DB.pagos.find(function(x){return x.id===parseInt(parts[1]);});
-        if(p&&p.status!=='pagado'){ p.status='pagado'; DB.movimientos.unshift({id:uid(),tipo:'gasto',descripcion:'Pago: '+p.nombre,monto:p.monto,fecha:todayStr(),cuentaId:p.cuentaId,categoria:'servicios',nota:'IA',source:'pago'}); var ct=DB.cuentas.find(function(c){return c.id===p.cuentaId;}); if(ct)ct.saldo-=p.monto; save();renderPagos();renderResumen(); }
-      }
-    } catch(e2){ console.log('Error accion IA:',e2); }
-  });
 }
 
 // ════════════════════════════════════════
@@ -2947,19 +2849,6 @@ function resetMicUI(){
 // ════════════════════════════════════════
 let ttsActivo = true;
 let ttsSpeaking = false;
-
-function hablarCorto(texto){
-  // Para el micrófono — solo frases cortas
-  if(!('speechSynthesis' in window)) return;
-  window.speechSynthesis.cancel();
-  const utt = new SpeechSynthesisUtterance(texto);
-  const voz = vozSeleccionada || seleccionarMejorVoz();
-  if(voz) utt.voice = voz;
-  utt.rate = 1.0;
-  utt.pitch = 1.05;
-  utt.volume = 1.0;
-  window.speechSynthesis.speak(utt);
-}
 
 async function hablar(texto){
   if(!ttsActivo) return;
@@ -3128,17 +3017,6 @@ function _hablarFallback(texto){
   };
 
   hablarFrase();
-}
-
-function toggleTTS(){
-  ttsActivo = !ttsActivo;
-  const btn = document.getElementById('tts-btn');
-  if(btn){
-    btn.textContent = ttsActivo ? '🔊' : '🔇';
-    btn.title = ttsActivo ? 'Voz activa — toca para silenciar' : 'Voz silenciada';
-  }
-  toast(ttsActivo ? '🔊 Voz activada' : '🔇 Voz silenciada', 'var(--blue)');
-  if(!ttsActivo) window.speechSynthesis.cancel();
 }
 
 // ═══ SELECCIÓN DE VOZ ÓPTIMA ═══
@@ -3973,14 +3851,19 @@ async function doRegistro() {
 
 async function onLogin(user) {
   currentUser = user;
-  const { data: profile } = await supa.from('profiles').select('*').eq('id', user.id).single();
-  currentProfile = profile;
   document.getElementById('auth-screen').style.display = 'none';
+  // Profile + sync arrancan en paralelo — el sync ya tiene currentUser asignado arriba.
+  // Antes era: await profile → init() → setTimeout(500ms, sync). Ahora ambos viajes
+  // de red corren a la vez y el init pinta en cuanto el profile vuelve.
+  const profilePromise = supa.from('profiles').select('*').eq('id', user.id).single();
+  const syncPromise = syncDesdeSupabase();
+  const { data: profile } = await profilePromise;
+  currentProfile = profile;
   if (profile?.nombre) DB.ia.usuarioNombre = profile.nombre;
   mostrarTabAdminSiCorresponde();
   init();
-  // Sincronizar datos de Supabase al entrar
-  setTimeout(() => syncDesdeSupabase(), 500);
+  // syncPromise se resuelve solo y dispara sus propios renders.
+  syncPromise.catch(e => console.error('sync inicial falló:', e));
 }
 
 async function doLogout() {
@@ -4048,7 +3931,8 @@ function init(){
   renderResumen();
   renderCalendario();
   renderConfig();
-  renderMetas();
+  // renderMetas() ya no se llama aquí — se dispara desde goTab('metas') la primera vez
+  // que el usuario navegue a esa pestaña, ahorrando una query Supabase en el startup.
 }
 
 // ════════════════════════════════════════
