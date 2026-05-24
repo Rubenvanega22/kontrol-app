@@ -105,6 +105,14 @@ async function syncGmail(emailAccount) {
     const testRes = await gmail.users.messages.list({ userId: 'me', q: testQuery, maxResults: 5 });
     console.log('[sync] Test query results:', testRes.data.messages?.length || 0);
 
+    // Exponer diagnóstico al handler para que aparezca en la respuesta HTTP.
+    emailAccount.__debug = {
+      email: emailAccount.email,
+      gmailFound: listRes.data.messages?.length || 0,
+      testQueryFound: testRes.data.messages?.length || 0,
+      query
+    };
+
     const messages = listRes.data.messages || [];
     const results = [];
 
@@ -413,6 +421,7 @@ module.exports = async function handler(req, res) {
     }
 
     let detecciones = [];
+    const debug = [];
 
     for (const account of emailAccounts) {
       let resultados = [];
@@ -422,6 +431,7 @@ module.exports = async function handler(req, res) {
         resultados = await syncOutlook(account);
       }
       detecciones = detecciones.concat(resultados);
+      if (account.__debug) debug.push(account.__debug);
     }
 
     // (Recordatorios de agenda movidos a /api/reminders-cron)
@@ -431,7 +441,8 @@ module.exports = async function handler(req, res) {
       timestamp: new Date().toISOString(),
       cuentas_revisadas: emailAccounts.length,
       movimientos_detectados: detecciones.length,
-      detecciones
+      detecciones,
+      debug
     });
 
   } catch (error) {
