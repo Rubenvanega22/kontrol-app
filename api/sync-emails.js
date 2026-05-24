@@ -96,23 +96,6 @@ async function syncGmail(emailAccount) {
       maxResults: 50
     });
 
-    console.log('[sync] Gmail messages found:', listRes.data.messages?.length || 0);
-    console.log('[sync] Query used:', query);
-    console.log('[sync] Full query:', JSON.stringify(query));
-
-    // Diagnóstico: probar query plana sin from: para ver si hay correos de Bancolombia
-    const testQuery = 'bancolombia after:' + after;
-    const testRes = await gmail.users.messages.list({ userId: 'me', q: testQuery, maxResults: 5 });
-    console.log('[sync] Test query results:', testRes.data.messages?.length || 0);
-
-    // Exponer diagnóstico al handler para que aparezca en la respuesta HTTP.
-    emailAccount.__debug = {
-      email: emailAccount.email,
-      gmailFound: listRes.data.messages?.length || 0,
-      testQueryFound: testRes.data.messages?.length || 0,
-      query
-    };
-
     const messages = listRes.data.messages || [];
     const results = [];
 
@@ -214,11 +197,6 @@ async function syncGmail(emailAccount) {
     return results;
   } catch (error) {
     console.error(`Error Gmail sync ${emailAccount.email}:`, error.message);
-    emailAccount.__debug = {
-      email: emailAccount.email,
-      error: error.message,
-      stack: (error.stack || '').split('\n').slice(0, 5).join(' | ')
-    };
     return [];
   }
 }
@@ -426,7 +404,6 @@ module.exports = async function handler(req, res) {
     }
 
     let detecciones = [];
-    const debug = [];
 
     for (const account of emailAccounts) {
       let resultados = [];
@@ -436,7 +413,6 @@ module.exports = async function handler(req, res) {
         resultados = await syncOutlook(account);
       }
       detecciones = detecciones.concat(resultados);
-      if (account.__debug) debug.push(account.__debug);
     }
 
     // (Recordatorios de agenda movidos a /api/reminders-cron)
@@ -446,8 +422,7 @@ module.exports = async function handler(req, res) {
       timestamp: new Date().toISOString(),
       cuentas_revisadas: emailAccounts.length,
       movimientos_detectados: detecciones.length,
-      detecciones,
-      debug
+      detecciones
     });
 
   } catch (error) {
