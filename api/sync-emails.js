@@ -98,6 +98,12 @@ async function syncGmail(emailAccount) {
 
     console.log('[sync] Gmail messages found:', listRes.data.messages?.length || 0);
     console.log('[sync] Query used:', query);
+    console.log('[sync] Full query:', JSON.stringify(query));
+
+    // Diagnóstico: probar query plana sin from: para ver si hay correos de Bancolombia
+    const testQuery = 'bancolombia after:' + after;
+    const testRes = await gmail.users.messages.list({ userId: 'me', q: testQuery, maxResults: 5 });
+    console.log('[sync] Test query results:', testRes.data.messages?.length || 0);
 
     const messages = listRes.data.messages || [];
     const results = [];
