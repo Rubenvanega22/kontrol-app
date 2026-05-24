@@ -600,6 +600,26 @@ async function despacharRespuestaPago(userId, phone, text, estado) {
     return `✅ Pago dividido:\n• ${cop(primary_monto)} de *${primaria.nombre}* → ${cop(nuevoPrim)}\n• ${cop(remaining_monto)} de *${secundaria.nombre}* → ${cop(nuevoSec)}`;
   }
 
+  // 1d. Estado event_1h_response: respuesta a "¿necesitas recordatorio de salida?"
+  //     1 = sí (no hacemos nada — el modoQuinceMinAntes automático lo enviará)
+  //     2 = no (marca notificado_15min=true para suprimir el aviso automático)
+  if (estado?.awaiting === 'event_1h_response') {
+    const num = parseInt(lower, 10);
+    const { event_id, titulo } = estado.context || {};
+    await clearState(phone);
+    if (num === 1) {
+      return `✅ Listo, te aviso 15 min antes de *${titulo}*.`;
+    }
+    if (num === 2) {
+      const { error } = await supabase.from('events')
+        .update({ notificado_15min: true })
+        .eq('id', event_id).eq('user_id', userId);
+      if (error) console.warn('[whatsapp] event_1h opt-out error:', error.message);
+      return `👍 OK, no te aviso de nuevo sobre *${titulo}*.`;
+    }
+    return null; // respuesta no esperada → pasa al AI normal
+  }
+
   // 2. Estado payment_date: usuario está dando la nueva fecha para un pago aplazado
   if (estado?.awaiting === 'payment_date') {
     const { payment_id } = estado.context || {};
