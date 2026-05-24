@@ -1,13 +1,17 @@
 // /api/reminders-cron.js
-// Cron horario. Dos modos según la hora UTC:
-//   • 13:00 UTC (8am Colombia) → resumen diario de eventos de hoy + mañana
-//   • Cualquier otra hora       → recordatorio "en 1 hora" para eventos de hoy
-// Programado en vercel.json a "0 * * * *" (cada hora en minuto 0).
+// Cron horario. Tres modos según la hora UTC:
+//   • 13:00 UTC (8am Colombia) → resumen diario de eventos + recordatorio
+//                                 matutino de pagos que vencen HOY
+//   • 23:00 UTC (6pm Colombia) → recordatorio vespertino de pagos vencen hoy
+//                                 que aún no fueron confirmados como pagados
+//   • Cualquier otra hora      → recordatorio "en 1 hora" para eventos de hoy
+// Programado en vercel.json.
 
 const supabase = require('../lib/supabase');
 
 const COLOMBIA_OFFSET_HOURS = -5;
-const DAILY_UTC_HOUR = 13; // 13:00 UTC = 8:00 am Colombia
+const DAILY_UTC_HOUR = 13;   // 13:00 UTC = 8:00 am Colombia
+const EVENING_UTC_HOUR = 23; // 23:00 UTC = 6:00 pm Colombia
 
 function formatearEvento(e) {
   const hora = e.hora ? ` a las ${e.hora}` : '';
@@ -212,6 +216,88 @@ async function modoUnaHoraAntes(res) {
   });
 }
 
+// ─── PAGOS: helper común — busca pagos que vencen HOY con filtro ────
+async function pagosQueVencenHoy(extraFilter /* (query) => query */) {
+  const ahora = new Date();
+  const hoy = colombiaDateString(ahora);
+  let q = supabase
+    .from('payments')
+    .select('*')
+    .eq('fecha_limite', hoy)
+    .neq('status', 'pagado');
+  q = extraFilter(q);
+  const { data, error } = await q;
+  if (error) { console.error('[reminders-cron pagos] query error:', error.message); return { hoy, pagos: [] }; }
+  return { hoy, pagos: data || [] };
+}
+
+// ─── Crear alerta WhatsApp para un pago + marcar columna en payments ─
+async function crearAlertaPago(pago, telefono, mensaje, marcarCol) {
+  const { error: insertError } = await supabase.from('whatsapp_alerts').insert({
+    tipo: 'pago_recordatorio', mensaje, telefono, enviado: false
+  });
+  if (insertError) {
+    console.error('[reminders-cron pagos] insert alerta falló para pago', pago.id, insertError.message);
+    return false;
+  }
+  const { error: upErr } = await supabase
+    .from('payments').update({ [marcarCol]: true }).eq('id', pago.id);
+  if (upErr) console.warn('[reminders-cron pagos] no se pudo marcar', marcarCol, 'en pago', pago.id, upErr.message);
+  return true;
+}
+
+// ─── MODO C: recordatorio matutino de pagos (8am Col) ───────────────
+async function modoPagosMatutino(res) {
+  const { hoy, pagos } = await pagosQueVencenHoy(q => q.eq('notificado_pago', false));
+  console.log('[reminders-cron pagos-am] hoy=', hoy, 'pagos=', pagos.length);
+  if (!pagos.length) return { ok: true, modo: 'pagos_am', alertas: 0 };
+
+  // Resolver teléfonos por user_id
+  const userIds = [...new Set(pagos.map(p => p.user_id).filter(Boolean))];
+  const { data: profiles } = await supabase.from('profiles').select('id, telefono').in('id', userIds);
+  const tels = {};
+  for (const p of (profiles || [])) if (p.telefono) tels[p.id] = p.telefono;
+
+  const fmt = n => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n);
+  let alertas = 0;
+  for (const pago of pagos) {
+    const tel = tels[pago.user_id];
+    if (!tel) continue;
+    const msg = `⚠️ Recuerda: hoy vence *${pago.nombre}* por ${fmt(pago.monto)}.\n¿Ya lo pagaste? Responde *SI* o *NO*`;
+    if (await crearAlertaPago(pago, tel, msg, 'notificado_pago')) alertas++;
+  }
+  return { ok: true, modo: 'pagos_am', alertas, hoy };
+}
+
+// ─── MODO D: recordatorio vespertino de pagos (6pm Col) ─────────────
+async function modoPagosVespertino(res) {
+  // Solo los que ya recibieron el matutino y siguen sin pagar
+  const { hoy, pagos } = await pagosQueVencenHoy(q =>
+    q.eq('notificado_pago', true).eq('notificado_6pm', false));
+  console.log('[reminders-cron pagos-pm] hoy=', hoy, 'pagos=', pagos.length);
+  if (!pagos.length) return { ok: true, modo: 'pagos_pm', alertas: 0 };
+
+  const userIds = [...new Set(pagos.map(p => p.user_id).filter(Boolean))];
+  const { data: profiles } = await supabase.from('profiles').select('id, telefono').in('id', userIds);
+  const tels = {};
+  for (const p of (profiles || [])) if (p.telefono) tels[p.id] = p.telefono;
+
+  const fmt = n => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n);
+  let alertas = 0;
+  for (const pago of pagos) {
+    const tel = tels[pago.user_id];
+    if (!tel) continue;
+    const msg = `🔔 *${pago.nombre}* por ${fmt(pago.monto)} vence hoy.\n¿Lo pagaste? Responde *1=Sí* o *2=No*`;
+    if (await crearAlertaPago(pago, tel, msg, 'notificado_6pm')) alertas++;
+  }
+  return { ok: true, modo: 'pagos_pm', alertas, hoy };
+}
+
+// Nota: el SI/NO/1/2 que llegue como respuesta NO necesita estado conversacional.
+// /api/whatsapp.js detecta el patrón y busca el pago activo por user_id
+// (notificado_pago=true, status != 'pagado'). Solo necesitamos whatsapp_state
+// para flujos multi-turno (fecha de aplazamiento, match-con-foto).
+
 // ─── Handler principal: rutea por hora UTC ─────────────────────────
 module.exports = async function handler(req, res) {
   // Auth: cron de Vercel viene como GET sin header; manual con CRON_SECRET
@@ -222,14 +308,25 @@ module.exports = async function handler(req, res) {
 
   try {
     const utcHour = new Date().getUTCHours();
-    const force = (req.query && req.query.modo) || null; // ?modo=diario o ?modo=1h para forzar
-    const modo = force === 'diario' ? 'diario'
-              : force === '1h' ? '1h'
-              : (utcHour === DAILY_UTC_HOUR ? 'diario' : '1h');
+    const force = (req.query && req.query.modo) || null;
+    // ?modo=diario | 1h | pagos_am | pagos_pm para forzar
+    let modo;
+    if (force) modo = force;
+    else if (utcHour === DAILY_UTC_HOUR) modo = 'diario';
+    else if (utcHour === EVENING_UTC_HOUR) modo = 'pagos_pm';
+    else modo = '1h';
 
     console.log('[reminders-cron] start, utcHour=', utcHour, 'modo=', modo);
 
-    if (modo === 'diario') return await modoResumenDiario(res);
+    if (modo === 'diario') {
+      // 8am Col: ejecuta pagos matutinos PRIMERO (devuelve objeto, no toca res)
+      // y luego cede el response a modoResumenDiario que llama res.json().
+      const pagosResult = await modoPagosMatutino(res);
+      console.log('[reminders-cron] pagos_am inline result:', JSON.stringify(pagosResult));
+      return await modoResumenDiario(res);
+    }
+    if (modo === 'pagos_am') { const r = await modoPagosMatutino(res);  return res.json(r); }
+    if (modo === 'pagos_pm') { const r = await modoPagosVespertino(res); return res.json(r); }
     return await modoUnaHoraAntes(res);
   } catch (error) {
     console.error('[reminders-cron] uncaught:', error);

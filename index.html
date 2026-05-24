@@ -1351,7 +1351,11 @@ async function syncDesdeSupabase() {
 
     if (pagos) DB.pagos = pagos.map(p => ({
       id: p.id, nombre: p.nombre, monto: parseFloat(p.monto),
-      fecha_limite: p.fecha_limite, status: p.status
+      // El resto del frontend lee fechaLimite (camelCase); guardamos ambos
+      // para no romper consumidores que aún lean snake.
+      fecha_limite: p.fecha_limite, fechaLimite: p.fecha_limite,
+      fecha_pago: p.fecha_pago, fechaPago: p.fecha_pago,
+      status: p.status
     }));
 
     if (cajas) DB.cajas = cajas.map(c => ({
@@ -2183,11 +2187,14 @@ function renderPagos(){
   el.innerHTML = pagos.map(p=>{
     const tagCls = p.status==='pagado'?'tag-paid':p.status==='vencido'?'tag-pend':'tag-soon';
     const tagTxt = p.status==='pagado'?'Pagado':p.status==='vencido'?'Vencido':p.diff===0?'Hoy':'En '+p.diff+'d';
+    const fechaLine = p.status==='pagado' && p.fechaPago
+      ? `Pagado el ${fmtDate(p.fechaPago)}`
+      : `Vence ${fmtDate(p.fechaLimite)}`;
     return `<div class="pago-card" onclick="abrirPagoDetalle(${p.id})">
       <div class="pago-ico" style="background:rgba(59,130,246,0.1)">${catPagoIco[p.categoria]||'📦'}</div>
       <div class="pago-info">
         <div class="pago-name">${p.nombre}${p.fijo?' 🔁':''}</div>
-        <div class="pago-date">${fmtDate(p.fechaLimite)}</div>
+        <div class="pago-date">${fechaLine}</div>
       </div>
       <div class="pago-right">
         <div class="pago-amt">${fmtCOP(p.monto)}</div>
@@ -2211,7 +2218,7 @@ function abrirPagoDetalle(id){
       <div style="font-size:11px;color:var(--t3);margin-top:3px">Vence: ${fmtDate(p.fechaLimite)} ${diff<0?'· <span style="color:var(--red)">Vencido</span>':diff===0?'· <span style="color:var(--amber)">Hoy</span>':''}</div>
       ${cuenta?`<div style="font-size:11px;color:var(--t3)">Cuenta: ${cuenta.nombre}</div>`:''}
       ${p.fijo?'<div style="font-size:11px;color:var(--blue);margin-top:4px">🔁 Gasto fijo</div>':''}
-      ${p.status==='pagado'?'<div style="font-size:12px;font-weight:700;color:var(--green);margin-top:8px">✅ Pagado</div>':''}
+      ${p.status==='pagado'?`<div style="font-size:12px;font-weight:700;color:var(--green);margin-top:8px">✅ Pagado${p.fechaPago?` el ${fmtDate(p.fechaPago)}`:''}</div>`:''}
     </div>`;
   showModal('modal-pago-detalle');
 }

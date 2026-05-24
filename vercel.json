@@ -28,6 +28,7 @@
     { "path": "/api/sync-emails", "schedule": "0 21 * * *" },
     { "path": "/api/sync-emails", "schedule": "0 1 * * *" },
     { "path": "/api/ai-analysis", "schedule": "0 9 * * *" },
-    { "path": "/api/reminders-cron", "schedule": "0 13 * * *" }
+    { "path": "/api/reminders-cron", "schedule": "0 13 * * *" },
+    { "path": "/api/reminders-cron", "schedule": "0 23 * * *" }
   ]
 }

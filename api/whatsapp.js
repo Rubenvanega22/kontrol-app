@@ -80,6 +80,81 @@ async function findUserByPhone(rawFrom) {
   return data;
 }
 
+// ─── Estado conversacional (multi-turno) ──────────────────────
+// Tabla whatsapp_state: phone (PK), user_id, awaiting, context jsonb, expires_at.
+// Solo se usa para flujos multi-turno (date-postpone, photo-match).
+// El SI/NO/1/2 simple se resuelve sin estado consultando payments.
+async function loadState(phone) {
+  const { data, error } = await supabase
+    .from('whatsapp_state')
+    .select('*')
+    .eq('phone', phone)
+    .maybeSingle();
+  if (error) { console.warn('[whatsapp] loadState error:', error.message); return null; }
+  if (!data) return null;
+  if (new Date(data.expires_at) < new Date()) {
+    await clearState(phone);
+    return null;
+  }
+  return data;
+}
+async function saveState(phone, userId, awaiting, context, ttlMin = 30) {
+  const expires_at = new Date(Date.now() + ttlMin * 60 * 1000).toISOString();
+  const { error } = await supabase.from('whatsapp_state').upsert(
+    { phone, user_id: userId, awaiting, context, expires_at },
+    { onConflict: 'phone' }
+  );
+  if (error) console.warn('[whatsapp] saveState error:', error.message);
+}
+async function clearState(phone) {
+  await supabase.from('whatsapp_state').delete().eq('phone', phone);
+}
+
+// ─── Pago activo para un usuario (espera SI/NO) ───────────────
+// Devuelve el pago más reciente que ya recibió alerta y sigue pendiente.
+async function pagoEnEspera(userId) {
+  const { data, error } = await supabase
+    .from('payments').select('*')
+    .eq('user_id', userId)
+    .neq('status', 'pagado')
+    .or('notificado_pago.eq.true,notificado_6pm.eq.true')
+    .order('notificado_6pm', { ascending: false })
+    .order('fecha_limite', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) { console.warn('[whatsapp] pagoEnEspera error:', error.message); return null; }
+  return data;
+}
+
+// ─── Parser de fechas en español (delegado a Claude — corto y robusto) ───
+async function parsearFechaEspanol(texto) {
+  const hoy = new Date().toISOString().split('T')[0];
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5',
+        max_tokens: 40,
+        system: `Eres un parser de fechas en español colombiano. HOY es ${hoy}. ` +
+          `Responde SOLO con la fecha en formato YYYY-MM-DD. Si no es interpretable, responde "NULL".`,
+        messages: [{ role: 'user', content: texto }]
+      })
+    });
+    const data = await r.json();
+    const out = (data.content?.[0]?.text || '').trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(out)) return out;
+    return null;
+  } catch (e) {
+    console.error('[whatsapp] parsearFechaEspanol error:', e.message);
+    return null;
+  }
+}
+
 // ─── Procesar texto vía ai-chat (reutiliza prompts + acciones + Mem0) ──
 async function procesarConIA(userId, message) {
   const url = `${baseUrl()}/api/ai-chat`;
@@ -138,7 +213,7 @@ async function transcribirAudio(buf, contentType) {
 }
 
 // ─── Procesar foto: Claude Vision extrae transacción + INSERT ──
-async function procesarFoto(userId, buf, contentType) {
+async function procesarFoto(userId, phone, buf, contentType) {
   const base64 = buf.toString('base64');
   const mediaType = (contentType || 'image/jpeg').split(';')[0];
 
@@ -213,7 +288,34 @@ NO incluyas texto adicional, solo el JSON.`;
     style: 'currency', currency: 'COP', minimumFractionDigits: 0
   }).format(mov.monto);
   const signo = mov.tipo === 'ingreso' ? '+' : '-';
-  return `✅ Registré ${signo}${fmt}\n${mov.descripcion}\nAsocia la cuenta desde la app.`;
+  let respuesta = `✅ Registré ${signo}${fmt}\n${mov.descripcion}`;
+
+  // ¿Hay pagos pendientes? Si sí, ofrecemos asociar este gasto a alguno.
+  if (mov.tipo === 'gasto') {
+    const { data: pendientes } = await supabase
+      .from('payments').select('id, nombre, monto')
+      .eq('user_id', userId)
+      .neq('status', 'pagado')
+      .order('fecha_limite', { ascending: true })
+      .limit(5);
+    if (pendientes && pendientes.length) {
+      const cop = n => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n);
+      const lista = pendientes
+        .map((p, i) => `${i + 1}. ${p.nombre} (${cop(p.monto)})`)
+        .join('\n');
+      respuesta += `\n\n¿Este pago corresponde a algún pago programado? Responde el número:\n${lista}\n${pendientes.length + 1}. No, solo registrar el gasto`;
+      // Estado: esperando número (índice 1..N+1) → ID del pago a marcar pagado
+      await saveState(phone, userId, 'photo_match', {
+        movement_id: mov.id,
+        payment_ids: pendientes.map(p => p.id)
+      });
+    } else {
+      respuesta += `\nAsocia la cuenta desde la app.`;
+    }
+  } else {
+    respuesta += `\nAsocia la cuenta desde la app.`;
+  }
+  return respuesta;
 }
 
 // ─── Handler principal ────────────────────────────────────────
@@ -240,9 +342,22 @@ module.exports = async function handler(req, res) {
     return res.status(200).send('OK');
   }
 
-  try {
-    let respuesta;
+  const phone = from.replace(/^whatsapp:/, '').trim();
 
+  try {
+    // ─── PRIMER PASO: ¿es respuesta a un flujo multi-turno? ──────
+    // Solo para mensajes de texto (no audio/foto).
+    if (text && numMedia === 0) {
+      const estado = await loadState(phone);
+      const flujo = await despacharRespuestaPago(usuario.id, phone, text, estado);
+      if (flujo) {
+        await sendTwilio(from, flujo);
+        return res.status(200).send('OK');
+      }
+    }
+
+    // ─── Fallback: procesamiento normal ──────────────────────────
+    let respuesta;
     if (numMedia > 0 && mediaUrl && mediaCt.startsWith('audio/')) {
       const buf = await fetchTwilioMedia(mediaUrl);
       const texto = await transcribirAudio(buf, mediaCt);
@@ -254,7 +369,7 @@ module.exports = async function handler(req, res) {
       }
     } else if (numMedia > 0 && mediaUrl && mediaCt.startsWith('image/')) {
       const buf = await fetchTwilioMedia(mediaUrl);
-      respuesta = await procesarFoto(usuario.id, buf, mediaCt);
+      respuesta = await procesarFoto(usuario.id, phone, buf, mediaCt);
     } else if (text) {
       respuesta = await procesarConIA(usuario.id, text);
     } else {
@@ -269,3 +384,63 @@ module.exports = async function handler(req, res) {
     return res.status(200).send('OK');
   }
 };
+
+// ─── Dispatcher para flujos de pagos / multi-turno ───────────────
+// Devuelve la respuesta a enviar (string), o null si no aplica
+// (entonces el caller continúa al flujo normal AI).
+async function despacharRespuestaPago(userId, phone, text, estado) {
+  const lower = text.toLowerCase().trim();
+  const cop = n => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n);
+
+  // 1. Estado photo_match: usuario respondió con un número para asociar gasto a pago
+  if (estado?.awaiting === 'photo_match') {
+    const num = parseInt(lower, 10);
+    const { movement_id, payment_ids } = estado.context || {};
+    await clearState(phone);
+    if (!Number.isFinite(num) || num < 1) return 'No entendí el número. Movimiento queda sin asociar.';
+    if (num > payment_ids.length) return '✅ OK, lo dejé como gasto suelto.'; // "N+1: solo registrar"
+    const pagoId = payment_ids[num - 1];
+    // Marcar el pago como pagado + fecha_pago=hoy, y enlazar movement al pago si tu schema lo permite.
+    const hoy = new Date().toISOString().split('T')[0];
+    const { error: upErr } = await supabase.from('payments')
+      .update({ status: 'pagado', fecha_pago: hoy }).eq('id', pagoId).eq('user_id', userId);
+    if (upErr) { console.error('[whatsapp] mark paid error:', upErr.message); return '⚠️ No pude marcar el pago. Hazlo desde la app.'; }
+    return `✅ Marqué el pago como pagado y vinculé el gasto.`;
+  }
+
+  // 2. Estado payment_date: usuario está dando la nueva fecha para un pago aplazado
+  if (estado?.awaiting === 'payment_date') {
+    const { payment_id } = estado.context || {};
+    await clearState(phone);
+    const nuevaFecha = await parsearFechaEspanol(text);
+    if (!nuevaFecha) return 'No entendí la fecha. Cámbiala desde la app cuando puedas.';
+    // Reseteamos las flags de notificación para que vuelva a recordar en la nueva fecha.
+    const { error } = await supabase.from('payments')
+      .update({ fecha_limite: nuevaFecha, notificado_pago: false, notificado_6pm: false })
+      .eq('id', payment_id).eq('user_id', userId);
+    if (error) { console.error('[whatsapp] postpone error:', error.message); return '⚠️ No pude posponer el pago.'; }
+    return `🗓️ Listo, lo aplacé para ${nuevaFecha}.`;
+  }
+
+  // 3. Sin estado pero el texto se parece a una confirmación SI/NO/1/2.
+  //    Buscamos el pago activo del usuario y lo procesamos.
+  const esSi = /^(s[ií]|1|pagu[eé]|ya\s+pagu[eé]|listo|ok)$/i.test(lower);
+  const esNo = /^(no|2)$/i.test(lower);
+  if (!esSi && !esNo) return null; // No es respuesta de pago → procesar como AI normal
+
+  const pago = await pagoEnEspera(userId);
+  if (!pago) return null; // No hay pago esperando → procesar como AI normal
+
+  if (esSi) {
+    const hoy = new Date().toISOString().split('T')[0];
+    const { error } = await supabase.from('payments')
+      .update({ status: 'pagado', fecha_pago: hoy })
+      .eq('id', pago.id).eq('user_id', userId);
+    if (error) { console.error('[whatsapp] confirm paid error:', error.message); return '⚠️ Error marcando como pagado.'; }
+    return `✅ Marqué *${pago.nombre}* (${cop(pago.monto)}) como pagado hoy.`;
+  }
+
+  // esNo: setear estado esperando fecha
+  await saveState(phone, userId, 'payment_date', { payment_id: pago.id }, 60);
+  return `OK, ¿para cuándo lo pospones? Dime la fecha (ej: "25 de mayo" o "el viernes").`;
+}
