@@ -1887,8 +1887,16 @@ async function borrarMovimientoUI(id) {
   console.log('[borrarMovimiento] delete result:', error ? 'ERROR: ' + error.message : 'OK, filas borradas=' + (data ? data.length : '?'));
   if (error) { toast('Error: ' + error.message,'var(--red)'); return; }
   if (data && data.length === 0) {
-    console.warn('[borrarMovimiento] DELETE devolvió 0 filas — posible RLS o id no matchea user_id=' + currentUser.id);
-    toast('Sin permiso para eliminar este movimiento','var(--red)');
+    // 0 filas en una DELETE bajo RLS puede significar:
+    //   (a) RLS bloqueó (user_id no matchea auth.uid()) — sería un bug real
+    //   (b) el id ya no existe en Supabase aunque sí en el cache local
+    //       (otra pestaña, otro dispositivo, deletes vía cron/MCP)
+    // El caso (b) es el común y aparece como "ghost movement" — la fila
+    // se ve en la UI porque DB.movimientos quedó stale. Forzamos sync
+    // para reconciliar y que el ghost desaparezca solo.
+    console.warn('[borrarMovimiento] DELETE devolvió 0 filas para id=' + id + ' user_id=' + currentUser.id + '. Probable cache stale; resincronizando.');
+    toast('Este movimiento ya no existe en el servidor. Sincronizando…','var(--amber)');
+    await syncDesdeSupabase();
     return;
   }
 
