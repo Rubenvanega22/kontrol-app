@@ -214,6 +214,11 @@ async function syncGmail(emailAccount) {
     return results;
   } catch (error) {
     console.error(`Error Gmail sync ${emailAccount.email}:`, error.message);
+    emailAccount.__debug = {
+      email: emailAccount.email,
+      error: error.message,
+      stack: (error.stack || '').split('\n').slice(0, 5).join(' | ')
+    };
     return [];
   }
 }
