@@ -182,8 +182,8 @@ async function syncGmail(emailAccount) {
             .eq('email_message_id', msg.id);
         }
 
-        // Crear alerta WhatsApp
-        await crearAlertaWhatsApp(parsed, movement);
+        // Crear alerta WhatsApp (profiles.telefono del dueño del email_account)
+        await crearAlertaWhatsApp(parsed, movement, emailAccount.user_id, ajuste);
 
         results.push({ ...parsed, ajuste, account_id: cuenta?.id || null });
       }
@@ -303,7 +303,7 @@ async function syncOutlook(emailAccount) {
             .eq('email_message_id', msg.id);
         }
 
-        await crearAlertaWhatsApp(parsed, movement);
+        await crearAlertaWhatsApp(parsed, movement, emailAccount.user_id, ajuste);
         results.push({ ...parsed, ajuste, account_id: cuenta?.id || null });
       }
     }
@@ -331,31 +331,39 @@ function categoriaDesde(descripcion) {
   return 'otro';
 }
 
-async function crearAlertaWhatsApp(parsed, movement) {
+async function crearAlertaWhatsApp(parsed, movement, userId, ajuste) {
+  // El teléfono se toma de profiles.telefono del dueño del email_account,
+  // NO del config global de notificaciones (que solo aplica a alertas viejas).
+  // ajuste: {antes, delta, despues, nombre} | null si no se vinculó cuenta.
   try {
-    const { data: cfgRow } = await supabase
-      .from('config')
-      .select('value')
-      .eq('key', 'notificaciones')
-      .single();
+    if (!userId) { console.log('[sync-alert] sin userId, omitida'); return; }
 
-    const cfg = cfgRow?.value || {};
-    if (!cfg.whatsapp_enabled || !cfg.whatsapp_numero) return;
+    const { data: profile } = await supabase
+      .from('profiles').select('telefono').eq('id', userId).maybeSingle();
+    const telefono = profile?.telefono;
+    if (!telefono) {
+      console.log('[sync-alert] sin profiles.telefono para user', userId, '— omitida');
+      return;
+    }
 
-    const emoji = parsed.tipo === 'ingreso' ? '💰' : '💳';
-    const signo = parsed.tipo === 'ingreso' ? '+' : '-';
-    const monto = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(parsed.monto);
+    const fmt = n => new Intl.NumberFormat('es-CO',
+      { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n);
+    const saldoLine = ajuste ? `\nSaldo: ${fmt(ajuste.despues)}` : '';
 
-    const mensaje = `${emoji} *Kontrol detectó un movimiento*\n\n${signo}${monto} — ${parsed.descripcion}\n🏦 ${parsed.bancoNombre}\n📅 ${parsed.fecha}\n\n_Registrado automáticamente en tu app_`;
+    let mensaje;
+    if (parsed.tipo === 'ingreso') {
+      mensaje = `💚 Te llegaron ${fmt(parsed.monto)} a ${parsed.bancoNombre}.${saldoLine}`;
+    } else {
+      // gasto / retiro
+      mensaje = `🔴 Salieron ${fmt(parsed.monto)} de ${parsed.bancoNombre} - ${parsed.descripcion}.${saldoLine}`;
+    }
 
-    await supabase.from('whatsapp_alerts').insert({
-      tipo: 'movimiento_banco',
-      mensaje,
-      telefono: cfg.whatsapp_numero,
-      enviado: false
+    const { error } = await supabase.from('whatsapp_alerts').insert({
+      tipo: 'movimiento_banco', mensaje, telefono, enviado: false
     });
+    if (error) console.error('[sync-alert] insert alerta error:', error.message);
   } catch (e) {
-    console.error('Error creando alerta WhatsApp:', e.message);
+    console.error('[sync-alert] Error creando alerta WhatsApp:', e.message);
   }
 }
 
@@ -417,12 +425,26 @@ module.exports = async function handler(req, res) {
 
     // (Recordatorios de agenda movidos a /api/reminders-cron)
 
+    // Flush de WhatsApp: una sola pasada al final si hubo detecciones.
+    // crearAlertaWhatsApp solo insertó filas en whatsapp_alerts; este POST
+    // dispara a Twilio para enviarlas inmediatamente.
+    let sendResp = null;
+    if (detecciones.length > 0) {
+      try {
+        const r = await fetch('https://kontrol-app-eight.vercel.app/api/send-whatsapp', { method: 'POST' });
+        sendResp = await r.json().catch(() => null);
+      } catch (e) {
+        console.error('[sync-emails] flush send-whatsapp failed:', e.message);
+      }
+    }
+
     return res.json({
       ok: true,
       timestamp: new Date().toISOString(),
       cuentas_revisadas: emailAccounts.length,
       movimientos_detectados: detecciones.length,
-      detecciones
+      detecciones,
+      send_whatsapp_response: sendResp
     });
 
   } catch (error) {
