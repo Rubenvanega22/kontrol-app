@@ -432,7 +432,10 @@ select.form-inp option{background:#0c1228;}
         <div class="bal">
           <div class="bal-top">
             <div class="bal-text">
-              <div class="bal-lbl">Saldo total</div>
+              <div class="bal-lbl">Saldo total
+                <button id="btn-refresh-resumen" onclick="refrescarManual()" title="Sincronizar con servidor"
+                  style="background:rgba(255,255,255,0.06);border:none;border-radius:5px;width:22px;height:22px;cursor:pointer;font-size:11px;padding:0;margin-left:6px;color:var(--t2);vertical-align:middle">🔄</button>
+              </div>
               <div class="bal-amt" id="bal-total">$0</div>
               <div class="bal-sub">Este mes <b id="bal-cambio">+$0</b></div>
             </div>
@@ -1310,6 +1313,24 @@ function save(){
 }
 
 // ═══ SINCRONIZAR SUPABASE → DB LOCAL ═══
+// Refresca manualmente desde Supabase. Útil cuando cambios externos
+// (cron de emails, bot de WhatsApp) modificaron saldos en el servidor
+// y la instancia abierta del frontend aún tiene el snapshot anterior.
+async function refrescarManual() {
+  const btn = document.getElementById('btn-refresh-resumen');
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.4'; btn.textContent = '⏳'; }
+  try {
+    await syncDesdeSupabase();
+    renderResumen();
+    toast('✅ Actualizado', 'var(--green)');
+  } catch (e) {
+    console.error('refrescarManual error:', e);
+    toast('Error al actualizar', 'var(--red)');
+  } finally {
+    if (btn) { btn.disabled = false; btn.style.opacity = ''; btn.textContent = '🔄'; }
+  }
+}
+
 async function syncDesdeSupabase() {
   if (!currentUser) return;
   try {
