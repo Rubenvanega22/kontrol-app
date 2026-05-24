@@ -290,32 +290,58 @@ NO incluyas texto adicional, solo el JSON.`;
   const signo = mov.tipo === 'ingreso' ? '+' : '-';
   let respuesta = `✅ Registré ${signo}${fmt}\n${mov.descripcion}`;
 
-  // ¿Hay pagos pendientes? Si sí, ofrecemos asociar este gasto a alguno.
-  if (mov.tipo === 'gasto') {
-    const { data: pendientes } = await supabase
-      .from('payments').select('id, nombre, monto')
-      .eq('user_id', userId)
-      .neq('status', 'pagado')
-      .order('fecha_limite', { ascending: true })
-      .limit(5);
-    if (pendientes && pendientes.length) {
-      const cop = n => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n);
-      const lista = pendientes
-        .map((p, i) => `${i + 1}. ${p.nombre} (${cop(p.monto)})`)
-        .join('\n');
-      respuesta += `\n\n¿Este pago corresponde a algún pago programado? Responde el número:\n${lista}\n${pendientes.length + 1}. No, solo registrar el gasto`;
-      // Estado: esperando número (índice 1..N+1) → ID del pago a marcar pagado
-      await saveState(phone, userId, 'photo_match', {
-        movement_id: mov.id,
-        payment_ids: pendientes.map(p => p.id)
-      });
-    } else {
-      respuesta += `\nAsocia la cuenta desde la app.`;
-    }
+  // Flujo de seguimiento — dos preguntas encadenadas vía whatsapp_state:
+  //   1. ¿corresponde a un pago programado? (photo_match, 0 = saltar)
+  //   2. ¿de qué cuenta descuento / a cuál sumo? (photo_account)
+  // Si NO hay pagos pendientes, saltamos directo a la cuenta.
+  const { data: pendientes } = await supabase
+    .from('payments').select('id, nombre, monto')
+    .eq('user_id', userId)
+    .neq('status', 'pagado')
+    .order('fecha_limite', { ascending: true })
+    .limit(5);
+
+  if (pendientes && pendientes.length) {
+    const cop = n => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n);
+    const lista = pendientes.map((p, i) => `${i + 1}. ${p.nombre} (${cop(p.monto)})`).join('\n');
+    respuesta += `\n\n¿Este pago corresponde a un pago programado?\n${lista}\nO responde *0* para solo registrar el gasto.`;
+    await saveState(phone, userId, 'photo_match', {
+      movement_id: mov.id,
+      monto: mov.monto,
+      tipo: mov.tipo,
+      payment_ids: pendientes.map(p => p.id)
+    });
   } else {
-    respuesta += `\nAsocia la cuenta desde la app.`;
+    // Sin pagos pendientes → directo al paso de cuenta
+    const seg = await askAccountQuestion(userId, phone, mov.id, mov.monto, mov.tipo);
+    respuesta += `\n\n${seg}`;
   }
   return respuesta;
+}
+
+// ─── Pregunta de selección de cuenta + setea estado photo_account ─────
+// Devuelve el texto a enviar. Si no hay cuentas, deja el movimiento
+// huérfano y retorna un aviso (no setea estado — no hay flujo que esperar).
+async function askAccountQuestion(userId, phone, movementId, monto, tipo) {
+  const { data: cuentas, error } = await supabase
+    .from('accounts').select('id, nombre, saldo')
+    .eq('user_id', userId)
+    .order('nombre', { ascending: true });
+  if (error) {
+    console.error('[whatsapp] askAccountQuestion accounts error:', error.message);
+    return 'No pude leer tus cuentas. Asocia el movimiento desde la app.';
+  }
+  if (!cuentas || !cuentas.length) {
+    return 'No tienes cuentas activas. Crea una en la app y luego asocia el movimiento.';
+  }
+  const cop = n => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n);
+  const lista = cuentas.map((c, i) => `${i + 1}. ${c.nombre} (${cop(c.saldo)})`).join('\n');
+  const verbo = tipo === 'ingreso' ? 'sumo' : 'descuento';
+  await saveState(phone, userId, 'photo_account', {
+    movement_id: movementId, monto, tipo,
+    account_ids: cuentas.map(c => c.id)
+  });
+  return `¿De qué cuenta ${verbo} ${cop(monto)}?\n${lista}\n(responde con el número)`;
 }
 
 // ─── Handler principal ────────────────────────────────────────
@@ -392,20 +418,72 @@ async function despacharRespuestaPago(userId, phone, text, estado) {
   const lower = text.toLowerCase().trim();
   const cop = n => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n);
 
-  // 1. Estado photo_match: usuario respondió con un número para asociar gasto a pago
+  // 1. Estado photo_match: usuario respondió con un número (0 = saltar)
+  //    para asociar el gasto a un pago programado. Luego SIEMPRE encadenamos
+  //    a la pregunta de cuenta (photo_account).
   if (estado?.awaiting === 'photo_match') {
     const num = parseInt(lower, 10);
-    const { movement_id, payment_ids } = estado.context || {};
+    const { movement_id, monto, tipo, payment_ids } = estado.context || {};
+    if (!Number.isFinite(num) || num < 0 || num > (payment_ids?.length || 0)) {
+      await clearState(phone);
+      return 'No entendí el número. Movimiento queda sin asociar.';
+    }
+    // 0 = saltar match de pago. 1..N = marcar el pago N como pagado.
+    let prefijo = '';
+    if (num >= 1) {
+      const pagoId = payment_ids[num - 1];
+      const hoy = new Date().toISOString().split('T')[0];
+      const { error: upErr } = await supabase.from('payments')
+        .update({ status: 'pagado', fecha_pago: hoy })
+        .eq('id', pagoId).eq('user_id', userId);
+      if (upErr) {
+        console.error('[whatsapp] mark paid error:', upErr.message);
+        prefijo = '⚠️ No pude marcar el pago.\n\n';
+      } else {
+        prefijo = '✅ Pago marcado como pagado.\n\n';
+      }
+    }
+    // Encadenar: ahora preguntar de qué cuenta descontar.
+    const accountQ = await askAccountQuestion(userId, phone, movement_id, monto, tipo);
+    return prefijo + accountQ;
+  }
+
+  // 1b. Estado photo_account: usuario eligió cuenta — aplicar saldo + linkear.
+  if (estado?.awaiting === 'photo_account') {
+    const num = parseInt(lower, 10);
+    const { movement_id, monto, tipo, account_ids } = estado.context || {};
     await clearState(phone);
-    if (!Number.isFinite(num) || num < 1) return 'No entendí el número. Movimiento queda sin asociar.';
-    if (num > payment_ids.length) return '✅ OK, lo dejé como gasto suelto.'; // "N+1: solo registrar"
-    const pagoId = payment_ids[num - 1];
-    // Marcar el pago como pagado + fecha_pago=hoy, y enlazar movement al pago si tu schema lo permite.
-    const hoy = new Date().toISOString().split('T')[0];
-    const { error: upErr } = await supabase.from('payments')
-      .update({ status: 'pagado', fecha_pago: hoy }).eq('id', pagoId).eq('user_id', userId);
-    if (upErr) { console.error('[whatsapp] mark paid error:', upErr.message); return '⚠️ No pude marcar el pago. Hazlo desde la app.'; }
-    return `✅ Marqué el pago como pagado y vinculé el gasto.`;
+    if (!Number.isFinite(num) || num < 1 || num > (account_ids?.length || 0)) {
+      return 'No entendí el número. Movimiento queda sin cuenta — asócialo desde la app.';
+    }
+    const accountId = account_ids[num - 1];
+
+    // Leer fresh el saldo (evita drift contra el listado cacheado).
+    const { data: cuenta, error: cErr } = await supabase
+      .from('accounts').select('id, nombre, saldo')
+      .eq('id', accountId).eq('user_id', userId).maybeSingle();
+    if (cErr || !cuenta) {
+      console.error('[whatsapp] photo_account cuenta no encontrada:', cErr?.message);
+      return '⚠️ No pude leer esa cuenta. Asocia desde la app.';
+    }
+
+    const delta = tipo === 'ingreso' ? +monto : -monto;
+    const nuevoSaldo = parseFloat(cuenta.saldo || 0) + delta;
+    const { error: sErr } = await supabase.from('accounts')
+      .update({ saldo: nuevoSaldo }).eq('id', accountId).eq('user_id', userId);
+    if (sErr) {
+      console.error('[whatsapp] photo_account update saldo error:', sErr.message);
+      return '⚠️ No pude ajustar el saldo. Asocia desde la app.';
+    }
+
+    // Linkear el movement a la cuenta + marcar confirmado.
+    const { error: mErr } = await supabase.from('movements')
+      .update({ account_id: accountId, confirmado: true })
+      .eq('id', movement_id).eq('user_id', userId);
+    if (mErr) console.warn('[whatsapp] photo_account link movement error:', mErr.message);
+
+    const verbo = tipo === 'ingreso' ? 'Sumé' : 'Desconté';
+    return `✅ ${verbo} ${cop(monto)} ${tipo === 'ingreso' ? 'a' : 'de'} *${cuenta.nombre}*. Saldo actual: ${cop(nuevoSaldo)}`;
   }
 
   // 2. Estado payment_date: usuario está dando la nueva fecha para un pago aplazado
