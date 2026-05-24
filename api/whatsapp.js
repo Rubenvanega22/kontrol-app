@@ -23,10 +23,12 @@ const TWILIO_NUM = process.env.TWILIO_WHATSAPP_NUMBER;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 
 function baseUrl() {
-  // Vercel inyecta VERCEL_URL en runtime (sin protocolo).
-  return process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : 'http://localhost:3000';
+  // Why hardcoded: VERCEL_URL inyectado en runtime suele ser la URL específica
+  // del deployment (kontrol-app-<hash>-<team>.vercel.app), que en planes con
+  // Deployment Protection devuelve 401 + HTML para fetches sin bypass token.
+  // El alias público kontrol-app-eight.vercel.app no tiene esa protección.
+  // (Mismo patrón que api/reminders-cron.js.)
+  return process.env.VERCEL_PUBLIC_URL || 'https://kontrol-app-eight.vercel.app';
 }
 
 // ─── Twilio: enviar mensaje saliente ──────────────────────────
@@ -80,27 +82,54 @@ async function findUserByPhone(rawFrom) {
 
 // ─── Procesar texto vía ai-chat (reutiliza prompts + acciones + Mem0) ──
 async function procesarConIA(userId, message) {
-  const r = await fetch(`${baseUrl()}/api/ai-chat`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, user_id: userId, history: [] })
-  });
-  const data = await r.json();
+  const url = `${baseUrl()}/api/ai-chat`;
+  console.log('[whatsapp] → ai-chat', url);
+  let r, raw;
+  try {
+    r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, user_id: userId, history: [] })
+    });
+    raw = await r.text();
+  } catch (e) {
+    console.error('[whatsapp] ai-chat fetch falló:', e.message);
+    return 'No pude conectar con el motor de IA.';
+  }
+  let data;
+  try { data = JSON.parse(raw); }
+  catch (e) {
+    console.error('[whatsapp] ai-chat respuesta no-JSON. status=', r.status, 'body=', raw.slice(0, 300));
+    return 'El motor de IA devolvió una respuesta inesperada.';
+  }
   if (!r.ok) {
     console.error('[whatsapp] ai-chat HTTP', r.status, JSON.stringify(data));
-    return 'No pude procesar tu mensaje, intenta de nuevo.';
+    return data.error ? `Error IA: ${data.error}` : 'No pude procesar tu mensaje.';
   }
   return data.respuesta || 'No tengo respuesta para eso.';
 }
 
 // ─── Transcribir audio (Groq Whisper vía /api/transcribe) ──────
 async function transcribirAudio(buf, contentType) {
-  const r = await fetch(`${baseUrl()}/api/transcribe`, {
-    method: 'POST',
-    headers: { 'Content-Type': contentType || 'audio/ogg' },
-    body: buf
-  });
-  const data = await r.json();
+  const url = `${baseUrl()}/api/transcribe`;
+  let r, raw;
+  try {
+    r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': contentType || 'audio/ogg' },
+      body: buf
+    });
+    raw = await r.text();
+  } catch (e) {
+    console.error('[whatsapp] transcribe fetch falló:', e.message);
+    return '';
+  }
+  let data;
+  try { data = JSON.parse(raw); }
+  catch (e) {
+    console.error('[whatsapp] transcribe respuesta no-JSON. status=', r.status, 'body=', raw.slice(0, 300));
+    return '';
+  }
   if (!r.ok) {
     console.error('[whatsapp] transcribe HTTP', r.status, JSON.stringify(data));
     return '';
