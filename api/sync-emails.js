@@ -96,6 +96,9 @@ async function syncGmail(emailAccount) {
       maxResults: 50
     });
 
+    console.log('[sync] Gmail messages found:', listRes.data.messages?.length || 0);
+    console.log('[sync] Query used:', query);
+
     const messages = listRes.data.messages || [];
     const results = [];
 
