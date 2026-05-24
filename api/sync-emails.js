@@ -87,7 +87,7 @@ async function syncGmail(emailAccount) {
       .map(r => `from:${r}`)
       .join(' OR ');
 
-    const after = Math.floor((Date.now() - 24 * 60 * 60 * 1000) / 1000);
+    const after = Math.floor((Date.now() - 30*24*60*60*1000) / 1000);
     const query = `(${bancosQuery}) after:${after}`;
 
     const listRes = await gmail.users.messages.list({
