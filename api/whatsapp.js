@@ -448,27 +448,57 @@ async function despacharRespuestaPago(userId, phone, text, estado) {
     return prefijo + accountQ;
   }
 
-  // 1b. Estado photo_account: usuario eligió cuenta — aplicar saldo + linkear.
+  // 1b. Estado photo_account: usuario eligió cuenta — verificar saldo,
+  //     aplicar deducción O preguntar por cuenta secundaria si no alcanza.
   if (estado?.awaiting === 'photo_account') {
     const num = parseInt(lower, 10);
     const { movement_id, monto, tipo, account_ids } = estado.context || {};
-    await clearState(phone);
     if (!Number.isFinite(num) || num < 1 || num > (account_ids?.length || 0)) {
+      await clearState(phone);
       return 'No entendí el número. Movimiento queda sin cuenta — asócialo desde la app.';
     }
     const accountId = account_ids[num - 1];
 
-    // Leer fresh el saldo (evita drift contra el listado cacheado).
     const { data: cuenta, error: cErr } = await supabase
       .from('accounts').select('id, nombre, saldo')
       .eq('id', accountId).eq('user_id', userId).maybeSingle();
     if (cErr || !cuenta) {
+      await clearState(phone);
       console.error('[whatsapp] photo_account cuenta no encontrada:', cErr?.message);
       return '⚠️ No pude leer esa cuenta. Asocia desde la app.';
     }
 
+    const saldoActual = parseFloat(cuenta.saldo || 0);
+
+    // ── Split flow: solo si es gasto y la cuenta primaria NO alcanza ──
+    if (tipo === 'gasto' && saldoActual < monto) {
+      const diferencia = monto - saldoActual;
+      const { data: otras } = await supabase
+        .from('accounts').select('id, nombre, saldo')
+        .eq('user_id', userId)
+        .neq('id', accountId)
+        .order('nombre');
+      let msg = `⚠️ En *${cuenta.nombre}* solo tienes ${cop(saldoActual)} pero el gasto es ${cop(monto)}. Te faltan ${cop(diferencia)}.\n¿Cómo pagaste el resto?`;
+      if (otras && otras.length) {
+        const lista = otras.map((c, i) => `${i + 1}. ${c.nombre} (${cop(c.saldo)})`).join('\n');
+        msg += `\n${lista}\nO responde *0* para dejar el saldo en negativo.`;
+      } else {
+        msg += `\nResponde *0* para dejar el saldo en negativo (es tu única cuenta).`;
+      }
+      await saveState(phone, userId, 'photo_split', {
+        movement_id, monto, tipo,
+        primary_account_id: accountId,
+        primary_monto: saldoActual,        // lo que drenamos del primario
+        remaining_monto: diferencia,        // lo que falta — va al secundario
+        secondary_account_ids: (otras || []).map(c => c.id)
+      });
+      return msg;
+    }
+
+    // ── Caso normal: ingreso o gasto con saldo suficiente ──
+    await clearState(phone);
     const delta = tipo === 'ingreso' ? +monto : -monto;
-    const nuevoSaldo = parseFloat(cuenta.saldo || 0) + delta;
+    const nuevoSaldo = saldoActual + delta;
     const { error: sErr } = await supabase.from('accounts')
       .update({ saldo: nuevoSaldo }).eq('id', accountId).eq('user_id', userId);
     if (sErr) {
@@ -476,7 +506,6 @@ async function despacharRespuestaPago(userId, phone, text, estado) {
       return '⚠️ No pude ajustar el saldo. Asocia desde la app.';
     }
 
-    // Linkear el movement a la cuenta + marcar confirmado.
     const { error: mErr } = await supabase.from('movements')
       .update({ account_id: accountId, confirmado: true })
       .eq('id', movement_id).eq('user_id', userId);
@@ -484,6 +513,91 @@ async function despacharRespuestaPago(userId, phone, text, estado) {
 
     const verbo = tipo === 'ingreso' ? 'Sumé' : 'Desconté';
     return `✅ ${verbo} ${cop(monto)} ${tipo === 'ingreso' ? 'a' : 'de'} *${cuenta.nombre}*. Saldo actual: ${cop(nuevoSaldo)}`;
+  }
+
+  // 1c. Estado photo_split: el primario no alcanzó; el usuario eligió
+  //     una segunda cuenta (1..N) o "0" para permitir saldo negativo.
+  if (estado?.awaiting === 'photo_split') {
+    const num = parseInt(lower, 10);
+    const {
+      movement_id, monto, tipo,
+      primary_account_id, primary_monto, remaining_monto,
+      secondary_account_ids
+    } = estado.context || {};
+    await clearState(phone);
+
+    if (!Number.isFinite(num) || num < 0 || num > (secondary_account_ids?.length || 0)) {
+      return 'No entendí el número. Movimiento queda sin terminar — ajusta desde la app.';
+    }
+
+    // Leer cuenta primaria fresh (puede haber cambiado entre turnos).
+    const { data: primaria, error: pErr } = await supabase
+      .from('accounts').select('id, nombre, saldo')
+      .eq('id', primary_account_id).eq('user_id', userId).maybeSingle();
+    if (pErr || !primaria) return '⚠️ No pude leer la cuenta primaria. Ajusta desde la app.';
+
+    // ── Opción 0: saldo negativo permitido en la primaria ──
+    if (num === 0) {
+      const nuevoPrim = parseFloat(primaria.saldo || 0) - monto;
+      const { error: e1 } = await supabase.from('accounts')
+        .update({ saldo: nuevoPrim }).eq('id', primary_account_id).eq('user_id', userId);
+      if (e1) { console.error('[whatsapp] split-neg saldo error:', e1.message); return '⚠️ Error ajustando saldo.'; }
+      const { error: e2 } = await supabase.from('movements')
+        .update({ account_id: primary_account_id, confirmado: true, nota: 'Saldo insuficiente al registrar' })
+        .eq('id', movement_id).eq('user_id', userId);
+      if (e2) console.warn('[whatsapp] split-neg link movement error:', e2.message);
+      return `✅ Desconté ${cop(monto)} de *${primaria.nombre}*. Saldo actual: ${cop(nuevoPrim)} (negativo).`;
+    }
+
+    // ── Opción 1..N: dividir entre primaria y secundaria ──
+    const secondaryId = secondary_account_ids[num - 1];
+    const { data: secundaria, error: sErr } = await supabase
+      .from('accounts').select('id, nombre, saldo')
+      .eq('id', secondaryId).eq('user_id', userId).maybeSingle();
+    if (sErr || !secundaria) return '⚠️ No pude leer la cuenta secundaria. Ajusta desde la app.';
+
+    const nuevoPrim = parseFloat(primaria.saldo || 0) - primary_monto;
+    const nuevoSec  = parseFloat(secundaria.saldo || 0) - remaining_monto;
+
+    // Aplicar ambos UPDATE en paralelo. Si uno falla, el otro queda — no
+    // hay transacción real en supabase-js, pero registramos y avisamos.
+    const [up1, up2] = await Promise.all([
+      supabase.from('accounts').update({ saldo: nuevoPrim }).eq('id', primary_account_id).eq('user_id', userId),
+      supabase.from('accounts').update({ saldo: nuevoSec  }).eq('id', secondaryId).eq('user_id', userId)
+    ]);
+    if (up1.error || up2.error) {
+      console.error('[whatsapp] split update errors:', up1.error?.message, up2.error?.message);
+      return '⚠️ Error parcial aplicando el split. Revisa los saldos en la app.';
+    }
+
+    // El movement original queda con la cuenta primaria y SU porción del
+    // monto. Insertamos un segundo movement para la porción del secundario,
+    // copiando descripcion/fecha/categoria del original.
+    const { data: orig } = await supabase
+      .from('movements').select('descripcion, fecha, categoria')
+      .eq('id', movement_id).eq('user_id', userId).maybeSingle();
+
+    await supabase.from('movements').update({
+      account_id: primary_account_id,
+      monto: primary_monto,
+      confirmado: true,
+      nota: `Pago dividido con ${secundaria.nombre} (${cop(remaining_monto)})`
+    }).eq('id', movement_id).eq('user_id', userId);
+
+    await supabase.from('movements').insert({
+      user_id: userId,
+      tipo,
+      descripcion: orig?.descripcion || 'Movimiento',
+      monto: remaining_monto,
+      fecha: orig?.fecha || new Date().toISOString().split('T')[0],
+      categoria: orig?.categoria || 'otro',
+      source: 'whatsapp_foto',
+      account_id: secondaryId,
+      confirmado: true,
+      nota: `Pago dividido con ${primaria.nombre} (${cop(primary_monto)})`
+    });
+
+    return `✅ Pago dividido:\n• ${cop(primary_monto)} de *${primaria.nombre}* → ${cop(nuevoPrim)}\n• ${cop(remaining_monto)} de *${secundaria.nombre}* → ${cop(nuevoSec)}`;
   }
 
   // 2. Estado payment_date: usuario está dando la nueva fecha para un pago aplazado
