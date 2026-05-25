@@ -57,6 +57,18 @@ async function ajustarSaldoCuenta(userId, accountId, delta, opLabel) {
 }
 
 // ─── Gmail ────────────────────────────────────────────────
+// Recorre recursivamente las partes MIME devolviendo el primer text/plain
+// (en base64, sin decodificar). Why: payload.parts puede anidar
+// multipart/alternative dentro de multipart/mixed; el barrido plano anterior
+// se quedaba sin body en esos casos y parsearMonto devolvía null.
+function extractTextFromParts(parts) {
+  for (const part of parts) {
+    if (part.mimeType === 'text/plain' && part.body?.data) return part.body.data;
+    if (part.parts) { const found = extractTextFromParts(part.parts); if (found) return found; }
+  }
+  return null;
+}
+
 async function syncGmail(emailAccount) {
   try {
     const oauth2Client = new google.auth.OAuth2(
@@ -90,13 +102,22 @@ async function syncGmail(emailAccount) {
     const after = Math.floor((Date.now() - 30*24*60*60*1000) / 1000);
     const query = `(${bancosQuery}) after:${after}`;
 
-    const listRes = await gmail.users.messages.list({
-      userId: 'me',
-      q: query,
-      maxResults: 50
-    });
+    // Paginar hasta MAX_MESSAGES — sin esto, inboxes con >50 correos
+    // de bancos en 30d perdían los más viejos silenciosamente.
+    const MAX_MESSAGES = 200;
+    const messages = [];
+    let pageToken;
+    do {
+      const listRes = await gmail.users.messages.list({
+        userId: 'me',
+        q: query,
+        maxResults: 50,
+        pageToken
+      });
+      if (listRes.data.messages) messages.push(...listRes.data.messages);
+      pageToken = listRes.data.nextPageToken;
+    } while (pageToken && messages.length < MAX_MESSAGES);
 
-    const messages = listRes.data.messages || [];
     const results = [];
 
     for (const msg of messages) {
@@ -119,14 +140,14 @@ async function syncGmail(emailAccount) {
       const from = headers.find(h => h.name === 'From')?.value || '';
       const subject = headers.find(h => h.name === 'Subject')?.value || '';
 
-      // Extraer body
+      // Extraer body — recursivo (ver extractTextFromParts arriba).
+      // Fallback: si no hay parts (correo single-part), usa payload.body.data directo.
       let body = '';
-      const parts = full.data.payload?.parts || [full.data.payload];
-      for (const part of parts) {
-        if (part?.mimeType === 'text/plain' && part.body?.data) {
-          body += Buffer.from(part.body.data, 'base64').toString('utf8');
-        }
-      }
+      const payload = full.data.payload;
+      const bodyData = payload?.parts
+        ? extractTextFromParts(payload.parts)
+        : payload?.body?.data;
+      if (bodyData) body = Buffer.from(bodyData, 'base64').toString('utf8');
 
       const parsed = parsearEmail(from, subject, body, msg.id);
 
