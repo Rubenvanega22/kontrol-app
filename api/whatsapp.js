@@ -68,9 +68,18 @@ async function fetchTwilioMedia(url) {
 }
 
 // ─── Resolver usuario por número de WhatsApp ──────────────────
+// Twilio a veces entrega From con "+" literal en el body URL-encoded; el
+// parser de form-urlencoded lo decodifica como espacio, así que recibimos
+// "whatsapp: 573024087608" en vez de "whatsapp:+573024087608". Re-prefijamos
+// "+" si falta para que el match contra profiles.telefono (E.164) no falle.
+function normalizePhone(rawFrom) {
+  let phone = rawFrom.replace(/^whatsapp:/, '').trim();
+  if (phone && !phone.startsWith('+')) phone = '+' + phone;
+  return phone;
+}
+
 async function findUserByPhone(rawFrom) {
-  // rawFrom = "whatsapp:+57XXXXXXXXXX"
-  const phone = rawFrom.replace(/^whatsapp:/, '').trim();
+  const phone = normalizePhone(rawFrom);
   const { data, error } = await supabase
     .from('profiles')
     .select('id, telefono')
@@ -368,7 +377,7 @@ module.exports = async function handler(req, res) {
     return res.status(200).send('OK');
   }
 
-  const phone = from.replace(/^whatsapp:/, '').trim();
+  const phone = normalizePhone(from);
 
   try {
     // ─── PRIMER PASO: ¿es respuesta a un flujo multi-turno? ──────
