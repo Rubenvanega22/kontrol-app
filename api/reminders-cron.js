@@ -22,6 +22,16 @@ function colombiaDateString(date) {
   return new Date(ms).toISOString().split('T')[0];
 }
 
+// Postgres TIME llega como "HH:MM:SS" vía PostgREST; toleramos "HH:MM" por si
+// algún cliente lo guardó corto. Sin esto, concatenar ":00" producía
+// "HH:MM:SS:00-05:00" y new Date(...) devolvía Invalid Date.
+function eventToDate(e) {
+  if (!e.hora) return null;
+  const h = /^\d{2}:\d{2}$/.test(e.hora) ? `${e.hora}:00` : e.hora;
+  const t = new Date(`${e.fecha}T${h}-05:00`);
+  return isNaN(t.getTime()) ? null : t;
+}
+
 async function disparoSendWhatsApp() {
   try {
     // VERCEL_URL apunta al deployment específico (protegido en algunos planes);
@@ -128,9 +138,8 @@ async function modoUnaHoraAntes() {
 
   // Ventana 30-90 min desde ahora.
   const candidatos = (eventos || []).filter(e => {
-    if (!e.hora) return false;
-    const t = new Date(`${e.fecha}T${e.hora}:00-05:00`);
-    if (isNaN(t.getTime())) return false;
+    const t = eventToDate(e);
+    if (!t) return false;
     const diff = (t.getTime() - nowMs) / 60000;
     return diff >= 30 && diff <= 90;
   });
@@ -178,9 +187,8 @@ async function modoQuinceMinAntes() {
 
   // Ventana 0-30 min desde ahora (centrada en 15 min, tolerando cron cada 15).
   const candidatos = (eventos || []).filter(e => {
-    if (!e.hora) return false;
-    const t = new Date(`${e.fecha}T${e.hora}:00-05:00`);
-    if (isNaN(t.getTime())) return false;
+    const t = eventToDate(e);
+    if (!t) return false;
     const diff = (t.getTime() - nowMs) / 60000;
     return diff >= 0 && diff <= 30;
   });
