@@ -31,6 +31,15 @@ function baseUrl() {
   return process.env.VERCEL_PUBLIC_URL || 'https://kontrol-app-eight.vercel.app';
 }
 
+// Twilio parsea la respuesta del webhook como TwiML; si recibe texto plano
+// ("OK") dispara error 12200 "Content is not allowed in prolog" y, acumulado,
+// marca el número como Offline. La reply al usuario sale por sendTwilio
+// (REST API), así que el body TwiML va vacío — solo ack.
+function twimlOk(res, status = 200) {
+  res.setHeader('Content-Type', 'text/xml; charset=utf-8');
+  return res.status(status).send('<?xml version="1.0" encoding="UTF-8"?><Response></Response>');
+}
+
 // ─── Twilio: enviar mensaje saliente ──────────────────────────
 async function sendTwilio(to, body) {
   if (!TWILIO_SID || !TWILIO_TOKEN || !TWILIO_NUM) {
@@ -385,7 +394,7 @@ async function askAccountQuestion(userId, phone, movementId, monto, tipo) {
 
 // ─── Handler principal ────────────────────────────────────────
 module.exports = async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+  if (req.method !== 'POST') return twimlOk(res, 405);
 
   const from = req.body?.From || '';
   const text = (req.body?.Body || '').trim();
@@ -398,13 +407,13 @@ module.exports = async function handler(req, res) {
   });
 
   // Sin From no hay nada que hacer.
-  if (!from) return res.status(200).send('OK');
+  if (!from) return twimlOk(res);
 
   const usuario = await findUserByPhone(from);
   if (!usuario) {
     await sendTwilio(from,
       'Tu número no está vinculado a Kontrol. Agrégalo en Perfil → Teléfono.');
-    return res.status(200).send('OK');
+    return twimlOk(res);
   }
 
   const phone = normalizePhone(from);
@@ -417,7 +426,7 @@ module.exports = async function handler(req, res) {
       const flujo = await despacharRespuestaPago(usuario.id, phone, text, estado);
       if (flujo) {
         await sendTwilio(from, flujo);
-        return res.status(200).send('OK');
+        return twimlOk(res);
       }
     }
 
@@ -442,11 +451,11 @@ module.exports = async function handler(req, res) {
     }
 
     await sendTwilio(from, respuesta);
-    return res.status(200).send('OK');
+    return twimlOk(res);
   } catch (e) {
     console.error('[whatsapp] error:', e.message, e.stack);
     await sendTwilio(from, '⚠️ Hubo un error procesando tu mensaje.');
-    return res.status(200).send('OK');
+    return twimlOk(res);
   }
 };
 
