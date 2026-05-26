@@ -165,15 +165,34 @@ async function parsearFechaEspanol(texto) {
 }
 
 // ─── Procesar texto vía ai-chat (reutiliza prompts + acciones + Mem0) ──
-async function procesarConIA(userId, message) {
+// Mantiene contexto conversacional cargando los últimos 8 turnos desde
+// whatsapp_conversations (phone como clave) y persistiendo ambos lados
+// tras la respuesta. Sin esto cada mensaje se procesa aislado y la IA
+// "olvida" lo que se acaba de decir.
+async function procesarConIA(userId, phone, message) {
+  // Cargar últimos 8 turnos (más reciente primero) y revertir a orden cronológico
+  let history = [];
+  try {
+    const { data: prev, error } = await supabase
+      .from('whatsapp_conversations')
+      .select('role, content')
+      .eq('phone', phone)
+      .order('created_at', { ascending: false })
+      .limit(8);
+    if (error) console.warn('[whatsapp] load history error:', error.message);
+    else if (prev) history = prev.reverse().map(m => ({ role: m.role, content: m.content }));
+  } catch (e) {
+    console.warn('[whatsapp] load history excepción:', e.message);
+  }
+
   const url = `${baseUrl()}/api/ai-chat`;
-  console.log('[whatsapp] → ai-chat', url);
+  console.log('[whatsapp] → ai-chat', url, 'history.len=', history.length);
   let r, raw;
   try {
     r = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, user_id: userId, history: [] })
+      body: JSON.stringify({ message, user_id: userId, history })
     });
     raw = await r.text();
   } catch (e) {
@@ -190,7 +209,18 @@ async function procesarConIA(userId, message) {
     console.error('[whatsapp] ai-chat HTTP', r.status, JSON.stringify(data));
     return data.error ? `Error IA: ${data.error}` : 'No pude procesar tu mensaje.';
   }
-  return data.respuesta || 'No tengo respuesta para eso.';
+  const respuesta = data.respuesta || 'No tengo respuesta para eso.';
+
+  // Persistir ambos turnos. Fire-and-forget para no añadir latencia al envío
+  // por Twilio — si falla, lo loggeamos pero igual respondemos.
+  supabase.from('whatsapp_conversations').insert([
+    { user_id: userId, phone, role: 'user', content: message },
+    { user_id: userId, phone, role: 'assistant', content: respuesta }
+  ]).then(({ error }) => {
+    if (error) console.warn('[whatsapp] save history error:', error.message);
+  });
+
+  return respuesta;
 }
 
 // ─── Transcribir audio (Groq Whisper vía /api/transcribe) ──────
@@ -400,13 +430,13 @@ module.exports = async function handler(req, res) {
         respuesta = 'No pude entender el audio, intenta de nuevo.';
       } else {
         console.log('[whatsapp] audio transcrito:', texto.substring(0, 80));
-        respuesta = await procesarConIA(usuario.id, texto);
+        respuesta = await procesarConIA(usuario.id, phone, texto);
       }
     } else if (numMedia > 0 && mediaUrl && mediaCt.startsWith('image/')) {
       const buf = await fetchTwilioMedia(mediaUrl);
       respuesta = await procesarFoto(usuario.id, phone, buf, mediaCt);
     } else if (text) {
-      respuesta = await procesarConIA(usuario.id, text);
+      respuesta = await procesarConIA(usuario.id, phone, text);
     } else {
       respuesta = 'Envíame un mensaje, una nota de voz o la foto de un recibo.';
     }
