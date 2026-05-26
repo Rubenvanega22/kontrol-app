@@ -11,6 +11,7 @@ module.exports = async function handler(req, res) {
       .from('whatsapp_alerts')
       .select('*')
       .eq('enviado', false)
+      .order('id', { ascending: true })
       .limit(10);
 
     if (!alertas?.length) return res.json({ ok: true, enviadas: 0 });
