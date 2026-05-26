@@ -151,8 +151,11 @@ async function syncGmail(emailAccount) {
 
       const parsed = parsearEmail(from, subject, body, msg.id);
 
-      // Registrar en log (procesado o no)
-      await supabase.from('email_logs').insert({
+      // Registrar en log (procesado o no). 23505 = race con otro sync que ya
+      // insertó esta fila; saltamos al siguiente mensaje. Otro error: loggeamos
+      // pero seguimos — las defensas de capa BD en movements/whatsapp_alerts
+      // bloquearán duplicados si el otro sync llegó al INSERT también.
+      const { error: logErr } = await supabase.from('email_logs').insert({
         email_message_id: msg.id,
         email_account_id: emailAccount.id,
         banco: parsed?.banco || null,
@@ -160,6 +163,13 @@ async function syncGmail(emailAccount) {
         raw_subject: subject,
         raw_body: body.substring(0, 500)
       });
+      if (logErr) {
+        if (logErr.code === '23505') {
+          console.log('[sync] email_logs race (msg=' + msg.id + ') — skip');
+          continue;
+        }
+        console.error('[sync] email_logs insert error:', logErr.message);
+      }
 
       if (parsed) {
         // Buscar cuenta del usuario que matchee el banco detectado.
@@ -182,7 +192,9 @@ async function syncGmail(emailAccount) {
         }
 
         // Guardar movimiento — confirmado=true porque el banco ya confirmó la operación.
-        const { data: movement } = await supabase.from('movements').insert({
+        // 23505 desde el unique index movements_email_id_unique = movement
+        // duplicado bloqueado por la BD; no creamos alerta (el otro sync ya lo hizo).
+        const { data: movement, error: movErr } = await supabase.from('movements').insert({
           tipo: parsed.tipo,
           descripcion: parsed.descripcion,
           monto: parsed.monto,
@@ -195,6 +207,14 @@ async function syncGmail(emailAccount) {
           confirmado: !!cuenta,  // solo confirmamos si el saldo se ajustó
           user_id: emailAccount.user_id || null
         }).select().single();
+        if (movErr) {
+          if (movErr.code === '23505') {
+            console.log('[sync] movement duplicado bloqueado por BD (email_id=' + msg.id + ')');
+          } else {
+            console.error('[sync] movements insert error:', movErr.message);
+          }
+          continue;
+        }
 
         // Actualizar log con movement_id
         if (movement) {
@@ -203,7 +223,9 @@ async function syncGmail(emailAccount) {
             .eq('email_message_id', msg.id);
         }
 
-        // Crear alerta WhatsApp (profiles.telefono del dueño del email_account)
+        // Crear alerta WhatsApp (profiles.telefono del dueño del email_account).
+        // Si la alerta ya existe (mismo email_message_id), crearAlertaWhatsApp
+        // captura el 23505 silenciosamente.
         await crearAlertaWhatsApp(parsed, movement, emailAccount.user_id, ajuste);
 
         results.push({ ...parsed, ajuste, account_id: cuenta?.id || null });
@@ -278,7 +300,8 @@ async function syncOutlook(emailAccount) {
 
       const parsed = parsearEmail(from, subject, body, msg.id);
 
-      await supabase.from('email_logs').insert({
+      // Mismo patrón de error-handling que syncGmail (ver comentarios allá).
+      const { error: logErr } = await supabase.from('email_logs').insert({
         email_message_id: msg.id,
         email_account_id: emailAccount.id,
         banco: parsed?.banco || null,
@@ -286,6 +309,13 @@ async function syncOutlook(emailAccount) {
         raw_subject: subject,
         raw_body: body.substring(0, 500)
       });
+      if (logErr) {
+        if (logErr.code === '23505') {
+          console.log('[sync] email_logs race (msg=' + msg.id + ') — skip');
+          continue;
+        }
+        console.error('[sync] email_logs insert error:', logErr.message);
+      }
 
       if (parsed) {
         // Misma lógica que syncGmail: encontrar la cuenta del banco y ajustar saldo.
@@ -304,7 +334,7 @@ async function syncOutlook(emailAccount) {
           console.warn(`[sync] ${parsed.bancoNombre}: usuario ${emailAccount.user_id} no tiene cuenta con nombre que matchee "${parsed.bancoNombre}".`);
         }
 
-        const { data: movement } = await supabase.from('movements').insert({
+        const { data: movement, error: movErr } = await supabase.from('movements').insert({
           tipo: parsed.tipo,
           descripcion: parsed.descripcion,
           monto: parsed.monto,
@@ -317,6 +347,14 @@ async function syncOutlook(emailAccount) {
           confirmado: !!cuenta,
           user_id: emailAccount.user_id || null
         }).select().single();
+        if (movErr) {
+          if (movErr.code === '23505') {
+            console.log('[sync] movement duplicado bloqueado por BD (email_id=' + msg.id + ')');
+          } else {
+            console.error('[sync] movements insert error:', movErr.message);
+          }
+          continue;
+        }
 
         if (movement) {
           await supabase.from('email_logs')
@@ -379,10 +417,24 @@ async function crearAlertaWhatsApp(parsed, movement, userId, ajuste) {
       mensaje = `🔴 Salieron ${fmt(parsed.monto)} de ${parsed.bancoNombre} - ${parsed.descripcion}.${saldoLine}`;
     }
 
+    // email_message_id ancla la alerta al email origen. El unique index parcial
+    // whatsapp_alerts_email_unique (tipo='movimiento_banco' AND email_message_id
+    // IS NOT NULL) bloquea duplicados a nivel BD aun si email_logs/movements
+    // perdieran su fila — defensa en profundidad ante el incidente del 25 may.
     const { error } = await supabase.from('whatsapp_alerts').insert({
-      tipo: 'movimiento_banco', mensaje, telefono, enviado: false
+      tipo: 'movimiento_banco',
+      mensaje,
+      telefono,
+      enviado: false,
+      email_message_id: movement?.email_id || null
     });
-    if (error) console.error('[sync-alert] insert alerta error:', error.message);
+    if (error) {
+      if (error.code === '23505') {
+        console.log('[sync-alert] alerta duplicada ignorada (email_id=' + (movement?.email_id || 'null') + ')');
+      } else {
+        console.error('[sync-alert] insert alerta error:', error.message);
+      }
+    }
   } catch (e) {
     console.error('[sync-alert] Error creando alerta WhatsApp:', e.message);
   }
