@@ -392,6 +392,71 @@ async function askAccountQuestion(userId, phone, movementId, monto, tipo) {
   return `¿De qué cuenta ${verbo} ${cop(monto)}?\n${lista}\n(responde con el número)`;
 }
 
+// ─── Ubicaciones (lugares guardados) ──────────────────────────
+// INSERT con dedup case-insensitive (índice ubicaciones_user_nombre_unique).
+// Devuelve { ok, id } en éxito, { conflicto: {id, nombre} } si 23505, {} si otro error.
+async function guardarUbicacion(userId, nombre, lat, lng, direccion, label) {
+  const { data: nuevo, error } = await supabase.from('ubicaciones').insert({
+    user_id: userId,
+    nombre,
+    latitud: lat,
+    longitud: lng,
+    direccion_texto: direccion || null,
+    notas: label && label !== nombre ? `WhatsApp Label: ${label}` : null,
+    created_via: 'whatsapp'
+  }).select().single();
+
+  if (!error) return { ok: true, id: nuevo.id };
+
+  if (error.code === '23505') {
+    const { data: existente } = await supabase
+      .from('ubicaciones').select('id, nombre')
+      .eq('user_id', userId)
+      .ilike('nombre', nombre)
+      .maybeSingle();
+    return { conflicto: existente || { nombre, id: null } };
+  }
+  console.error('[ubicaciones] insert error:', error.message);
+  return {};
+}
+
+// Maneja una ubicación entrante. Si trae caption/Label corto y razonable
+// la guarda directo; si no, pide nombre via whatsapp_state.
+async function procesarUbicacion(userId, phone, lat, lng, label, address, caption) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return '⚠️ No pude leer las coordenadas de la ubicación.';
+  }
+
+  const sugerido = (caption || label || '').trim();
+  const pareceComando = /(\$|\b\d{4,}\b|gast[oeé]|ingres[oa]|recuerd|agenda|registr|elimin|borr)/i.test(sugerido);
+
+  if (sugerido && sugerido.length <= 100 && !pareceComando) {
+    const resultado = await guardarUbicacion(userId, sugerido, lat, lng, address, label);
+    if (resultado.ok) return `✅ Guardé "${sugerido}" en tu lista de lugares.`;
+    if (resultado.conflicto) {
+      await saveState(phone, userId, 'location_conflict_resolution', {
+        nuevo_lat: lat, nuevo_lng: lng,
+        nuevo_direccion: address || null,
+        nuevo_label: label || null,
+        nombre_existente: resultado.conflicto.nombre,
+        ubicacion_existente_id: resultado.conflicto.id
+      }, 5);
+      return `Ya tienes una ubicación llamada "${resultado.conflicto.nombre}". ¿Quieres reemplazarla o guardarla con otro nombre? Responde *reemplazar* o escribe un nombre nuevo.`;
+    }
+    return '⚠️ No pude guardar la ubicación. Inténtalo de nuevo.';
+  }
+
+  // Pedir nombre. Si vino Label de un rich location, ofrecerlo como sugerencia.
+  await saveState(phone, userId, 'location_name', {
+    lat, lng,
+    direccion: address || null,
+    label: label || null
+  }, 10);
+
+  const labelHint = label ? `\n(WhatsApp dice "${label}" — puedes usar ese nombre si quieres)` : '';
+  return `📍 Recibí tu ubicación. ¿Con qué nombre la guardo? (responde solo el nombre)${labelHint}`;
+}
+
 // ─── Handler principal ────────────────────────────────────────
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return twimlOk(res, 405);
@@ -401,9 +466,18 @@ module.exports = async function handler(req, res) {
   const numMedia = parseInt(req.body?.NumMedia || '0', 10);
   const mediaUrl = req.body?.MediaUrl0;
   const mediaCt = req.body?.MediaContentType0 || '';
+  // Ubicación: Twilio manda Latitude/Longitude/MessageType='location' cuando
+  // el usuario comparte un pin. NumMedia=0 (no es media). Address/Label son
+  // opcionales (Address solo si WhatsApp resolvió, Label solo en rich locations).
+  const messageType = req.body?.MessageType || '';
+  const latRaw = req.body?.Latitude;
+  const lngRaw = req.body?.Longitude;
+  const locAddress = req.body?.Address || '';
+  const locLabel = req.body?.Label || '';
 
   console.log('[whatsapp] in:', {
-    from, text: text.substring(0, 80), numMedia, mediaCt
+    from, text: text.substring(0, 80), numMedia, mediaCt,
+    messageType, hasLatLng: !!(latRaw && lngRaw)
   });
 
   // Sin From no hay nada que hacer.
@@ -419,6 +493,17 @@ module.exports = async function handler(req, res) {
   const phone = normalizePhone(from);
 
   try {
+    // ─── Ubicación entrante: preempte cualquier estado o flujo. ──
+    // El pin es una acción explícita; debe tener prioridad sobre flujos
+    // anteriores (ej. usuario abandonó un payment_date y mandó un lugar).
+    if (messageType === 'location' || (latRaw && lngRaw)) {
+      const lat = parseFloat(latRaw);
+      const lng = parseFloat(lngRaw);
+      const respuesta = await procesarUbicacion(usuario.id, phone, lat, lng, locLabel, locAddress, text);
+      await sendTwilio(from, respuesta);
+      return twimlOk(res);
+    }
+
     // ─── PRIMER PASO: ¿es respuesta a un flujo multi-turno? ──────
     // Solo para mensajes de texto (no audio/foto).
     if (text && numMedia === 0) {
@@ -680,6 +765,90 @@ async function despacharRespuestaPago(userId, phone, text, estado) {
       .eq('id', payment_id).eq('user_id', userId);
     if (error) { console.error('[whatsapp] postpone error:', error.message); return '⚠️ No pude posponer el pago.'; }
     return `🗓️ Listo, lo aplacé para ${nuevaFecha}.`;
+  }
+
+  // 2b. Estado location_name: usuario mandó ubicación, le pedimos el nombre.
+  //     Orden: cancelar → comando (cae a IA normal) → nombre → guardar.
+  if (estado?.awaiting === 'location_name') {
+    const txt = text.trim();
+    if (/^(no|nop|cancelar|ol[vw][íi]dalo|d[ée]jalo)\s*\.?$/i.test(txt)) {
+      await clearState(phone);
+      return 'Ok, no la guardé.';
+    }
+    if (/(\$|\b\d{4,}\b|gast[oeé]|ingres[oa]|recuerd|agenda|registr|elimin|borr)/i.test(txt)) {
+      // Comando: el usuario abandonó el flujo. Limpiamos y delegamos a IA.
+      await clearState(phone);
+      return null;
+    }
+    if (txt.length > 100) return 'El nombre es muy largo. Dame uno más corto (máx 100 caracteres).';
+
+    const { lat, lng, direccion, label } = estado.context || {};
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      await clearState(phone);
+      return '⚠️ Se perdió la ubicación. Mándamela de nuevo.';
+    }
+    const resultado = await guardarUbicacion(userId, txt, lat, lng, direccion, label);
+    if (resultado.ok) {
+      await clearState(phone);
+      return `✅ Guardé "${txt}" en tu lista de lugares.`;
+    }
+    if (resultado.conflicto) {
+      await saveState(phone, userId, 'location_conflict_resolution', {
+        nuevo_lat: lat, nuevo_lng: lng,
+        nuevo_direccion: direccion, nuevo_label: label,
+        nombre_existente: resultado.conflicto.nombre,
+        ubicacion_existente_id: resultado.conflicto.id
+      }, 5);
+      return `Ya tienes una ubicación llamada "${resultado.conflicto.nombre}". ¿Reemplazar o usar otro nombre?`;
+    }
+    return '⚠️ No pude guardar. Intenta de nuevo.';
+  }
+
+  // 2c. Estado location_conflict_resolution: el usuario está resolviendo un
+  //     duplicado. Acepta "reemplazar" (UPDATE) o un nuevo nombre (INSERT).
+  if (estado?.awaiting === 'location_conflict_resolution') {
+    const txt = text.trim();
+    const ctx = estado.context || {};
+    const { nuevo_lat, nuevo_lng, nuevo_direccion, nuevo_label,
+            nombre_existente, ubicacion_existente_id } = ctx;
+
+    if (/^(no|nop|cancelar|ol[vw][íi]dalo|d[ée]jalo)\s*\.?$/i.test(txt)) {
+      await clearState(phone);
+      return 'Ok, no la guardé.';
+    }
+    if (/^(reemplazar|reempl[áa]zal[ao]|cambia|s[íi][\s,]+reempl)/i.test(txt)) {
+      if (!ubicacion_existente_id) {
+        await clearState(phone);
+        return '⚠️ Se perdió la referencia. Mándamela de nuevo.';
+      }
+      const { error } = await supabase.from('ubicaciones').update({
+        latitud: nuevo_lat,
+        longitud: nuevo_lng,
+        direccion_texto: nuevo_direccion || null,
+        notas: nuevo_label && nuevo_label !== nombre_existente ? `WhatsApp Label: ${nuevo_label}` : null,
+        updated_at: new Date().toISOString()
+      }).eq('id', ubicacion_existente_id).eq('user_id', userId);
+      await clearState(phone);
+      if (error) { console.error('[ubicaciones] reemplazar error:', error.message); return '⚠️ No pude reemplazar.'; }
+      return `✅ Actualicé "${nombre_existente}" con la nueva ubicación.`;
+    }
+    if (txt.length > 100) return 'Ese nombre es muy largo. Dame uno más corto o di "reemplazar".';
+
+    const resultado = await guardarUbicacion(userId, txt, nuevo_lat, nuevo_lng, nuevo_direccion, nuevo_label);
+    if (resultado.ok) {
+      await clearState(phone);
+      return `✅ Guardé "${txt}" en tu lista de lugares.`;
+    }
+    if (resultado.conflicto) {
+      // Re-conflicto: el nuevo nombre también existe.
+      await saveState(phone, userId, 'location_conflict_resolution', {
+        ...ctx,
+        nombre_existente: resultado.conflicto.nombre,
+        ubicacion_existente_id: resultado.conflicto.id
+      }, 5);
+      return `"${resultado.conflicto.nombre}" también existe. Dame otro nombre o di "reemplazar".`;
+    }
+    return '⚠️ No pude guardar. Intenta de nuevo.';
   }
 
   // 3. Sin estado pero el texto se parece a una confirmación SI/NO/1/2.

@@ -157,7 +157,8 @@ async function buildContexto(userId) {
     { data: cajas },
     { data: cajaMovsMes, error: cajaMovsErr },
     { data: metas },
-    { data: recordatorios }
+    { data: recordatorios },
+    { data: ubicaciones }
   ] = await Promise.all([
     supabase.from('accounts').select('*').eq('user_id', userId),
     supabase.from('movements').select('*').eq('user_id', userId)
@@ -173,7 +174,8 @@ async function buildContexto(userId) {
       .gte('fecha', inicioMes)
       .order('created_at', { ascending: false }).limit(50),
     supabase.from('metas').select('*, micrometas(*)').eq('user_id', userId).eq('estado', 'activa'),
-    supabase.from('reminders').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(20)
+    supabase.from('reminders').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(20),
+    supabase.from('ubicaciones').select('id, nombre, latitud, longitud').eq('user_id', userId).order('nombre')
   ]);
   if (cajaMovsErr) console.warn('[buildContexto] caja_movimientos error:', cajaMovsErr.message);
 
@@ -189,7 +191,8 @@ async function buildContexto(userId) {
     movsRecientes: movsRecientes || [], pagos: pagos || [],
     eventos: eventos || [], cajas: cajas || [],
     cajaMovimientos: cajaMovsMes || [],
-    metas: metas || [], recordatorios: recordatorios || []
+    metas: metas || [], recordatorios: recordatorios || [],
+    ubicaciones: ubicaciones || []
   };
 }
 
@@ -245,6 +248,9 @@ ${ctx.recordatorios.map(r => {
   const tipoEmoji = r.tipo === 'lista' ? '✅' : r.tipo === 'definicion' ? '📖' : '📝';
   return `• ${tipoEmoji} ${r.titulo} (${r.fecha || ''}) [ID:${r.id}]`;
 }).join('\n') || 'ninguno'}
+
+Lugares guardados (ubicaciones del usuario):
+${(ctx.ubicaciones || []).map(u => `• ${u.nombre}: https://maps.google.com/?q=${u.latitud},${u.longitud} [ID:${u.id}]`).join('\n') || 'ninguno'}
 
 ═══ ACCIONES INVISIBLES — úsalas al final de tu respuesta ═══
 
@@ -342,6 +348,24 @@ usa gasto/ingreso. Nunca metas un caja_id en el campo cuenta_id_opcional de gast
 [ACCION:borrar_meta|ID]
 [ACCION:completar_micrometa|ID]
 
+— Ubicaciones (lugares guardados del usuario)
+[ACCION:guardar_ubicacion|nombre|lat|lng]
+  Solo si el usuario te DA coordenadas explícitas en texto (raro). El
+  flujo normal "manda pin de WhatsApp → bot guarda" lo maneja el webhook
+  directamente sin pasar por esta acción.
+[ACCION:get_ubicacion|nombre]
+  Cuando el usuario pida una ubicación de su lista. Usa el nombre EXACTO
+  del listado "Lugares guardados" de arriba. En tu respuesta visible
+  formatea así (incluye el link de Maps que ya tienes en el listado):
+    📍 [nombre]
+    https://maps.google.com/?q=[lat],[lng]
+[ACCION:listar_ubicaciones]
+  Cuando el usuario pregunte qué lugares tiene guardados. Lista los
+  nombres del listado de arriba en tu respuesta visible.
+[ACCION:borrar_ubicacion|nombre]
+  Cuando el usuario pida borrar una ubicación. Usa el nombre EXACTO del
+  listado.
+
 — Navegación (cambiar la pantalla activa de la app)
 [ACCION:navegar|seccion]
   Secciones válidas: resumen, movimientos, cajas, pagos, agenda, recordar, metas, ia
@@ -366,7 +390,7 @@ IMPORTANTE: si el usuario menciona una cuenta o caja específica por nombre, bus
 6. Español colombiano, tono cálido y cercano
 7. RECUERDAS TODO — úsalo naturalmente
 8. Si te preguntan qué recuerdas → cuéntale todo
-9. Cuando el usuario pregunte por una ubicación o dirección, SIEMPRE incluye un enlace de Google Maps así: https://maps.google.com/?q=[lugar+ciudad]. Puedes buscar cualquier lugar. Ejemplo: "Aquí tienes la ubicación de Éxito Jamundí: https://maps.google.com/?q=Éxito+Jamundí+Valle+del+Cauca".
+9. Ubicaciones: si el nombre que pide el usuario está en el listado "Lugares guardados" de arriba, emite [ACCION:get_ubicacion|nombre] y formatea la respuesta con el link que ya tienes en ese listado. Si NO está guardado (lugar público conocido), genera un link de Google Maps genérico así: https://maps.google.com/?q=[lugar+ciudad]. Ejemplo lugar guardado: "📍 Bodega Juan\nhttps://maps.google.com/?q=4.0847,-76.1956". Ejemplo lugar público: "📍 Éxito Jamundí\nhttps://maps.google.com/?q=Éxito+Jamundí+Valle+del+Cauca".
 10. Si el usuario dice "recuérdame X", "agenda X", "créame un evento X" SIN especificar la hora, pregunta primero "¿A qué hora quieres que te recuerde?" antes de emitir [ACCION:evento]. Si el usuario solo quiere una nota persistente sin hora, usa [ACCION:recordatorio|texto] en lugar de evento.`;
 }
 
@@ -824,6 +848,77 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
             id: cajaId,
             nombre: caja.nombre
           });
+        }
+
+      } else if (accion === 'guardar_ubicacion') {
+        // Path raro: usuario da coords por texto. El flujo normal (pin WhatsApp)
+        // lo maneja el webhook sin pasar por aquí.
+        const nombre = (parts[1] || '').trim();
+        const lat = parseFloat(parts[2]);
+        const lng = parseFloat(parts[3]);
+        if (!nombre || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+          console.warn('[guardar_ubicacion] datos inválidos'); continue;
+        }
+        const { data, error } = await supabase.from('ubicaciones').insert({
+          user_id: userId, nombre, latitud: lat, longitud: lng, created_via: 'ia'
+        }).select().single();
+        if (error) {
+          if (error.code === '23505') {
+            ejecutadas.push({ accion, conflicto: true, nombre });
+          } else {
+            console.error('[guardar_ubicacion] error:', error.message);
+          }
+          continue;
+        }
+        ejecutadas.push({
+          accion, nombre: data.nombre, id: data.id,
+          url: `https://maps.google.com/?q=${lat},${lng}`
+        });
+
+      } else if (accion === 'get_ubicacion') {
+        const nombre = (parts[1] || '').trim();
+        if (!nombre) continue;
+        const { data, error } = await supabase.from('ubicaciones')
+          .select('id, nombre, latitud, longitud')
+          .eq('user_id', userId)
+          .ilike('nombre', nombre)
+          .maybeSingle();
+        if (error) { console.error('[get_ubicacion] error:', error.message); continue; }
+        if (!data) {
+          ejecutadas.push({ accion, encontrado: false, nombre_buscado: nombre });
+        } else {
+          ejecutadas.push({
+            accion, encontrado: true,
+            nombre: data.nombre,
+            url: `https://maps.google.com/?q=${data.latitud},${data.longitud}`
+          });
+        }
+
+      } else if (accion === 'listar_ubicaciones') {
+        const { data, error } = await supabase.from('ubicaciones')
+          .select('id, nombre')
+          .eq('user_id', userId)
+          .order('nombre');
+        if (error) { console.error('[listar_ubicaciones] error:', error.message); continue; }
+        ejecutadas.push({
+          accion,
+          count: data?.length || 0,
+          nombres: (data || []).map(u => u.nombre)
+        });
+
+      } else if (accion === 'borrar_ubicacion') {
+        const nombre = (parts[1] || '').trim();
+        if (!nombre) continue;
+        const { data, error } = await supabase.from('ubicaciones')
+          .delete()
+          .eq('user_id', userId)
+          .ilike('nombre', nombre)
+          .select();
+        if (error) { console.error('[borrar_ubicacion] error:', error.message); continue; }
+        if (!data || data.length === 0) {
+          ejecutadas.push({ accion, encontrado: false, nombre_buscado: nombre });
+        } else {
+          ejecutadas.push({ accion, encontrado: true, nombre: data[0].nombre });
         }
       }
     } catch(e) {
