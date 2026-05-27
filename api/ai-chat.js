@@ -112,10 +112,38 @@ module.exports = async function handler(req, res) {
     const acciones = await ejecutarAcciones(respuesta, contexto, user_id);
     console.log('[ai-chat] acciones realmente ejecutadas:', acciones.length, JSON.stringify(acciones));
 
-    // 5b. Verificación con Claude — si hubo intención de ejecutar acciones,
-    // pedirle que confirme con base en lo que realmente se ejecutó.
+    // 5b. Override determinístico para acciones de ubicación.
+    // Claude tiende a parafrasear ("perfecto, encontré...") y romper el formato
+    // del link Maps. Para get_/listar_/borrar_/guardar_ubicacion construimos
+    // la respuesta nosotros y saltamos la verification pass.
     let respuestaFinal = respuestaLimpia;
-    if (accionesIntencion > 0) {
+    const partesUbicacion = [];
+    for (const a of acciones) {
+      if (a.accion === 'get_ubicacion' && a.encontrado) {
+        partesUbicacion.push(`📍 ${a.nombre}\n${a.url}`);
+      } else if (a.accion === 'get_ubicacion' && !a.encontrado) {
+        partesUbicacion.push(`No encontré "${a.nombre_buscado}" en tu lista.`);
+      } else if (a.accion === 'listar_ubicaciones') {
+        if (a.count === 0) {
+          partesUbicacion.push('No tienes lugares guardados todavía.');
+        } else {
+          const plural = a.count > 1;
+          partesUbicacion.push(`Tienes ${a.count} lugar${plural ? 'es' : ''} guardado${plural ? 's' : ''}:\n${a.nombres.map(n => `• ${n}`).join('\n')}`);
+        }
+      } else if (a.accion === 'borrar_ubicacion' && a.encontrado) {
+        partesUbicacion.push(`✅ Borré "${a.nombre}" de tu lista.`);
+      } else if (a.accion === 'borrar_ubicacion' && !a.encontrado) {
+        partesUbicacion.push(`No encontré "${a.nombre_buscado}" en tu lista.`);
+      } else if (a.accion === 'guardar_ubicacion' && a.conflicto) {
+        partesUbicacion.push(`⚠️ Ya tienes "${a.nombre}" guardada. Pídeme borrarla primero o usa otro nombre.`);
+      } else if (a.accion === 'guardar_ubicacion' && a.id) {
+        partesUbicacion.push(`✅ Guardé "${a.nombre}".\n${a.url}`);
+      }
+    }
+
+    if (partesUbicacion.length > 0) {
+      respuestaFinal = partesUbicacion.join('\n\n');
+    } else if (accionesIntencion > 0) {
       if (acciones.length === 0) {
         respuestaFinal = 'No se pudo ejecutar el cambio.';
       } else if (!voz) {

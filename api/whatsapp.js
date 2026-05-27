@@ -393,6 +393,12 @@ async function askAccountQuestion(userId, phone, movementId, monto, tipo) {
 }
 
 // ─── Ubicaciones (lugares guardados) ──────────────────────────
+// Mensaje canónico cuando hay colisión de nombre. Numerado para UX consistente
+// con respuestas rápidas tipo botón.
+function mensajeConflictoUbicacion(nombre) {
+  return `⚠️ Ya tienes "${nombre}" guardada.\n\nResponde:\n1️⃣ Reemplazar la anterior\n2️⃣ Guardar con otro nombre\n3️⃣ Cancelar`;
+}
+
 // INSERT con dedup case-insensitive (índice ubicaciones_user_nombre_unique).
 // Devuelve { ok, id } en éxito, { conflicto: {id, nombre} } si 23505, {} si otro error.
 async function guardarUbicacion(userId, nombre, lat, lng, direccion, label) {
@@ -441,7 +447,7 @@ async function procesarUbicacion(userId, phone, lat, lng, label, address, captio
         nombre_existente: resultado.conflicto.nombre,
         ubicacion_existente_id: resultado.conflicto.id
       }, 5);
-      return `Ya tienes una ubicación llamada "${resultado.conflicto.nombre}". ¿Quieres reemplazarla o guardarla con otro nombre? Responde *reemplazar* o escribe un nombre nuevo.`;
+      return mensajeConflictoUbicacion(resultado.conflicto.nombre);
     }
     return '⚠️ No pude guardar la ubicación. Inténtalo de nuevo.';
   }
@@ -799,24 +805,29 @@ async function despacharRespuestaPago(userId, phone, text, estado) {
         nombre_existente: resultado.conflicto.nombre,
         ubicacion_existente_id: resultado.conflicto.id
       }, 5);
-      return `Ya tienes una ubicación llamada "${resultado.conflicto.nombre}". ¿Reemplazar o usar otro nombre?`;
+      return mensajeConflictoUbicacion(resultado.conflicto.nombre);
     }
     return '⚠️ No pude guardar. Intenta de nuevo.';
   }
 
-  // 2c. Estado location_conflict_resolution: el usuario está resolviendo un
-  //     duplicado. Acepta "reemplazar" (UPDATE) o un nuevo nombre (INSERT).
+  // 2c. Estado location_conflict_resolution: 3 opciones numeradas.
+  //     1 = reemplazar, 2 = guardar con otro nombre (sub-estado), 3 = cancelar.
+  //     Acepta dígitos, emojis (1️⃣), palabras (uno/dos/tres) y verbales
+  //     (reemplazar/cancelar/sí/no).
   if (estado?.awaiting === 'location_conflict_resolution') {
     const txt = text.trim();
+    const lower2 = txt.toLowerCase();
     const ctx = estado.context || {};
     const { nuevo_lat, nuevo_lng, nuevo_direccion, nuevo_label,
             nombre_existente, ubicacion_existente_id } = ctx;
 
-    if (/^(no|nop|cancelar|ol[vw][íi]dalo|d[ée]jalo)\s*\.?$/i.test(txt)) {
+    // Opción 3 — cancelar
+    if (/^(3|3️⃣|tres|cancelar|no|nop|ol[vw][íi]dalo|d[ée]jalo)\s*\.?$/i.test(lower2)) {
       await clearState(phone);
       return 'Ok, no la guardé.';
     }
-    if (/^(reemplazar|reempl[áa]zal[ao]|cambia|s[íi][\s,]+reempl)/i.test(txt)) {
+    // Opción 1 — reemplazar
+    if (/^(1|1️⃣|uno|reemplazar|reempl[áa]zal[ao]|cambia|s[íi])\s*\.?$/i.test(lower2)) {
       if (!ubicacion_existente_id) {
         await clearState(phone);
         return '⚠️ Se perdió la referencia. Mándamela de nuevo.';
@@ -832,30 +843,60 @@ async function despacharRespuestaPago(userId, phone, text, estado) {
       if (error) { console.error('[ubicaciones] reemplazar error:', error.message); return '⚠️ No pude reemplazar.'; }
       return `✅ Actualicé "${nombre_existente}" con la nueva ubicación.`;
     }
-    if (txt.length > 100) return 'Ese nombre es muy largo. Dame uno más corto o di "reemplazar".';
+    // Opción 2 — guardar con otro nombre → sub-estado a espera del nombre
+    if (/^(2|2️⃣|dos|nuevo|otro|usar\s+otro)\b/i.test(lower2)) {
+      await saveState(phone, userId, 'location_new_name_after_conflict', ctx, 5);
+      return '📝 Dale, ¿con qué nombre la guardo? (responde solo el nombre)';
+    }
+    // No matchea — ayuda
+    return 'No entendí. Responde:\n1️⃣ Reemplazar\n2️⃣ Guardar con otro nombre\n3️⃣ Cancelar';
+  }
 
+  // 2d. Estado location_new_name_after_conflict: el usuario eligió opción 2 y
+  //     ahora le pedimos el nombre nuevo. Si TAMBIÉN colisiona, volvemos al
+  //     location_conflict_resolution con los nuevos datos.
+  if (estado?.awaiting === 'location_new_name_after_conflict') {
+    const txt = text.trim();
+    if (/^(no|nop|cancelar|ol[vw][íi]dalo|d[ée]jalo)\s*\.?$/i.test(txt)) {
+      await clearState(phone);
+      return 'Ok, no la guardé.';
+    }
+    if (/(\$|\b\d{4,}\b|gast[oeé]|ingres[oa]|recuerd|agenda|registr|elimin|borr)/i.test(txt)) {
+      await clearState(phone);
+      return null;
+    }
+    if (txt.length > 100) return 'El nombre es muy largo. Dame uno más corto (máx 100 caracteres).';
+
+    const ctx = estado.context || {};
+    const { nuevo_lat, nuevo_lng, nuevo_direccion, nuevo_label } = ctx;
+    if (!Number.isFinite(nuevo_lat) || !Number.isFinite(nuevo_lng)) {
+      await clearState(phone);
+      return '⚠️ Se perdió la ubicación. Mándamela de nuevo.';
+    }
     const resultado = await guardarUbicacion(userId, txt, nuevo_lat, nuevo_lng, nuevo_direccion, nuevo_label);
     if (resultado.ok) {
       await clearState(phone);
       return `✅ Guardé "${txt}" en tu lista de lugares.`;
     }
     if (resultado.conflicto) {
-      // Re-conflicto: el nuevo nombre también existe.
+      // El nombre nuevo también existe — volver al menú numerado.
       await saveState(phone, userId, 'location_conflict_resolution', {
-        ...ctx,
+        nuevo_lat, nuevo_lng, nuevo_direccion, nuevo_label,
         nombre_existente: resultado.conflicto.nombre,
         ubicacion_existente_id: resultado.conflicto.id
       }, 5);
-      return `"${resultado.conflicto.nombre}" también existe. Dame otro nombre o di "reemplazar".`;
+      return mensajeConflictoUbicacion(resultado.conflicto.nombre);
     }
     return '⚠️ No pude guardar. Intenta de nuevo.';
   }
 
   // 3. Sin estado pero el texto se parece a una confirmación SI/NO/1/2.
   //    Buscamos el pago activo del usuario y lo procesamos.
-  const esSi = /^(s[ií]|1|pagu[eé]|ya\s+pagu[eé]|listo|ok)$/i.test(lower);
-  const esNo = /^(no|2)$/i.test(lower);
-  if (!esSi && !esNo) return null; // No es respuesta de pago → procesar como AI normal
+  // Regex expandida — acepta dígitos, emojis 1️⃣/2️⃣, sí/si/listo/ok/pagué,
+  // no/aplazar/después. Mensajes que no encajen y haya pago activo: pedimos
+  // que aclare (solo si el msg es corto, para no interceptar comandos largos).
+  const esSi = /^(s[ií]|1|1️⃣|listo|ok|pagu[eé]|ya\s+pagu[eé])\s*[.,!]?\s*$/i.test(lower);
+  const esNo = /^(no|2|2️⃣|aplazar|despu[ée]s)\s*[.,!]?\s*$/i.test(lower);
 
   const pago = await pagoEnEspera(userId);
   if (!pago) return null; // No hay pago esperando → procesar como AI normal
@@ -869,7 +910,15 @@ async function despacharRespuestaPago(userId, phone, text, estado) {
     return `✅ Marqué *${pago.nombre}* (${cop(pago.monto)}) como pagado hoy.`;
   }
 
-  // esNo: setear estado esperando fecha
-  await saveState(phone, userId, 'payment_date', { payment_id: pago.id }, 60);
-  return `OK, ¿para cuándo lo pospones? Dime la fecha (ej: "25 de mayo" o "el viernes").`;
+  if (esNo) {
+    await saveState(phone, userId, 'payment_date', { payment_id: pago.id }, 60);
+    return `OK, ¿para cuándo lo pospones? Dime la fecha (ej: "25 de mayo" o "el viernes").`;
+  }
+
+  // No matchea pero hay pago en espera. Si el mensaje es corto, ofrecer ayuda;
+  // si es largo, asumir que es un comando independiente y dejar pasar a IA.
+  if (lower.length <= 30) {
+    return 'No entendí. Responde *1* (sí, pagué) o *2* (no, aplazar).';
+  }
+  return null;
 }

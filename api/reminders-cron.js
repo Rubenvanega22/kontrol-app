@@ -246,7 +246,7 @@ async function modoPagosMatutino() {
   let alertas = 0;
   for (const pago of pagos) {
     const tel = tels[pago.user_id]; if (!tel) continue;
-    const msg = `⚠️ Recuerda: hoy vence *${pago.nombre}* por ${fmt(pago.monto)}.\n¿Ya lo pagaste? Responde *SI* o *NO*`;
+    const msg = `🔔 *${pago.nombre}* por ${fmt(pago.monto)} vence hoy.\n\n¿Lo pagaste?\n\n1️⃣ Sí, ya está pagado\n2️⃣ No, lo aplazaré`;
     if (await crearAlertaPago(pago, tel, msg, 'notificado_pago')) alertas++;
   }
   return { alertas, hoy };
@@ -262,7 +262,7 @@ async function modoPagosVespertino() {
   let alertas = 0;
   for (const pago of pagos) {
     const tel = tels[pago.user_id]; if (!tel) continue;
-    const msg = `🔔 *${pago.nombre}* por ${fmt(pago.monto)} vence hoy.\n¿Lo pagaste? Responde *1=Sí* o *2=No*`;
+    const msg = `🔔 *${pago.nombre}* por ${fmt(pago.monto)} vence hoy.\n\n¿Lo pagaste?\n\n1️⃣ Sí, ya está pagado\n2️⃣ No, lo aplazaré`;
     if (await crearAlertaPago(pago, tel, msg, 'notificado_6pm')) alertas++;
   }
   return { alertas, hoy };
