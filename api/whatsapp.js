@@ -16,6 +16,7 @@
 //    puede impersonar usuarios. Endurecer en un PR de seguridad aparte.
 
 const supabase = require('../lib/supabase');
+const { colombiaDateString } = require('../lib/datetime');
 
 const TWILIO_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_TOKEN = process.env.TWILIO_AUTH_TOKEN;
@@ -146,7 +147,7 @@ async function pagoEnEspera(userId) {
 
 // ─── Parser de fechas en español (delegado a Claude — corto y robusto) ───
 async function parsearFechaEspanol(texto) {
-  const hoy = new Date().toISOString().split('T')[0];
+  const hoy = colombiaDateString();
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -321,7 +322,7 @@ NO incluyas texto adicional, solo el JSON.`;
     tipo: extraida.tipo === 'ingreso' ? 'ingreso' : 'gasto',
     descripcion: String(extraida.descripcion || 'Sin descripción').slice(0, 60),
     monto: parseInt(String(extraida.monto).replace(/[^\d]/g, ''), 10) || 0,
-    fecha: extraida.fecha || new Date().toISOString().split('T')[0],
+    fecha: extraida.fecha || colombiaDateString(),
     categoria: extraida.categoria || 'otro',
     source: 'whatsapp_foto',
     confirmado: false
@@ -571,7 +572,7 @@ async function despacharRespuestaPago(userId, phone, text, estado) {
     let prefijo = '';
     if (num >= 1) {
       const pagoId = payment_ids[num - 1];
-      const hoy = new Date().toISOString().split('T')[0];
+      const hoy = colombiaDateString();
       const { error: upErr } = await supabase.from('payments')
         .update({ status: 'pagado', fecha_pago: hoy })
         .eq('id', pagoId).eq('user_id', userId);
@@ -728,7 +729,7 @@ async function despacharRespuestaPago(userId, phone, text, estado) {
       tipo,
       descripcion: orig?.descripcion || 'Movimiento',
       monto: remaining_monto,
-      fecha: orig?.fecha || new Date().toISOString().split('T')[0],
+      fecha: orig?.fecha || colombiaDateString(),
       categoria: orig?.categoria || 'otro',
       source: 'whatsapp_foto',
       account_id: secondaryId,
@@ -902,7 +903,7 @@ async function despacharRespuestaPago(userId, phone, text, estado) {
   if (!pago) return null; // No hay pago esperando → procesar como AI normal
 
   if (esSi) {
-    const hoy = new Date().toISOString().split('T')[0];
+    const hoy = colombiaDateString();
     const { error } = await supabase.from('payments')
       .update({ status: 'pagado', fecha_pago: hoy })
       .eq('id', pago.id).eq('user_id', userId);

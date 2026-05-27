@@ -3,15 +3,17 @@
 // Se ejecuta cada día a las 8am (Vercel Cron)
 
 const supabase = require('../lib/supabase');
+const { colombiaDateString, colombiaDateParts } = require('../lib/datetime');
 
 module.exports = async function handler(req, res) {
   try {
     const { data: cfg } = await supabase.from('config').select('value').eq('key', 'ia').single();
     const iaConfig = cfg?.value || {};
 
-    // 1. Recopilar datos del mes
-    const hoy = new Date();
-    const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0];
+    // 1. Recopilar datos del mes (siempre en zona Col, no UTC)
+    const hoyStr = colombiaDateString();
+    const { anio: aMes, mes: mMes } = colombiaDateParts();
+    const inicioMes = `${aMes}-${String(mMes + 1).padStart(2, '0')}-01`;
 
     const [
       { data: movimientos },
@@ -99,7 +101,7 @@ Responde SOLO el JSON, sin markdown.`;
     // 5. Guardar análisis en memoria
     await supabase.from('ai_memory').insert({
       tipo: 'analisis_automatico',
-      contenido: JSON.stringify({ fecha: hoy.toISOString().split('T')[0], ...analisis }),
+      contenido: JSON.stringify({ fecha: hoyStr, ...analisis }),
       importancia: 5
     });
 
@@ -120,7 +122,7 @@ Responde SOLO el JSON, sin markdown.`;
 
     return res.json({
       ok: true,
-      fecha: hoy.toISOString().split('T')[0],
+      fecha: hoyStr,
       metricas: { emailsProcesados, emailsTotal, tasaExito, movAutoEmail },
       analisis
     });

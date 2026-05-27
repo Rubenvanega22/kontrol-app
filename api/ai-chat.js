@@ -1,5 +1,6 @@
 // /api/ai-chat.js — Claude + Mem0 memoria profesional
 const supabase = require('../lib/supabase');
+const { colombiaDateString, colombiaDateLongEs, colombiaTimeString, colombiaDateParts } = require('../lib/datetime');
 
 const MEM0_API_KEY = process.env.MEM0_API_KEY;
 const MEM0_BASE = 'https://api.mem0.ai/v1';
@@ -175,7 +176,10 @@ module.exports = async function handler(req, res) {
 
 // ═══ CONTEXTO FINANCIERO COMPLETO ═══
 async function buildContexto(userId) {
-  const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+  // inicioMes debe ser el día 1 del mes ACTUAL en Colombia, no UTC.
+  // Después de 7pm Col del último día del mes, el UTC ya avanzó al mes siguiente.
+  const { anio: aMes, mes: mMes } = colombiaDateParts();
+  const inicioMes = `${aMes}-${String(mMes + 1).padStart(2, '0')}-01`;
   const [
     { data: cuentas },
     { data: movsMes },
@@ -196,7 +200,7 @@ async function buildContexto(userId) {
       .order('created_at', { ascending: false }).limit(5),
     supabase.from('payments').select('*').eq('user_id', userId).neq('status', 'pagado'),
     supabase.from('events').select('*').eq('user_id', userId)
-      .gte('fecha', new Date().toISOString().split('T')[0]).order('fecha').limit(10),
+      .gte('fecha', colombiaDateString()).order('fecha').limit(10),
     supabase.from('cajas').select('*').eq('user_id', userId),
     supabase.from('caja_movimientos').select('*').eq('user_id', userId)
       .gte('fecha', inicioMes)
@@ -227,13 +231,17 @@ async function buildContexto(userId) {
 // ═══ SYSTEM PROMPT ═══
 function buildSystemPrompt(ctx, memoria) {
   const fmt = n => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n);
-  const hoy = new Date().toLocaleDateString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  // Fecha y hora SIEMPRE en zona Colombia. Sin esto, después de 7pm Col
+  // (medianoche UTC), Claude veía la fecha de UTC y respondía "hoy es mañana".
+  const hoy = colombiaDateLongEs();
+  const hora = colombiaTimeString();
 
   return `⚠️ REGLA DE ORO (PRIORIDAD MÁXIMA): Cuando el usuario mencione un gasto, SIEMPRE pregunta primero de qué cuenta o caja sale el dinero, listando las cuentas disponibles con sus saldos. NUNCA ejecutes [ACCION:gasto] sin que el usuario haya confirmado la fuente. Excepción: si el usuario ya mencionó explícitamente la cuenta en el mismo mensaje.
 
 Eres Ana, agente financiero personal. Tienes MEMORIA COMPLETA del usuario y acceso TOTAL a sus finanzas.
 
 HOY: ${hoy}
+HORA actual (Colombia): ${hora}
 
 ═══ LO QUE SABES DEL USUARIO (memoria persistente) ═══
 ${memoria || 'Primera vez que hablas con este usuario — aprende todo lo posible.'}
@@ -571,7 +579,7 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
             const tipoMov = accion; // 'gasto' | 'ingreso'
             const { error: errCajaMov } = await supabase.from('caja_movimientos').insert({
               user_id: userId, caja_id: matchCaja.id, tipo: tipoMov,
-              descripcion: desc, monto, fecha: new Date().toISOString().split('T')[0]
+              descripcion: desc, monto, fecha: colombiaDateString()
             });
             if (errCajaMov) { console.error('[auto-reroute] caja_movimientos insert error:', errCajaMov.message); continue; }
             const delta = accion === 'ingreso' ? monto : -monto;
@@ -597,7 +605,7 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
           .from('movements')
           .insert({
             user_id: userId, tipo: accion, descripcion: desc,
-            monto, fecha: new Date().toISOString().split('T')[0],
+            monto, fecha: colombiaDateString(),
             account_id: cuentaId, categoria: cat, source: 'ia'
           })
           .select().single();
@@ -705,7 +713,7 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
       } else if (accion === 'recordatorio') {
         const { error } = await supabase.from('reminders').insert({
           user_id: userId, tipo: 'nota', titulo: parts[1],
-          content: { texto: parts[1] }, fecha: new Date().toISOString().split('T')[0]
+          content: { texto: parts[1] }, fecha: colombiaDateString()
         });
         if (!error) ejecutadas.push({ accion, detalle: parts[1] });
 
@@ -714,7 +722,7 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
           user_id: userId, titulo: parts[1], tipo: parts[2] || 'personal',
           monto_objetivo: parseMontoSeguro(parts[3]) || null,
           fecha_limite: parts[4] || null,
-          año: new Date().getFullYear(), estado: 'activa', progreso: 0
+          año: colombiaDateParts().anio, estado: 'activa', progreso: 0
         });
         if (!error) ejecutadas.push({ accion, detalle: parts[1] });
 
@@ -742,7 +750,7 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
           await ajustarSaldo(tablaOrigen, origenId, userId, +monto, `transferir(rollback origen)`);
           continue;
         }
-        const fecha = new Date().toISOString().split('T')[0];
+        const fecha = colombiaDateString();
         await supabase.from('movements').insert([
           {
             user_id: userId, tipo: 'gasto',
@@ -777,7 +785,7 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
         const tipoMov = accion === 'caja_entrada' ? 'ingreso' : 'gasto';
         const { error: errMov } = await supabase.from('caja_movimientos').insert({
           user_id: userId, caja_id: cajaId, tipo: tipoMov,
-          descripcion: desc, monto, fecha: new Date().toISOString().split('T')[0]
+          descripcion: desc, monto, fecha: colombiaDateString()
         });
         if (errMov) {
           console.error(`[${accion}] insert caja_movimientos falló:`, errMov.message);
