@@ -218,6 +218,8 @@ html,body{width:100%;height:100%;background:var(--bg);font-family:'DM Sans',sans
 .wa-banner-info{flex:1;min-width:0;}
 .wa-banner-ttl{font-size:10.5px;color:var(--t3);margin-bottom:2px;}
 .wa-banner-num{font-family:'DM Sans',sans-serif;font-size:13.5px;font-weight:700;color:var(--t1);}
+.wa-banner-hint{font-size:10.5px;color:var(--t3);margin-top:3px;line-height:1.3;}
+.wa-banner-hint b{color:var(--t2);font-weight:700;}
 .wa-banner-btn{padding:8px 12px;border-radius:10px;background:#25d366;color:#fff;text-decoration:none;font-size:12px;font-weight:700;white-space:nowrap;}
 .wa-banner-btn:active{opacity:0.85;}
 .wa-banner-x{background:transparent;border:none;color:var(--t3);font-size:16px;cursor:pointer;padding:4px 6px;line-height:1;}
@@ -461,13 +463,17 @@ select.form-inp option{background:#0c1228;}
     <!-- ══ RESUMEN ══ -->
     <div class="scr on" id="scr-resumen">
       <div class="scroll" id="scroll-resumen">
-        <!-- Banner WhatsApp del bot (dismissible) -->
+        <!-- Banner WhatsApp del bot (dismissible).
+             Usa el sandbox Twilio (+14155238886). Para hablar con Kontrol,
+             el tester debe enviar primero "join biggest-establish" una vez,
+             y la sesión dura 72h después del último inbound. -->
         <div class="wa-banner" id="wa-banner" style="display:none">
           <div class="wa-banner-info">
             <div class="wa-banner-ttl">Háblale a Kontrol por WhatsApp:</div>
-            <div class="wa-banner-num">+1 555 983 6861</div>
+            <div class="wa-banner-num">+1 415 523 8886</div>
+            <div class="wa-banner-hint">Primera vez: envía <b>join biggest-establish</b></div>
           </div>
-          <a class="wa-banner-btn" href="https://wa.me/15559836861" target="_blank" rel="noopener">Abrir</a>
+          <a class="wa-banner-btn" href="https://wa.me/14155238886?text=join%20biggest-establish" target="_blank" rel="noopener">Abrir</a>
           <button class="wa-banner-x" onclick="dismissWaBanner()" aria-label="Ocultar">✕</button>
         </div>
         <!-- Balance card -->
@@ -821,14 +827,21 @@ select.form-inp option{background:#0c1228;}
           <button class="btn-primary" onclick="guardarPerfil()">Guardar perfil</button>
         </div>
 
-        <!-- Número de WhatsApp del bot -->
+        <!-- Háblale a Kontrol — sandbox Twilio con instrucciones de join. -->
         <div class="config-section">
           <div class="config-section-ttl">🤖 Háblale a Kontrol</div>
-          <div style="font-size:13px;color:var(--t2);margin-bottom:10px;line-height:1.5">
-            Manda mensajes, audio, fotos o ubicaciones al bot por WhatsApp:
+          <div style="font-size:13px;color:var(--t2);margin-bottom:12px;line-height:1.5">
+            Manda mensajes, audio, fotos o ubicaciones al bot por WhatsApp.
           </div>
-          <div style="font-family:'DM Sans',sans-serif;font-size:18px;font-weight:700;color:var(--t1);margin-bottom:12px;text-align:center;padding:10px;background:rgba(37,211,102,0.08);border-radius:10px;">+1 555 983 6861</div>
-          <a class="btn-primary" href="https://wa.me/15559836861" target="_blank" rel="noopener" style="text-decoration:none;display:block;text-align:center">💬 Abrir en WhatsApp</a>
+          <div style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:0.5px;font-weight:700;margin-bottom:4px">📱 Número</div>
+          <div style="font-family:'DM Sans',sans-serif;font-size:17px;font-weight:700;color:var(--t1);margin-bottom:14px;text-align:center;padding:10px;background:rgba(37,211,102,0.08);border-radius:10px;">+1 415 523 8886</div>
+          <div style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:0.5px;font-weight:700;margin-bottom:4px">🔑 Para activar (solo la primera vez)</div>
+          <div style="font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;color:var(--t1);margin-bottom:12px;text-align:center;padding:10px;background:var(--card2);border:1px dashed var(--bd);border-radius:10px;">envía: <code style="color:var(--green)">join biggest-establish</code></div>
+          <div style="font-size:11.5px;color:var(--t3);margin-bottom:14px;line-height:1.5">
+            ⏳ La sesión dura <b>3 días</b> sin actividad. Si pasas 3 días sin
+            escribir, vuelve a enviar <code>join biggest-establish</code> para reactivar.
+          </div>
+          <a class="btn-primary" href="https://wa.me/14155238886?text=join%20biggest-establish" target="_blank" rel="noopener" style="text-decoration:none;display:block;text-align:center">💬 Activar y abrir Kontrol</a>
         </div>
 
         <!-- IA -->
