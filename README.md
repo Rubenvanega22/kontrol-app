@@ -37,11 +37,11 @@ CREATE POLICY "users own caja_movimientos" ON caja_movimientos
 | `/api/ai-analysis`      | `0 9 * * *` | 04:00                 |
 | `/api/reminders-cron`   | `0 13 * * *`| 08:00 (resumen diario)|
 
-## cron-job.org — respaldo / cada 4 horas
+## cron-job.org — frecuencia fina del "rolling" de recordatorios
 
-Si la cuenta de Vercel está en plan Hobby (límite de 2 crons diarios) o se
-quiere un disparo más frecuente que cubra cualquier hueco, registrar en
-[cron-job.org](https://console.cron-job.org/) los siguientes jobs:
+Vercel Hobby solo permite crons diarios (rechaza `*/1 * * * *` al deploy).
+Para soporte de "recuérdame en 5 minutos" usamos un cron externo en
+[cron-job.org](https://console.cron-job.org/):
 
 ### Job: Sync de correos cada 4 horas
 
@@ -50,12 +50,20 @@ quiere un disparo más frecuente que cubra cualquier hueco, registrar en
 - **Schedule:** every 4 hours (`0 */4 * * *` en UTC)
 - **Notifications:** disabled
 
-### Job: Recordatorios cada hora (modo 1h)
+### Job: Recordatorios cada 1 minuto
 
-- **Title:** Kontrol reminders-cron (hourly)
+- **Title:** Kontrol reminders-cron (1min)
 - **URL:** `https://kontrol-app-eight.vercel.app/api/reminders-cron`
-- **Schedule:** every hour at minute 0 (`0 * * * *`)
+- **Schedule:** every minute (`* * * * *`)
 - **Notifications:** disabled
 
-> El endpoint `reminders-cron` decide automáticamente entre el modo "resumen
-> diario" (a las 13:00 UTC) y el modo "1 hora antes" (cualquier otra hora).
+> El endpoint `reminders-cron` ejecuta en cada tick los modos "rolling":
+> `modoQuinceMinAntes` (ventana [-15, +30] min) y `modoUnaHoraAntes`
+> (ventana [+15, +90] min). Cuando el `utcHour` es 13 (8am Col) o 23 (6pm
+> Col), corre también los modos diarios (resumen agenda, batches de pagos).
+>
+> **Dedup garantizado por los flags** `notificado_15min` / `notificado_1h` /
+> `notificado_agenda` de la tabla `events`: el primer tick que matchea marca
+> el flag en true; ticks siguientes ven `eq('notificado_X', false)` no
+> matchea y skip. Esto vale aunque un evento entre en múltiples ticks
+> consecutivos por la ventana ampliada.

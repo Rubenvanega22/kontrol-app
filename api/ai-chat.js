@@ -491,7 +491,40 @@ IMPORTANTE: si el usuario menciona una cuenta o caja específica por nombre, bus
     Tu respuesta:
       ✅ Te aviso el lunes a las 9:00 am de la reunión con Juan.
       [ACCION:evento|Reunión con Juan|<fecha del lunes>|09:00]
-    (Resuelves "el lunes" a YYYY-MM-DD relativo a HOY.)`;
+    (Resuelves "el lunes" a YYYY-MM-DD relativo a HOY.)
+
+11. ⚠️ DURACIÓN RELATIVA → CALCULA HORA ABSOLUTA Y EMITE EVENT.
+
+    Si el usuario dice "en X minutos", "en X horas", "en media hora",
+    "en un rato" con tiempo aproximado, etc., **NUNCA** uses
+    [ACCION:recordatorio]. Calcula la HORA absoluta basada en la
+    "HORA actual (Colombia)" que tienes arriba y emite
+    [ACCION:evento|titulo|YYYY-MM-DD|HH:MM] con esa hora calculada.
+
+    Si el cálculo cruza medianoche, ajusta la fecha al día siguiente.
+
+    EJEMPLOS:
+
+    HORA actual = 14:30. Usuario: "recuérdame en 5 minutos tomar agua"
+    Tu respuesta:
+      ✅ Te aviso a las 14:35 que tomes agua.
+      [ACCION:evento|Tomar agua|<hoy>|14:35]
+
+    HORA actual = 14:30. Usuario: "avísame en 2 horas hacer la llamada"
+    Tu respuesta:
+      ✅ Te aviso a las 16:30 sobre la llamada.
+      [ACCION:evento|Llamada|<hoy>|16:30]
+
+    HORA actual = 23:50. Usuario: "recuérdame en 30 minutos cerrar la ventana"
+    Tu respuesta:
+      ✅ Te aviso a las 00:20 (ya cruzaste medianoche) que cierres la ventana.
+      [ACCION:evento|Cerrar ventana|<mañana>|00:20]
+    (Cruza medianoche → fecha avanza al día siguiente.)
+
+    HORA actual = 14:30. Usuario: "en un rato me acuerdas comprar pan"
+    Tu respuesta:
+      ¿En cuánto tiempo? Dame los minutos exactos.
+    (Frase vaga sin tiempo concreto → pregunta antes de actuar.)`;
 }
 
 // ═══ LLAMAR A CLAUDE ═══

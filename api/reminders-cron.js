@@ -1,7 +1,11 @@
 // /api/reminders-cron.js
-// Diseñado para correr cada 15 min en cron-job.org.
-// En cada tick ejecuta los modos "rolling" (15-min antes + 1-hora antes)
-// y, en horas específicas Colombia, también los modos diarios:
+// Diseñado para correr cada 1 min en cron-job.org (Vercel Hobby no permite
+// crons sub-diarios). En cada tick ejecuta los modos "rolling":
+//   • modoQuinceMinAntes — ventana [-15, +30] min vs hora del evento
+//   • modoUnaHoraAntes  — ventana [+15, +90] min vs hora del evento
+// Dedup garantizado por los flags notificado_15min / notificado_1h de events.
+//
+// En horas específicas Colombia se disparan además modos diarios:
 //   • 13:00 UTC (8am Col) → resumen agenda + recordatorio matutino de pagos
 //   • 23:00 UTC (6pm Col) → recordatorio vespertino de pagos no confirmados
 // Vercel cron en vercel.json conserva los disparos a 13/23 UTC como respaldo.
@@ -136,12 +140,15 @@ async function modoUnaHoraAntes() {
     .eq('notificado_1h', false);
   if (error) { console.error('[reminders-cron 1h] query error:', error.message); return { error: error.message }; }
 
-  // Ventana 30-90 min desde ahora.
+  // Ventana 15-90 min desde ahora. El borde -15 (ahora 15) tolera que el
+  // cron se haya caído ~15 min y vuelva: si un evento cuya hora-1h cayó
+  // durante el outage entra ahora, igual se notifica. El flag
+  // notificado_1h previene duplicados en ticks subsiguientes.
   const candidatos = (eventos || []).filter(e => {
     const t = eventToDate(e);
     if (!t) return false;
     const diff = (t.getTime() - nowMs) / 60000;
-    return diff >= 30 && diff <= 90;
+    return diff >= 15 && diff <= 90;
   });
   if (!candidatos.length) return { alertas: 0, candidatos: 0, hoyCol };
 
@@ -185,12 +192,16 @@ async function modoQuinceMinAntes() {
     .eq('notificado_15min', false);
   if (error) { console.error('[reminders-cron 15m] query error:', error.message); return { error: error.message }; }
 
-  // Ventana 0-30 min desde ahora (centrada en 15 min, tolerando cron cada 15).
+  // Ventana -15 a +30 min desde ahora. Asume cron cada 1 min (cron-job.org).
+  // El borde -15 tolera eventos creados "en 5 minutos" que el cron alcanzó
+  // a procesar tarde (ej. tick se saltó 10 min por outage de cron-job.org).
+  // El flag notificado_15min previene duplicados — un mismo evento no
+  // se notifica dos veces aunque entre en múltiples ticks consecutivos.
   const candidatos = (eventos || []).filter(e => {
     const t = eventToDate(e);
     if (!t) return false;
     const diff = (t.getTime() - nowMs) / 60000;
-    return diff >= 0 && diff <= 30;
+    return diff >= -15 && diff <= 30;
   });
   if (!candidatos.length) return { alertas: 0, candidatos: 0, hoyCol };
 
