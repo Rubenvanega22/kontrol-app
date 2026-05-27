@@ -935,7 +935,7 @@ select.form-inp option{background:#0c1228;}
         <div class="config-section">
           <div class="config-section-ttl">🔧 Avanzado</div>
           <p style="font-size:11.5px;color:var(--t3);margin-bottom:10px;line-height:1.5">Si ves cambios viejos después de una actualización, limpia la caché y recarga.</p>
-          <button class="btn-secondary" onclick="recargarApp()">🔄 Refrescar app (limpiar caché)</button>
+          <button id="btn-recargar-app" class="btn-secondary" onclick="recargarApp()">🔄 Refrescar app (limpiar caché)</button>
         </div>
 
         <div style="height:80px"></div>
@@ -4262,8 +4262,14 @@ updateTime(); setInterval(updateTime, 30000);
 // Botón en Config → Avanzado. Limpia todos los caches del SW + lo desregistra
 // + recarga. Es la salida de emergencia cuando un deploy nuevo no se ve por
 // stale-while-revalidate del SW (visita N+1 muestra cache, recién N+2 ve nuevo).
+//
+// Sin confirm() — Chrome bloquea silenciosamente dialogs sincrónicos en
+// PWAs en modo standalone, dejando el botón "muerto". La operación es
+// NO destructiva (no toca localStorage ni IndexedDB, solo caches del SW),
+// y el copy de la sección "Avanzado" ya es explícito.
 async function recargarApp() {
-  if (!confirm('Esto va a limpiar la caché y recargar la app. ¿Continuar?')) return;
+  const btn = document.getElementById('btn-recargar-app');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Limpiando…'; }
   try {
     if ('caches' in window) {
       const keys = await caches.keys();
@@ -4275,7 +4281,9 @@ async function recargarApp() {
     }
     location.reload();
   } catch (e) {
-    alert('Error al refrescar: ' + e.message);
+    console.error('[recargarApp]', e);
+    if (btn) { btn.disabled = false; btn.textContent = '🔄 Refrescar app (limpiar caché)'; }
+    if (typeof toast === 'function') toast('Error al refrescar', 'var(--red)');
   }
 }
 
