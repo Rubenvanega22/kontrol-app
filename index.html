@@ -213,6 +213,14 @@ html,body{width:100%;height:100%;background:var(--bg);font-family:'DM Sans',sans
 .modal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
 .modal-ttl{font-family:'Syne',sans-serif;font-size:17px;font-weight:800;}
 .modal-close{background:transparent;border:none;color:var(--t3);font-size:20px;cursor:pointer;line-height:1;}
+/* Banner WhatsApp de Kontrol (Resumen) */
+.wa-banner{display:flex;align-items:center;gap:10px;padding:10px 12px;margin:0 0 12px 0;border-radius:14px;background:linear-gradient(135deg,rgba(37,211,102,0.12),rgba(37,211,102,0.04));border:1px solid rgba(37,211,102,0.25);}
+.wa-banner-info{flex:1;min-width:0;}
+.wa-banner-ttl{font-size:10.5px;color:var(--t3);margin-bottom:2px;}
+.wa-banner-num{font-family:'DM Sans',sans-serif;font-size:13.5px;font-weight:700;color:var(--t1);}
+.wa-banner-btn{padding:8px 12px;border-radius:10px;background:#25d366;color:#fff;text-decoration:none;font-size:12px;font-weight:700;white-space:nowrap;}
+.wa-banner-btn:active{opacity:0.85;}
+.wa-banner-x{background:transparent;border:none;color:var(--t3);font-size:16px;cursor:pointer;padding:4px 6px;line-height:1;}
 .form-group{margin-bottom:14px;}
 .form-label{font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;display:block;}
 .form-inp{width:100%;background:var(--card2);border:1px solid var(--bd);border-radius:12px;padding:10px 14px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--t1);outline:none;transition:border-color 0.15s;}
@@ -453,6 +461,15 @@ select.form-inp option{background:#0c1228;}
     <!-- ══ RESUMEN ══ -->
     <div class="scr on" id="scr-resumen">
       <div class="scroll" id="scroll-resumen">
+        <!-- Banner WhatsApp del bot (dismissible) -->
+        <div class="wa-banner" id="wa-banner" style="display:none">
+          <div class="wa-banner-info">
+            <div class="wa-banner-ttl">Háblale a Kontrol por WhatsApp:</div>
+            <div class="wa-banner-num">+1 555 983 6861</div>
+          </div>
+          <a class="wa-banner-btn" href="https://wa.me/15559836861" target="_blank" rel="noopener">Abrir</a>
+          <button class="wa-banner-x" onclick="dismissWaBanner()" aria-label="Ocultar">✕</button>
+        </div>
         <!-- Balance card -->
         <div class="bal">
           <div class="bal-top">
@@ -804,6 +821,16 @@ select.form-inp option{background:#0c1228;}
           <button class="btn-primary" onclick="guardarPerfil()">Guardar perfil</button>
         </div>
 
+        <!-- Número de WhatsApp del bot -->
+        <div class="config-section">
+          <div class="config-section-ttl">🤖 Háblale a Kontrol</div>
+          <div style="font-size:13px;color:var(--t2);margin-bottom:10px;line-height:1.5">
+            Manda mensajes, audio, fotos o ubicaciones al bot por WhatsApp:
+          </div>
+          <div style="font-family:'DM Sans',sans-serif;font-size:18px;font-weight:700;color:var(--t1);margin-bottom:12px;text-align:center;padding:10px;background:rgba(37,211,102,0.08);border-radius:10px;">+1 555 983 6861</div>
+          <a class="btn-primary" href="https://wa.me/15559836861" target="_blank" rel="noopener" style="text-decoration:none;display:block;text-align:center">💬 Abrir en WhatsApp</a>
+        </div>
+
         <!-- IA -->
         <div class="config-section">
           <div class="config-section-ttl">🧠 IA / Proveedor</div>
@@ -902,6 +929,13 @@ select.form-inp option{background:#0c1228;}
           <div class="config-section-ttl">💬 Feedback</div>
           <p style="font-size:11.5px;color:var(--t3);margin-bottom:10px;line-height:1.5">Estamos en beta. Tu opinión ayuda a mejorar Kontrol.</p>
           <button class="btn-primary" onclick="showModal('modal-feedback')">💬 Enviar feedback</button>
+        </div>
+
+        <!-- Avanzado -->
+        <div class="config-section">
+          <div class="config-section-ttl">🔧 Avanzado</div>
+          <p style="font-size:11.5px;color:var(--t3);margin-bottom:10px;line-height:1.5">Si ves cambios viejos después de una actualización, limpia la caché y recarga.</p>
+          <button class="btn-secondary" onclick="recargarApp()">🔄 Refrescar app (limpiar caché)</button>
         </div>
 
         <div style="height:80px"></div>
@@ -4223,6 +4257,41 @@ updateTime(); setInterval(updateTime, 30000);
 // ════════════════════════════════════════
 // INIT
 // ════════════════════════════════════════
+// PWA — refresh manual y banner WhatsApp
+// ════════════════════════════════════════
+// Botón en Config → Avanzado. Limpia todos los caches del SW + lo desregistra
+// + recarga. Es la salida de emergencia cuando un deploy nuevo no se ve por
+// stale-while-revalidate del SW (visita N+1 muestra cache, recién N+2 ve nuevo).
+async function recargarApp() {
+  if (!confirm('Esto va a limpiar la caché y recargar la app. ¿Continuar?')) return;
+  try {
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+    }
+    location.reload();
+  } catch (e) {
+    alert('Error al refrescar: ' + e.message);
+  }
+}
+
+// Banner del número WhatsApp en Resumen. Se muestra hasta que el usuario lo
+// cierre — el flag wa_banner_dismissed queda en localStorage.
+function maybeShowWaBanner(){
+  if (localStorage.getItem('wa_banner_dismissed') === '1') return;
+  const el = document.getElementById('wa-banner');
+  if (el) el.style.display = '';
+}
+function dismissWaBanner(){
+  localStorage.setItem('wa_banner_dismissed', '1');
+  const el = document.getElementById('wa-banner');
+  if (el) el.style.display = 'none';
+}
+
 // ════════════════════════════════════════
 // SUPABASE AUTH
 // ════════════════════════════════════════
@@ -4388,6 +4457,7 @@ function init(){
   renderResumen();
   renderCalendario();
   renderConfig();
+  maybeShowWaBanner();
   // renderMetas() ya no se llama aquí — se dispara desde goTab('metas') la primera vez
   // que el usuario navegue a esa pestaña, ahorrando una query Supabase en el startup.
 }
