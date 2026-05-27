@@ -147,7 +147,32 @@ html,body{width:100%;height:100%;background:var(--bg);font-family:'DM Sans',sans
 .cal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--t1);border-radius:7px;position:relative;cursor:pointer;}
 .cal-day.today{background:linear-gradient(135deg,#1a56db,#4a8fe8);color:#fff;font-weight:700;box-shadow:0 2px 8px rgba(26,86,219,0.4);}
 .cal-day.has-event::after{content:'';position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:3px;height:3px;border-radius:50%;background:var(--amber);}
-.cal-day.faded{color:var(--t4);}
+.cal-day.faded{color:var(--t4);cursor:default;}
+.cal-day:not(.faded):active{background:rgba(255,255,255,0.07);}
+/* Navegador de meses del calendario */
+.cal-nav{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;}
+.cal-nav-btn{width:34px;height:34px;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--t1);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;}
+.cal-nav-btn:active{background:rgba(255,255,255,0.05);}
+.cal-nav-label{flex:1;text-align:center;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--t1);text-transform:capitalize;}
+.cal-nav-hoy{padding:0 12px;height:34px;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--t2);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;cursor:pointer;}
+.cal-nav-hoy:active{background:rgba(255,255,255,0.05);}
+/* Modal vista diaria */
+.day-sec{margin-bottom:16px;}
+.day-sec-ttl{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--bd);}
+.day-item{display:flex;align-items:center;gap:10px;padding:8px 4px;font-size:13px;color:var(--t1);border-bottom:1px solid rgba(255,255,255,0.04);}
+.day-item:last-child{border-bottom:none;}
+.day-item-time{font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;color:var(--t3);min-width:46px;flex-shrink:0;}
+.day-item-icon{font-size:14px;flex-shrink:0;}
+.day-item-main{flex:1;color:var(--t1);overflow-wrap:anywhere;}
+.day-item-monto{font-weight:700;font-size:13px;color:var(--t2);white-space:nowrap;}
+.day-subg{margin:6px 0 2px;}
+.day-subg-ttl{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;margin:6px 0 2px;}
+.day-resumen{font-size:13px;color:var(--t2);padding:4px 0;}
+.day-empty{text-align:center;padding:40px 20px;}
+.day-empty-ico{font-size:48px;margin-bottom:12px;}
+.day-empty-txt{font-size:14px;color:var(--t3);margin-bottom:20px;}
+.day-empty-btn{padding:12px 20px;border-radius:14px;border:1px solid rgba(74,222,128,0.3);background:rgba(74,222,128,0.08);color:var(--green);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;}
+.day-empty-btn:active{background:rgba(74,222,128,0.15);}
 .rec-card{background:var(--card);border:1px solid var(--bd2);border-radius:14px;padding:11px 12px;margin-bottom:8px;}
 .rec-type{font-size:9.5px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:4px;}
 .rec-title{font-size:13px;font-weight:600;color:var(--t1);margin-bottom:6px;}
@@ -533,6 +558,12 @@ select.form-inp option{background:#0c1228;}
     <div class="scr" id="scr-agenda">
       <div class="scroll">
         <div class="sc">
+          <div class="cal-nav">
+            <button class="cal-nav-btn" onclick="prevMes()" aria-label="Mes anterior">‹</button>
+            <span class="cal-nav-label" id="cal-nav-label"></span>
+            <button class="cal-nav-btn" onclick="nextMes()" aria-label="Mes siguiente">›</button>
+            <button class="cal-nav-hoy" onclick="irHoy()">Hoy</button>
+          </div>
           <div class="cal-grid" id="cal-grid"></div>
         </div>
         <div class="sc">
@@ -1245,6 +1276,17 @@ select.form-inp option{background:#0c1228;}
     </div>
     <div id="rec-detalle-body"></div>
     <button class="btn-danger" style="margin-top:14px" onclick="eliminarRecordatorio()">🗑 Eliminar</button>
+  </div>
+</div>
+
+<!-- Modal vista diaria del calendario -->
+<div class="modal-overlay hidden" id="modal-vista-diaria" onclick="closeModalOutside(event,'modal-vista-diaria')">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-ttl" id="vdiaria-titulo">📅 Día</span>
+      <button class="modal-close" onclick="hideModal('modal-vista-diaria')" style="width:44px;height:44px;font-size:22px;">✕</button>
+    </div>
+    <div id="vdiaria-body"></div>
   </div>
 </div>
 
@@ -2623,25 +2665,162 @@ function renderAgenda(){
   </div>`).join('');
 }
 
+// Estado del calendario: mes/año actualmente visualizado.
+// renderCalendario lee estas vars; prevMes/nextMes/irHoy las modifican.
+let calMes = new Date().getMonth();
+let calAnio = new Date().getFullYear();
+
+function prevMes(){
+  calMes--;
+  if(calMes < 0){ calMes = 11; calAnio--; }
+  renderCalendario();
+}
+function nextMes(){
+  calMes++;
+  if(calMes > 11){ calMes = 0; calAnio++; }
+  renderCalendario();
+}
+function irHoy(){
+  const h = new Date();
+  calMes = h.getMonth();
+  calAnio = h.getFullYear();
+  renderCalendario();
+}
+
 function renderCalendario(){
   const hoy = new Date();
-  const anio = hoy.getFullYear(), mes = hoy.getMonth();
-  const primerDia = new Date(anio,mes,1).getDay();
-  const diasEnMes = new Date(anio,mes+1,0).getDate();
+  const esMesActual = (calMes === hoy.getMonth() && calAnio === hoy.getFullYear());
+  const primerDia = new Date(calAnio, calMes, 1).getDay();
+  const diasEnMes = new Date(calAnio, calMes+1, 0).getDate();
   const eventoDias = new Set(DB.eventos.filter(e=>{
     const d=new Date(e.fecha+'T12:00:00');
-    return d.getMonth()===mes&&d.getFullYear()===anio;
+    return d.getMonth()===calMes && d.getFullYear()===calAnio;
   }).map(e=>new Date(e.fecha+'T12:00:00').getDate()));
+
+  // Etiqueta "Mes Año" del navegador (capitalizada).
+  const nombreMes = new Date(calAnio, calMes, 1).toLocaleDateString('es-CO', {month:'long', year:'numeric'});
+  const labelEl = document.getElementById('cal-nav-label');
+  if (labelEl) labelEl.textContent = nombreMes;
 
   const heads = ['D','L','M','M','J','V','S'].map(d=>`<div class="cal-day-head">${d}</div>`).join('');
   let cells = '';
   for(let i=0;i<primerDia;i++) cells+=`<div class="cal-day faded"></div>`;
+  const mesPad = String(calMes+1).padStart(2,'0');
   for(let d=1;d<=diasEnMes;d++){
-    const isToday = d===hoy.getDate();
+    const isToday = esMesActual && d===hoy.getDate();
     const hasEv = eventoDias.has(d);
-    cells+=`<div class="cal-day${isToday?' today':''}${hasEv?' has-event':''}">${d}</div>`;
+    const fechaISO = `${calAnio}-${mesPad}-${String(d).padStart(2,'0')}`;
+    cells+=`<div class="cal-day${isToday?' today':''}${hasEv?' has-event':''}" onclick="abrirModalDiario('${fechaISO}')">${d}</div>`;
   }
   document.getElementById('cal-grid').innerHTML = heads+cells;
+}
+
+// ─── Modal vista diaria ────────────────────────────────────────
+// Filtra DB.eventos/pagos/recordatorios/movimientos por fecha y arma el
+// HTML del modal. Si todo está vacío, muestra estado vacío con botón
+// "+ Agendar" para fechas HOY o futuras.
+function abrirModalDiario(fechaISO){
+  const fecha = new Date(fechaISO+'T12:00:00');
+  const cap = s => s.charAt(0).toUpperCase()+s.slice(1);
+  const dow = cap(fecha.toLocaleDateString('es-CO',{weekday:'long'}));
+  const mes = cap(fecha.toLocaleDateString('es-CO',{month:'long'}));
+  document.getElementById('vdiaria-titulo').textContent =
+    `📅 ${dow} ${fecha.getDate()} de ${mes} de ${fecha.getFullYear()}`;
+
+  const eventos = (DB.eventos||[]).filter(e=>e.fecha===fechaISO);
+  const pagos = (DB.pagos||[]).filter(p=>(p.fechaLimite||p.fecha_limite)===fechaISO);
+  const recs = (DB.recordatorios||[]).filter(r=>r.fecha===fechaISO);
+  const movs = (DB.movimientos||[]).filter(m=>m.fecha===fechaISO
+    && m.categoria!=='caja' && m.categoria!=='transferencia');
+  const ingresos = movs.filter(m=>m.tipo==='ingreso');
+  const gastos = movs.filter(m=>m.tipo==='gasto');
+  const totalIng = ingresos.reduce((s,m)=>s+parseFloat(m.monto||0),0);
+  const totalGas = gastos.reduce((s,m)=>s+parseFloat(m.monto||0),0);
+  const saldoNeto = totalIng - totalGas;
+
+  let html = '';
+
+  if (eventos.length){
+    html += `<div class="day-sec">
+      <div class="day-sec-ttl">📌 AGENDADO</div>
+      ${eventos.map(e=>`<div class="day-item">
+        <span class="day-item-time">${e.hora||'—'}</span>
+        <span class="day-item-main">${e.titulo}</span>
+      </div>`).join('')}
+    </div>`;
+  }
+
+  if (pagos.length){
+    html += `<div class="day-sec">
+      <div class="day-sec-ttl">💳 PAGOS PROGRAMADOS</div>
+      ${pagos.map(p=>`<div class="day-item">
+        <span class="day-item-icon">${p.status==='pagado'?'✅':'⏳'}</span>
+        <span class="day-item-main">${p.nombre}</span>
+        <span class="day-item-monto">${fmtCOP(p.monto)}</span>
+      </div>`).join('')}
+    </div>`;
+  }
+
+  if (recs.length){
+    html += `<div class="day-sec">
+      <div class="day-sec-ttl">🔔 RECORDATORIOS</div>
+      ${recs.map(r=>`<div class="day-item">
+        <span class="day-item-main">${r.titulo}</span>
+      </div>`).join('')}
+    </div>`;
+  }
+
+  if (movs.length){
+    html += `<div class="day-sec"><div class="day-sec-ttl">💸 MOVIMIENTOS DEL DÍA</div>`;
+    if (ingresos.length){
+      html += `<div class="day-subg">
+        <div class="day-subg-ttl" style="color:var(--green)">▼ Ingresos +${fmtCOP(totalIng)}</div>
+        ${ingresos.map(m=>`<div class="day-item">
+          <span class="day-item-main">${m.descripcion}</span>
+          <span class="day-item-monto" style="color:var(--green)">+${fmtCOP(m.monto)}</span>
+        </div>`).join('')}
+      </div>`;
+    }
+    if (gastos.length){
+      html += `<div class="day-subg">
+        <div class="day-subg-ttl" style="color:var(--red)">▲ Gastos -${fmtCOP(totalGas)}</div>
+        ${gastos.map(m=>`<div class="day-item">
+          <span class="day-item-main">${m.descripcion}</span>
+          <span class="day-item-monto" style="color:var(--red)">-${fmtCOP(m.monto)}</span>
+        </div>`).join('')}
+      </div>`;
+    }
+    html += `</div>`;
+
+    const color = saldoNeto >= 0 ? 'var(--green)' : 'var(--red)';
+    const signo = saldoNeto >= 0 ? '+' : '-';
+    html += `<div class="day-sec">
+      <div class="day-sec-ttl">📊 RESUMEN DEL DÍA</div>
+      <div class="day-resumen">Saldo neto: <span style="color:${color};font-weight:700">${signo}${fmtCOP(Math.abs(saldoNeto))}</span></div>
+      <div class="day-resumen">Total movimientos: ${movs.length}</div>
+    </div>`;
+  }
+
+  if (!eventos.length && !pagos.length && !recs.length && !movs.length){
+    const esPasada = fechaISO < todayStr();
+    html = `<div class="day-empty">
+      <div class="day-empty-ico">📅</div>
+      <div class="day-empty-txt">Sin actividad este día</div>
+      ${!esPasada ? `<button class="day-empty-btn" onclick="agendarDesdeDiario('${fechaISO}')">+ Agendar algo aquí</button>` : ''}
+    </div>`;
+  }
+
+  document.getElementById('vdiaria-body').innerHTML = html;
+  showModal('modal-vista-diaria');
+}
+
+// Pre-llena evento-fecha del modal-nuevo-evento con la fecha tocada
+// antes de mostrarlo. Cierra el modal diario primero.
+function agendarDesdeDiario(fechaISO){
+  hideModal('modal-vista-diaria');
+  const inp = document.getElementById('evento-fecha');
+  if (inp) inp.value = fechaISO;
+  showModal('modal-nuevo-evento');
 }
 
 // ════════════════════════════════════════
