@@ -340,6 +340,160 @@ select.form-inp option{background:#0c1228;}
 @supports (-webkit-touch-callout: none) {
   .app { height: -webkit-fill-available; }
 }
+
+/* ════════════════════════════════════════ */
+/* LANDING (pantalla de bienvenida pre-login) */
+/* Clases con prefijo .lnd- para no chocar con el dashboard */
+/* ════════════════════════════════════════ */
+#landing-screen{
+  display:none;flex-direction:column;width:100vw;height:100vh;
+  background:#070b18;position:fixed;inset:0;z-index:9998;
+  overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -10%,rgba(29,78,216,0.28),transparent 60%),
+    radial-gradient(ellipse 60% 40% at 100% 30%,rgba(167,139,250,0.10),transparent 70%);
+  font-family:'DM Sans',sans-serif;color:#e8eef8;
+}
+#landing-screen::-webkit-scrollbar{display:none;}
+.lnd-wrap{max-width:1080px;margin:0 auto;padding:0 22px;width:100%;}
+.lnd-nav{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 22px;position:sticky;top:0;z-index:50;
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  background:rgba(7,11,24,0.7);
+  border-bottom:1px solid rgba(255,255,255,0.05);
+}
+.lnd-brand{display:flex;align-items:center;gap:9px;}
+.lnd-logo-x{width:28px;height:28px;position:relative;display:flex;align-items:center;justify-content:center;}
+.lnd-logo-x::before,.lnd-logo-x::after{
+  content:'';position:absolute;width:20px;height:3.2px;
+  background:linear-gradient(90deg,#1d4ed8,#60a5fa);border-radius:3px;
+}
+.lnd-logo-x::before{transform:rotate(45deg);}
+.lnd-logo-x::after{transform:rotate(-45deg);}
+.lnd-brand-name{font-family:'Syne',sans-serif;font-size:20px;font-weight:900;letter-spacing:-0.5px;}
+.lnd-nav-cta{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:9px 16px;border-radius:99px;
+  background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#fff;
+  font-family:'DM Sans',sans-serif;font-weight:700;font-size:13px;
+  border:none;cursor:pointer;
+  transition:transform .15s,box-shadow .15s;
+}
+.lnd-nav-cta:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(59,130,246,0.35);}
+.lnd-hero{padding:60px 0 70px;text-align:center;}
+.lnd-eyebrow{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:6px 14px;border-radius:99px;
+  background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);
+  font-size:12px;font-weight:600;color:#60a5fa;margin-bottom:22px;
+}
+.lnd-eyebrow .lnd-dot{
+  width:7px;height:7px;border-radius:50%;background:#4ade80;
+  box-shadow:0 0 12px #4ade80;
+}
+.lnd-h1{
+  font-family:'Syne',sans-serif;font-weight:900;
+  font-size:clamp(34px,7vw,64px);line-height:1.05;letter-spacing:-1.5px;
+  margin-bottom:20px;
+}
+.lnd-h1 .lnd-grad{
+  background:linear-gradient(90deg,#60a5fa 0%,#a78bfa 50%,#60a5fa 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.lnd-lead{
+  font-size:clamp(16px,2vw,19px);color:rgba(232,238,248,0.62);
+  max-width:600px;margin:0 auto 32px;line-height:1.55;
+}
+.lnd-btn{
+  display:inline-flex;align-items:center;gap:10px;
+  padding:15px 30px;border-radius:99px;font-weight:700;font-size:15px;
+  font-family:'DM Sans',sans-serif;border:none;cursor:pointer;
+  background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#fff;
+  box-shadow:0 10px 30px rgba(59,130,246,0.25);
+  transition:transform .15s,box-shadow .15s;
+}
+.lnd-btn:hover{transform:translateY(-2px);box-shadow:0 14px 36px rgba(59,130,246,0.4);}
+.lnd-btn:active{transform:translateY(0);}
+.lnd-sec{padding:60px 0;}
+.lnd-sec-eyebrow{
+  font-size:11.5px;font-weight:700;letter-spacing:2px;
+  text-transform:uppercase;color:#60a5fa;margin-bottom:12px;text-align:center;
+}
+.lnd-h2{
+  font-family:'Syne',sans-serif;font-weight:800;
+  font-size:clamp(26px,4vw,38px);letter-spacing:-1px;line-height:1.15;
+  text-align:center;margin-bottom:14px;
+}
+.lnd-sec-lead{
+  text-align:center;color:rgba(232,238,248,0.62);
+  max-width:520px;margin:0 auto 44px;font-size:15px;line-height:1.55;
+}
+.lnd-feats{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;}
+.lnd-feat{
+  background:#0c1228;border:1px solid rgba(255,255,255,0.05);
+  border-radius:18px;padding:22px 18px;
+  transition:transform .25s,border-color .25s,background .25s;
+}
+.lnd-feat:hover{transform:translateY(-3px);border-color:rgba(59,130,246,0.3);background:#0f1632;}
+.lnd-feat-ic{
+  width:44px;height:44px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;font-size:22px;
+  margin-bottom:14px;
+}
+.lnd-feat:nth-child(1) .lnd-feat-ic{background:rgba(59,130,246,0.15);}
+.lnd-feat:nth-child(2) .lnd-feat-ic{background:rgba(245,158,11,0.15);}
+.lnd-feat:nth-child(3) .lnd-feat-ic{background:rgba(74,222,128,0.15);}
+.lnd-feat:nth-child(4) .lnd-feat-ic{background:rgba(167,139,250,0.15);}
+.lnd-feat-ttl{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;margin-bottom:6px;letter-spacing:-0.3px;}
+.lnd-feat-txt{font-size:13px;color:rgba(232,238,248,0.62);line-height:1.5;}
+.lnd-steps{display:grid;grid-template-columns:1fr;gap:14px;}
+.lnd-step{
+  background:linear-gradient(160deg,#0c1228 0%,rgba(12,18,40,0.4) 100%);
+  border:1px solid rgba(255,255,255,0.05);border-radius:18px;
+  padding:22px;display:flex;gap:16px;align-items:flex-start;
+}
+.lnd-step-num{
+  font-family:'Syne',sans-serif;font-size:32px;font-weight:900;line-height:1;
+  background:linear-gradient(180deg,#60a5fa,rgba(96,165,250,0.2));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  flex-shrink:0;min-width:38px;
+}
+.lnd-step-body h3{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;margin-bottom:4px;letter-spacing:-0.2px;}
+.lnd-step-body p{font-size:13px;color:rgba(232,238,248,0.62);line-height:1.5;}
+.lnd-cta-band{
+  background:linear-gradient(135deg,#0d2248 0%,#091830 100%);
+  border:1px solid rgba(59,130,246,0.25);
+  border-radius:24px;padding:42px 28px;text-align:center;
+  position:relative;overflow:hidden;
+}
+.lnd-cta-band::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(circle at 30% 0%,rgba(96,165,250,0.18),transparent 50%),
+             radial-gradient(circle at 70% 100%,rgba(167,139,250,0.15),transparent 50%);
+  pointer-events:none;
+}
+.lnd-cta-band > *{position:relative;z-index:1;}
+.lnd-cta-band .lnd-h2{margin-bottom:12px;}
+.lnd-cta-band p{color:rgba(232,238,248,0.62);max-width:440px;margin:0 auto 24px;font-size:14.5px;line-height:1.55;}
+.lnd-foot{
+  padding:36px 0 30px;border-top:1px solid rgba(255,255,255,0.05);
+  margin-top:30px;color:rgba(232,238,248,0.38);font-size:12.5px;
+}
+.lnd-foot-inner{
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  text-align:center;
+}
+.lnd-foot a{color:#60a5fa;font-weight:600;text-decoration:none;}
+.lnd-foot a:hover{text-decoration:underline;}
+@media (min-width:700px){
+  .lnd-feats{grid-template-columns:repeat(4,1fr);}
+  .lnd-steps{grid-template-columns:repeat(3,1fr);}
+  .lnd-step{flex-direction:column;}
+  .lnd-foot-inner{flex-direction:row;justify-content:space-between;text-align:left;}
+  .lnd-hero{padding:90px 0 80px;}
+  .lnd-sec{padding:80px 0;}
+}
 </style>
 </head>
 <body>
@@ -360,9 +514,107 @@ select.form-inp option{background:#0c1228;}
 </div>
 
 <!-- ══════════════════════════════════════════ -->
+<!-- LANDING (bienvenida pre-login)             -->
+<!-- Se muestra a usuarios nuevos. Returning    -->
+<!-- users (localStorage) y sesiones activas la -->
+<!-- saltan. Click "Entrar" → muestra auth.     -->
+<!-- ══════════════════════════════════════════ -->
+<div id="landing-screen">
+  <nav class="lnd-nav">
+    <div class="lnd-brand">
+      <div class="lnd-logo-x"></div>
+      <span class="lnd-brand-name">Kontrol</span>
+    </div>
+    <button type="button" class="lnd-nav-cta" onclick="enterApp()">Entrar →</button>
+  </nav>
+
+  <section class="lnd-hero lnd-wrap">
+    <div class="lnd-eyebrow"><span class="lnd-dot"></span>Disponible en WhatsApp</div>
+    <h1 class="lnd-h1">Tu asistente de<br/><span class="lnd-grad">finanzas personales</span><br/>por WhatsApp</h1>
+    <p class="lnd-lead">Registra gastos por voz, recibe recordatorios de pagos y controla tus cuentas. Todo desde un chat.</p>
+    <button type="button" class="lnd-btn" onclick="enterApp()">Entrar a la app →</button>
+  </section>
+
+  <section class="lnd-wrap lnd-sec">
+    <div class="lnd-sec-eyebrow">Qué puedes hacer</div>
+    <h2 class="lnd-h2">Todo lo que tu plata necesita</h2>
+    <p class="lnd-sec-lead">Cuatro funciones diseñadas para que dejes de perderle el rastro a tu dinero.</p>
+    <div class="lnd-feats">
+      <div class="lnd-feat">
+        <div class="lnd-feat-ic">🎙️</div>
+        <div class="lnd-feat-ttl">Gastos por voz</div>
+        <div class="lnd-feat-txt">Habla y Kontrol anota tus movimientos al instante.</div>
+      </div>
+      <div class="lnd-feat">
+        <div class="lnd-feat-ic">⏰</div>
+        <div class="lnd-feat-ttl">Recordatorios de pagos</div>
+        <div class="lnd-feat-txt">Nunca olvides una fecha límite ni vuelvas a pagar una mora.</div>
+      </div>
+      <div class="lnd-feat">
+        <div class="lnd-feat-ic">💳</div>
+        <div class="lnd-feat-ttl">Control de cuentas</div>
+        <div class="lnd-feat-txt">Todos tus saldos en un solo lugar, siempre actualizados.</div>
+      </div>
+      <div class="lnd-feat">
+        <div class="lnd-feat-ic">📸</div>
+        <div class="lnd-feat-ttl">Escáner de facturas</div>
+        <div class="lnd-feat-txt">Toma una foto y Kontrol registra el gasto. Sin escribir nada.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="lnd-wrap lnd-sec">
+    <div class="lnd-sec-eyebrow">Cómo funciona</div>
+    <h2 class="lnd-h2">Tres pasos. Listo.</h2>
+    <p class="lnd-sec-lead">No instalas nada nuevo. Ya sabes usar WhatsApp.</p>
+    <div class="lnd-steps">
+      <div class="lnd-step">
+        <div class="lnd-step-num">01</div>
+        <div class="lnd-step-body">
+          <h3>Regístrate</h3>
+          <p>Crea tu cuenta gratis en segundos con tu correo.</p>
+        </div>
+      </div>
+      <div class="lnd-step">
+        <div class="lnd-step-num">02</div>
+        <div class="lnd-step-body">
+          <h3>Conecta tu WhatsApp</h3>
+          <p>Vincula tu número y empieza a chatear con Kontrol como con cualquier contacto.</p>
+        </div>
+      </div>
+      <div class="lnd-step">
+        <div class="lnd-step-num">03</div>
+        <div class="lnd-step-body">
+          <h3>Háblale a Kontrol</h3>
+          <p>Cuéntale tus gastos como a un asistente. Audio, texto o foto — él se encarga.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="lnd-wrap lnd-sec" style="padding-bottom:30px;">
+    <div class="lnd-cta-band">
+      <h2 class="lnd-h2">Empieza a controlar tu plata</h2>
+      <p>Gratis para empezar. Funciona desde el primer mensaje.</p>
+      <button type="button" class="lnd-btn" onclick="enterApp()">Entrar a la app →</button>
+    </div>
+  </section>
+
+  <footer class="lnd-foot">
+    <div class="lnd-wrap lnd-foot-inner">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="lnd-logo-x" style="width:20px;height:20px;"></div>
+        <span>© 2026 Kontrol · Hecho en Colombia 🇨🇴</span>
+      </div>
+      <div>Contacto: <a href="mailto:saximi093022@gmail.com">saximi093022@gmail.com</a></div>
+    </div>
+  </footer>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
 <!-- PANTALLA DE AUTH (login / registro)        -->
 <!-- ══════════════════════════════════════════ -->
-<div id="auth-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100vw;height:100vh;background:#070b18;padding:24px;position:fixed;inset:0;z-index:9999;">
+<div id="auth-screen" style="display:none;flex-direction:column;align-items:center;justify-content:center;width:100vw;height:100vh;background:#070b18;padding:24px;position:fixed;inset:0;z-index:9999;">
   <div style="width:100%;max-width:360px;">
     <!-- Logo -->
     <div style="text-align:center;margin-bottom:32px;">
@@ -4331,6 +4583,15 @@ if ('serviceWorker' in navigator) {
 let currentUser = null;
 let currentProfile = null;
 
+// Pasar de la landing al formulario de login. sessionStorage evita
+// que reaparezca la landing si el usuario recarga en el login sin loguearse.
+function enterApp() {
+  const lnd = document.getElementById('landing-screen');
+  if (lnd) lnd.style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'flex';
+  try { sessionStorage.setItem('kontrol_skip_landing', '1'); } catch(e){}
+}
+
 function setAuthTab(tab) {
   const isLogin = tab === 'login';
   document.getElementById('auth-form-login').style.display = isLogin ? 'block' : 'none';
@@ -4441,7 +4702,12 @@ function addLogoutBtn() {
 // ════════════════════════════════════════
 (async function checkSession() {
   const { data: { session } } = await supa.auth.getSession();
+  const landing = document.getElementById('landing-screen');
   if (session?.user) {
+    // Hay sesión: nunca mostrar landing. Marcamos returning para futuras
+    // visitas sin sesión (logout) → van directo al login, no a la landing.
+    if (landing) landing.style.display = 'none';
+    try { localStorage.setItem('kontrol_returning_user', '1'); } catch(e){}
     await onLogin(session.user);
     // Manejar redirecciones de OAuth (?auth_success=gmail&email=... o ?auth_error=...)
     const params = new URLSearchParams(window.location.search);
@@ -4459,7 +4725,19 @@ function addLogoutBtn() {
     }
     actualizarBadgeInbox();
   } else {
-    document.getElementById('auth-screen').style.display = 'flex';
+    // Sin sesión: usuario ya conocido (localStorage) o que ya saltó la
+    // landing en esta pestaña (sessionStorage) va directo al login.
+    let skipLanding = false;
+    try {
+      skipLanding = !!(localStorage.getItem('kontrol_returning_user')
+                    || sessionStorage.getItem('kontrol_skip_landing'));
+    } catch(e){}
+    if (skipLanding) {
+      if (landing) landing.style.display = 'none';
+      document.getElementById('auth-screen').style.display = 'flex';
+    } else {
+      if (landing) landing.style.display = 'flex';
+    }
   }
 })();
 
