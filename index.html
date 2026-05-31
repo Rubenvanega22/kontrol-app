@@ -787,6 +787,9 @@ select.form-inp option{background:#0c1228;}
     <!-- ══ MOVIMIENTOS ══ -->
     <div class="scr" id="scr-movimientos">
       <div class="scroll">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:6px">
+          <button class="fbtn" onclick="abrirHistorial('movement')">📁 Ver Historial</button>
+        </div>
         <div class="period-row">
           <button class="pbtn" onclick="setMovPeriod(this,'hoy')">Hoy</button>
           <button class="pbtn" onclick="setMovPeriod(this,'semana')">Semana</button>
@@ -820,6 +823,9 @@ select.form-inp option{background:#0c1228;}
     <!-- ══ PAGOS ══ -->
     <div class="scr" id="scr-pagos">
       <div class="scroll">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:6px">
+          <button class="fbtn" onclick="abrirHistorial('payment')">📁 Ver Historial</button>
+        </div>
         <div class="filter-row">
           <button class="fbtn on" onclick="setPagoFiltro(this,'todo')">Todos</button>
           <button class="fbtn" onclick="setPagoFiltro(this,'pendiente')">Pendientes</button>
@@ -1203,6 +1209,13 @@ select.form-inp option{background:#0c1228;}
           <button class="btn-primary" onclick="showModal('modal-feedback')">💬 Enviar feedback</button>
         </div>
 
+        <!-- Cierre de mes -->
+        <div class="config-section">
+          <div class="config-section-ttl">📁 Cierre de mes</div>
+          <p style="font-size:11.5px;color:var(--t3);margin-bottom:10px;line-height:1.5">Archiva los movimientos y pagos del mes actual al Historial. Tus saldos NO cambian.</p>
+          <button id="btn-cerrar-mes" class="btn-secondary" onclick="cerrarMesManual()">🔄 Cerrar mes manualmente</button>
+        </div>
+
         <!-- Avanzado -->
         <div class="config-section">
           <div class="config-section-ttl">🔧 Avanzado</div>
@@ -1348,6 +1361,20 @@ select.form-inp option{background:#0c1228;}
     <div class="form-group"><label class="form-label">Saldo</label><input class="form-inp" id="ns-saldo" type="text" inputmode="numeric" oninput="formatMonto(this)" placeholder="0"/></div>
     <button class="btn-primary" onclick="_uiNsResolve(true)">Guardar</button>
     <button class="btn-secondary" onclick="_uiNsResolve(false)">Cancelar</button>
+  </div>
+</div>
+
+<!-- Historial mensual (solo lectura) -->
+<div class="modal-overlay hidden" id="modal-historial" onclick="if(event.target===this)hideModal('modal-historial')">
+  <div class="modal" style="max-width:560px;width:100%;max-height:85vh;display:flex;flex-direction:column">
+    <div class="modal-hdr">
+      <span class="modal-ttl" id="hist-ttl">📁 Historial</span>
+      <button class="modal-close" onclick="hideModal('modal-historial')">✕</button>
+    </div>
+    <div id="hist-back" style="display:none;margin-bottom:8px">
+      <button class="btn-secondary" style="padding:6px 12px;font-size:12px" onclick="abrirHistorial(histTipo)">← Volver a meses</button>
+    </div>
+    <div id="hist-body" style="overflow-y:auto;flex:1"></div>
   </div>
 </div>
 
@@ -2007,6 +2034,86 @@ function _uiNsResolve(ok){
     hideModal('modal-ns');
     const cb = _uiNsCb; _uiNsCb = null;
     if(cb) cb(null);
+  }
+}
+
+// ════════════════════════════════════════
+// HISTORIAL MENSUAL (solo lectura)
+// ════════════════════════════════════════
+let histTipo = 'movement';
+let _histGrupos = {};
+
+function nombreMes(mes){
+  const [y,m] = String(mes).split('-').map(Number);
+  const nombres = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  return `${nombres[(m-1)] || mes} ${y||''}`.trim();
+}
+
+async function abrirHistorial(tipo){
+  histTipo = tipo;
+  document.getElementById('hist-ttl').textContent = tipo==='payment' ? '📁 Historial de Pagos' : '📁 Historial de Movimientos';
+  document.getElementById('hist-back').style.display = 'none';
+  const body = document.getElementById('hist-body');
+  body.innerHTML = '<div style="text-align:center;padding:30px;color:var(--t3)">Cargando…</div>';
+  showModal('modal-historial');
+  if(!currentUser) return;
+  const { data, error } = await supa.from('historial_mensual').select('*')
+    .eq('user_id', currentUser.id).eq('tipo', tipo).order('mes_cerrado', { ascending:false });
+  if(error){ body.innerHTML = `<div style="padding:20px;color:var(--red)">Error: ${error.message}</div>`; return; }
+  if(!data || !data.length){ body.innerHTML = '<div class="empty"><div class="empty-ico">📁</div><div class="empty-txt">Aún no hay meses archivados</div></div>'; return; }
+  _histGrupos = {};
+  for(const r of data){ (_histGrupos[r.mes_cerrado] = _histGrupos[r.mes_cerrado] || []).push(r.data || {}); }
+  const meses = Object.keys(_histGrupos).sort().reverse();
+  body.innerHTML = meses.map(mes=>{
+    const items = _histGrupos[mes];
+    const total = items.reduce((s,it)=>s+parseFloat(it.monto||0),0);
+    return `<div class="rec-card" style="cursor:pointer;margin-bottom:8px" onclick="verHistorialMes('${mes}')">
+      <div class="rec-title">${nombreMes(mes)}</div>
+      <div style="font-size:12px;color:var(--t2);margin-top:3px">${items.length} ${tipo==='payment'?'pago(s)':'movimiento(s)'} · ${fmtCOP(total)}</div>
+    </div>`;
+  }).join('');
+}
+
+function verHistorialMes(mes){
+  const items = _histGrupos[mes] || [];
+  document.getElementById('hist-back').style.display = '';
+  const total = items.reduce((s,it)=>s+parseFloat(it.monto||0),0);
+  const body = document.getElementById('hist-body');
+  body.innerHTML = `<div style="font-size:13px;font-weight:700;margin-bottom:10px">${nombreMes(mes)} · ${fmtCOP(total)}</div>` +
+    items.map(it=>{
+      if(histTipo==='payment'){
+        const venc = it.fecha_limite ? fmtDate(it.fecha_limite) : '';
+        return `<div class="mov-row"><div class="mov-info"><div class="mov-name">${it.nombre||'Pago'}</div><div class="mov-sub">${venc}${it.status?' · '+it.status:''}</div></div><div class="mov-amt">${fmtCOP(it.monto)}</div></div>`;
+      }
+      const signo = it.tipo==='ingreso'?'+':'-';
+      const color = it.tipo==='ingreso'?'var(--green)':'var(--red)';
+      return `<div class="mov-row"><div class="mov-info"><div class="mov-name">${it.descripcion||''}</div><div class="mov-sub">${it.fecha?fmtDate(it.fecha):''}</div></div><div class="mov-amt" style="color:${color}">${signo}${fmtCOP(it.monto)}</div></div>`;
+    }).join('');
+}
+
+async function cerrarMesManual(){
+  if(!(await sesionLista())){ toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
+  const ok = await uiConfirm('Tus movimientos y pagos del mes pasarán a Historial. Tus saldos NO cambian. Esta acción no se puede deshacer.', { titulo:'¿Cerrar el mes actual?', okText:'Sí, cerrar mes' });
+  if(!ok) return;
+  const { data:{ session } } = await supa.auth.getSession();
+  if(!session){ toast('Sesión no válida','var(--red)'); return; }
+  const btn = document.getElementById('btn-cerrar-mes');
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ Cerrando…'; }
+  try{
+    const res = await fetch('/api/cierre-mensual', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+session.access_token },
+      body: JSON.stringify({})
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || 'Error del servidor');
+    await syncDesdeSupabase();
+    renderResumen();
+    toast(`✅ Mes cerrado — ${data.movimientos||0} mov · ${data.pagos||0} pagos archivados`,'var(--green)');
+  }catch(e){
+    toast('Error: '+e.message,'var(--red)');
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = '🔄 Cerrar mes manualmente'; }
   }
 }
 
