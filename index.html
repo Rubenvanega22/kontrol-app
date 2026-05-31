@@ -854,20 +854,13 @@ select.form-inp option{background:#0c1228;}
     <div class="scr" id="scr-recordar">
       <div class="scroll">
         <div class="filter-row">
-          <button class="fbtn on" onclick="setRecFiltro(this,'todo')">Todos</button>
-          <button class="fbtn" onclick="setRecFiltro(this,'nota')">Notas</button>
-          <button class="fbtn" onclick="setRecFiltro(this,'lista')">Listas</button>
-          <button class="fbtn" onclick="setRecFiltro(this,'definicion')">Definiciones</button>
-        </div>
-        <div class="filter-row" style="margin-top:6px">
-          <button class="fbtn on" id="ord-recientes" onclick="setRecOrden(this,'recientes')">Recientes</button>
-          <button class="fbtn" id="ord-antiguos" onclick="setRecOrden(this,'antiguos')">Antiguos</button>
-          <button class="fbtn" id="ord-tipo" onclick="setRecOrden(this,'tipo')">Por tipo</button>
+          <button class="fbtn on" id="rsub-recordatorios" onclick="setRecSubtab('recordatorios')">🔔 Recordatorios</button>
+          <button class="fbtn" id="rsub-listados" onclick="setRecSubtab('listados')">📋 Listados</button>
         </div>
         <div id="recordar-list"></div>
         <div style="height:80px"></div>
       </div>
-      <button class="fab" onclick="showModal('modal-nuevo-recordar')">＋</button>
+      <button class="fab" onclick="abrirModalRecordar()">＋</button>
     </div>
 
     <!-- ══ IA CHAT ══ -->
@@ -1534,32 +1527,23 @@ select.form-inp option{background:#0c1228;}
 <div class="modal-overlay hidden" id="modal-nuevo-recordar" onclick="closeModalOutside(event,'modal-nuevo-recordar')">
   <div class="modal">
     <div class="modal-hdr">
-      <span class="modal-ttl">Nuevo recordatorio</span>
+      <span class="modal-ttl">Nuevo</span>
       <button class="modal-close" onclick="hideModal('modal-nuevo-recordar')">✕</button>
     </div>
     <div class="form-group">
       <label class="form-label">Tipo</label>
       <select class="form-inp" id="rec-tipo" onchange="onRecTipoChange()">
-        <option value="nota">📝 Nota</option>
-        <option value="lista">✅ Lista de mercado</option>
-        <option value="definicion">📖 Definición</option>
+        <option value="nota">🔔 Recordatorio</option>
+        <option value="listado">📋 Listado</option>
       </select>
     </div>
     <div class="form-group">
-      <label class="form-label" id="rec-titulo-label">Título / Nota</label>
+      <label class="form-label" id="rec-titulo-label">Recordatorio</label>
       <input class="form-inp" id="rec-titulo" placeholder="Escribe aquí…"/>
     </div>
     <div class="form-group" id="rec-items-group" style="display:none">
       <label class="form-label">Ítems (uno por línea)</label>
       <textarea class="form-inp" id="rec-items" rows="4" placeholder="Arroz&#10;Leche&#10;Huevos"></textarea>
-    </div>
-    <div class="form-group" id="rec-def-group" style="display:none">
-      <label class="form-label">Definición / Significado</label>
-      <textarea class="form-inp" id="rec-definicion" rows="3" placeholder="Definición…"></textarea>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Fecha (opcional)</label>
-      <input class="form-inp" id="rec-fecha" type="date"/>
     </div>
     <button class="btn-primary" onclick="guardarRecordatorio()">Guardar</button>
     <button class="btn-secondary" onclick="hideModal('modal-nuevo-recordar')">Cancelar</button>
@@ -1744,6 +1728,7 @@ async function syncDesdeSupabase() {
     save();
     renderResumen();
     renderMovimientos();
+    renderRecordar();
   } catch(e) {
     console.error('Error sync Supabase:', e);
   }
@@ -1851,7 +1836,7 @@ function goTab(id){
   if(id==='cajas') renderCajas();
   if(id==='pagos') renderPagos();
   if(id==='agenda') renderAgenda();
-  if(id==='recordar') renderRecordatorios();
+  if(id==='recordar') renderRecordar();
   if(id==='metas') renderMetas();
   if(id==='config') renderConfig();
   if(id==='admin') renderAdmin();
@@ -1865,7 +1850,7 @@ function renderCurrentScreen(){
     cajas: renderCajas,
     pagos: renderPagos,
     agenda: renderAgenda,
-    recordar: renderRecordatorios,
+    recordar: renderRecordar,
     metas: renderMetas,
     config: renderConfig
   };
@@ -3129,89 +3114,129 @@ function agendarDesdeDiario(fechaISO){
 // ════════════════════════════════════════
 // RECORDATORIOS
 // ════════════════════════════════════════
-let recFiltro = 'todo';
-let recOrden = 'recientes';
+let recSubtab = 'recordatorios';   // 'recordatorios' | 'listados'
 let recDetalleId = null;
 
-function setRecFiltro(btn, f){
-  recFiltro = f;
-  document.querySelectorAll('#scr-recordar .filter-row .fbtn').forEach(b=>b.classList.remove('on'));
-  btn.classList.add('on');
-  renderRecordatorios();
+// Recordatorio = tipo 'nota' (legacy 'definicion' también cae aquí).
+// Listado = tipo 'listado' (legacy 'lista'); su content.items = [{text,done}].
+const ES_NOTA = r => r.tipo === 'nota' || r.tipo === 'definicion';
+const ES_LISTADO = r => r.tipo === 'listado' || r.tipo === 'lista';
+
+function setRecSubtab(s){
+  recSubtab = s;
+  document.getElementById('rsub-recordatorios').classList.toggle('on', s==='recordatorios');
+  document.getElementById('rsub-listados').classList.toggle('on', s==='listados');
+  renderRecordar();
+}
+
+// Abre el modal "+" preseleccionando el tipo según el sub-tab activo.
+function abrirModalRecordar(){
+  document.getElementById('rec-tipo').value = recSubtab==='listados' ? 'listado' : 'nota';
+  onRecTipoChange();
+  showModal('modal-nuevo-recordar');
 }
 
 function onRecTipoChange(){
   const t = document.getElementById('rec-tipo').value;
-  document.getElementById('rec-items-group').style.display = t==='lista'?'':'none';
-  document.getElementById('rec-def-group').style.display = t==='definicion'?'':'none';
-  document.getElementById('rec-titulo-label').textContent = t==='definicion'?'Término':'Título / Nota';
+  document.getElementById('rec-items-group').style.display = t==='listado' ? '' : 'none';
+  document.getElementById('rec-titulo-label').textContent = t==='listado' ? 'Título del listado' : 'Recordatorio';
 }
 
 async function guardarRecordatorio(){
   if (!(await sesionLista())) { toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
-  const tipo = document.getElementById('rec-tipo').value;
+  const tipo = document.getElementById('rec-tipo').value === 'listado' ? 'listado' : 'nota';
   const titulo = document.getElementById('rec-titulo').value.trim();
   if(!titulo){ toast('⚠️ Escribe un título','var(--amber)'); return; }
-  let content = {};
-  if(tipo==='lista'){
+  let content;
+  if(tipo==='listado'){
     const items = document.getElementById('rec-items').value.split('\n').map(s=>s.trim()).filter(Boolean);
     content = { items: items.map(it=>({text:it,done:false})) };
-  } else if(tipo==='definicion'){
-    content = { definicion: document.getElementById('rec-definicion').value.trim() };
   } else {
     content = { texto: titulo };
   }
 
-  const fechaInput = document.getElementById('rec-fecha').value;
-  const fecha = fechaInput || todayStr();
-  const { error } = await supa.from('reminders').insert({
-    user_id: currentUser.id, tipo, titulo, content, fecha
-  });
-  if(error){ toast('❌ Error: '+error.message,'var(--red)'); return; }
+  // .select().single() para CONFIRMAR que la fila se creó — antes un fallo de
+  // insert no se detectaba y el dato "desaparecía" al recargar.
+  const { data, error } = await supa.from('reminders')
+    .insert({ user_id: currentUser.id, tipo, titulo, content, fecha: todayStr() })
+    .select().single();
+  if(error || !data){ toast('❌ Error al guardar: '+(error?.message||'sin confirmación'),'var(--red)'); return; }
 
   hideModal('modal-nuevo-recordar');
   document.getElementById('rec-titulo').value='';
   document.getElementById('rec-items').value='';
-  document.getElementById('rec-definicion').value='';
-  document.getElementById('rec-fecha').value='';
-  toast('✅ Recordatorio guardado','var(--green)');
+  toast(tipo==='listado'?'✅ Listado creado':'✅ Recordatorio guardado','var(--green)');
   await syncDesdeSupabase();
+  renderRecordar();   // refresca la pestaña (antes no se re-renderizaba tras guardar)
 }
 
-function renderRecordatorios(){
-  let recs = [...DB.recordatorios];
-  if(recFiltro!=='todo') recs = recs.filter(r=>r.tipo===recFiltro);
-
-  // Orden
-  const tsOf = r => r.created_at ? new Date(r.created_at).getTime() : (r.fecha ? new Date(r.fecha+'T12:00:00').getTime() : 0);
-  if(recOrden==='recientes') recs.sort((a,b)=> tsOf(b) - tsOf(a));
-  else if(recOrden==='antiguos') recs.sort((a,b)=> tsOf(a) - tsOf(b));
-  else if(recOrden==='tipo') recs.sort((a,b)=> (a.tipo||'').localeCompare(b.tipo||'') || (tsOf(b) - tsOf(a)));
-
+// Render del sub-tab activo de la pestaña Recordar.
+function renderRecordar(){
   const el = document.getElementById('recordar-list');
-  if(!recs.length){ el.innerHTML='<div class="empty"><div class="empty-ico">📌</div><div class="empty-txt">No hay recordatorios</div></div>'; return; }
+  if(!el) return;
+  const recs = [...DB.recordatorios];
+  const tsOf = r => r.created_at ? new Date(r.created_at).getTime() : (r.fecha ? new Date(r.fecha+'T12:00:00').getTime() : 0);
+  recs.sort((a,b)=> tsOf(b) - tsOf(a));
 
-  const tipoLabel = {nota:'📝 Nota',lista:'✅ Lista',definicion:'📖 Definición'};
-  el.innerHTML = recs.map(r=>{
-    const content = r.content || {};
-    let preview = '';
-    if(r.tipo==='lista') preview = content.items?content.items.map(it=>`<div class="rec-check" onclick="event.stopPropagation();toggleRecItem('${r.id}','${(it.text||'').replace(/'/g,"\\'")}')"><div class="rec-cb ${it.done?'done':''}">${it.done?'✓':''}</div><span class="rec-label ${it.done?'done':''}">${it.text}</span></div>`).join(''):'';
-    if(r.tipo==='definicion') preview = `<div style="font-size:11.5px;color:var(--t2);margin-top:4px">${content.definicion||''}</div>`;
-    const fechaTxt = r.fecha ? fmtDate(r.fecha) : '';
-    return `<div class="rec-card" style="position:relative" onclick="abrirRecDetalle('${r.id}')">
-      <button onclick="event.stopPropagation();borrarRecordatorioRapido('${r.id}')" style="position:absolute;top:8px;right:8px;background:rgba(248,113,113,0.15);border:none;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:11px;padding:0" title="Eliminar">🗑️</button>
-      <div class="rec-type">${tipoLabel[r.tipo]||r.tipo}${fechaTxt?` · <span style="color:var(--t3);font-weight:400">${fechaTxt}</span>`:''}</div>
-      <div class="rec-title" style="padding-right:32px">${r.titulo}</div>
-      ${preview}
-    </div>`;
-  }).join('');
+  if(recSubtab==='listados'){
+    const listas = recs.filter(ES_LISTADO);
+    if(!listas.length){ el.innerHTML='<div class="empty"><div class="empty-ico">📋</div><div class="empty-txt">No hay listados. Toca ＋ para crear uno.</div></div>'; return; }
+    el.innerHTML = listas.map(r=>{
+      const items = (r.content && r.content.items) || [];
+      const hechos = items.filter(it=>it.done).length;
+      const filas = items.length ? items.map(it=>`<div class="rec-check" onclick="toggleRecItem('${r.id}','${(it.text||'').replace(/'/g,"\\'")}')"><div class="rec-cb ${it.done?'done':''}">${it.done?'✓':''}</div><span class="rec-label ${it.done?'done':''}">${it.text}</span></div>`).join('') : '<div style="font-size:12px;color:var(--t3);padding:4px 0">Sin ítems aún</div>';
+      return `<div class="rec-card" style="position:relative">
+        <button onclick="borrarRecordatorioRapido('${r.id}')" style="position:absolute;top:8px;right:8px;background:rgba(248,113,113,0.15);border:none;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:11px;padding:0" title="Eliminar listado">🗑️</button>
+        <button onclick="depurarListado('${r.id}')" ${hechos?'':'disabled'} style="position:absolute;top:8px;right:40px;background:${hechos?'rgba(74,222,128,0.15)':'rgba(255,255,255,0.05)'};border:none;border-radius:6px;height:26px;padding:0 8px;cursor:${hechos?'pointer':'default'};font-size:10px;font-weight:700;color:${hechos?'#4ade80':'var(--t3)'}" title="Borra los ítems marcados">DEPURAR</button>
+        <div class="rec-title" style="padding-right:96px">📋 ${r.titulo}</div>
+        <div style="margin-top:8px">${filas}</div>
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <input id="additem-${r.id}" class="form-inp" style="flex:1;font-size:12px;padding:6px 8px" placeholder="+ agregar ítem" onkeydown="if(event.key==='Enter')agregarItemListado('${r.id}')"/>
+          <button class="btn-secondary" style="padding:6px 12px;font-size:12px" onclick="agregarItemListado('${r.id}')">Agregar</button>
+        </div>
+      </div>`;
+    }).join('');
+  } else {
+    const notas = recs.filter(ES_NOTA);
+    if(!notas.length){ el.innerHTML='<div class="empty"><div class="empty-ico">🔔</div><div class="empty-txt">No hay recordatorios. Toca ＋ para crear uno.</div></div>'; return; }
+    el.innerHTML = notas.map(r=>{
+      const content = r.content || {};
+      const texto = content.texto || content.definicion || '';
+      return `<div class="rec-card" style="position:relative" onclick="abrirRecDetalle('${r.id}')">
+        <button onclick="event.stopPropagation();borrarRecordatorioRapido('${r.id}')" style="position:absolute;top:8px;right:8px;background:rgba(248,113,113,0.15);border:none;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:11px;padding:0" title="Eliminar">🗑️</button>
+        <div class="rec-title" style="padding-right:32px">🔔 ${r.titulo}</div>
+        ${texto && texto!==r.titulo ? `<div style="font-size:11.5px;color:var(--t2);margin-top:4px">${texto}</div>` : ''}
+      </div>`;
+    }).join('');
+  }
 }
 
-function setRecOrden(btn, orden){
-  recOrden = orden;
-  document.querySelectorAll('#ord-recientes,#ord-antiguos,#ord-tipo').forEach(b=>b.classList.remove('on'));
-  btn.classList.add('on');
-  renderRecordatorios();
+// DEPURAR: borra los ítems marcados (done) de un listado y persiste el resto.
+async function depurarListado(id){
+  const r = DB.recordatorios.find(x=>String(x.id)===String(id));
+  if(!r || !r.content || !r.content.items) return;
+  const nuevo = { ...r.content, items: r.content.items.filter(it=>!it.done) };
+  const { error } = await supa.from('reminders').update({ content: nuevo }).eq('id', r.id);
+  if(error){ toast('Error: '+error.message,'var(--red)'); return; }
+  r.content = nuevo; save();
+  renderRecordar();
+  toast('🧹 Listado depurado','var(--green)');
+}
+
+// Agrega un ítem (desde el input inline) a un listado.
+async function agregarItemListado(id){
+  const inp = document.getElementById('additem-'+id);
+  const texto = (inp && inp.value || '').trim();
+  if(!texto) return;
+  const r = DB.recordatorios.find(x=>String(x.id)===String(id));
+  if(!r) return;
+  const items = (r.content && r.content.items) || [];
+  items.push({ text: texto, done: false });
+  const nuevo = { ...(r.content||{}), items };
+  const { error } = await supa.from('reminders').update({ content: nuevo }).eq('id', r.id);
+  if(error){ toast('Error: '+error.message,'var(--red)'); return; }
+  r.content = nuevo; save();
+  renderRecordar();
 }
 
 async function borrarRecordatorioRapido(id){
@@ -3231,7 +3256,8 @@ async function toggleRecItem(recId, itemText){
   const item = rec.content.items.find(it => it.text === itemText);
   if(!item) return;
   item.done = !item.done;
-  renderRecordatorios();
+  save();
+  renderRecordar();
   // Persistir el content actualizado en Supabase
   await supa.from('reminders').update({ content: rec.content }).eq('id', rec.id);
 }
@@ -3452,9 +3478,9 @@ function intentLocal(msg){
   if(ingresoM){ var mo2=parseCOP(ingresoM[1]),desc2=ingresoM[2].trim(); if(mo2>0){ DB.movimientos.unshift({id:uid(),tipo:'ingreso',descripcion:desc2,monto:mo2,fecha:todayStr(),cuentaId:DB.cuentas[0]?DB.cuentas[0].id:0,categoria:'otro',nota:'IA',source:'ia'}); if(DB.cuentas[0])DB.cuentas[0].saldo+=mo2; save();renderResumen(); return 'Ingreso de '+fmtCOP(mo2)+' por "'+desc2+'" registrado.'; } }
   var agendaM = msg.match(/ag[e\u00e9]nda(?:me)?\s+(.+?)\s+(?:el|para)\s+(\d{1,2})/i);
   if(agendaM){ var titulo=agendaM[1].trim(),dia=agendaM[2].padStart(2,'0'),mes2=String(hoy.getMonth()+1).padStart(2,'0'),fecha=hoy.getFullYear()+'-'+mes2+'-'+dia; DB.eventos.push({id:uid(),titulo:titulo,fecha:fecha,hora:'',nota:'IA'}); save();renderAgenda();goTab('agenda'); return 'Evento "'+titulo+'" agendado para el '+dia+'/'+mes2+'.'; }
-  if(/rec[u\u00fa][e\u00e9]rdame|recuerda que/i.test(m)){ var txt=msg.replace(/rec[u\u00fa][e\u00e9]rdame|recuerda que/gi,'').trim(); if(txt){ DB.recordatorios.push({id:uid(),tipo:'nota',titulo:txt,content:{texto:txt},fecha:todayStr(),status:'open'}); save();renderRecordatorios(); return 'Anotado: "'+txt+'"'; } }
+  if(/rec[u\u00fa][e\u00e9]rdame|recuerda que/i.test(m)){ var txt=msg.replace(/rec[u\u00fa][e\u00e9]rdame|recuerda que/gi,'').trim(); if(txt){ DB.recordatorios.push({id:uid(),tipo:'nota',titulo:txt,content:{texto:txt},fecha:todayStr(),status:'open'}); save();renderRecordar(); return 'Anotado: "'+txt+'"'; } }
   var comprarM = m.match(/comprar\s+(.+)/i);
-  if(comprarM){ var items=comprarM[1].split(/,|\sy\s/).map(function(s){return s.trim();}).filter(Boolean); DB.recordatorios.push({id:uid(),tipo:'lista',titulo:'Lista de compras',content:{items:items.map(function(it){return {text:it,done:false};})},fecha:todayStr(),status:'open'}); save();renderRecordatorios();goTab('recordar'); return 'Lista creada: '+items.join(', '); }
+  if(comprarM){ var items=comprarM[1].split(/,|\sy\s/).map(function(s){return s.trim();}).filter(Boolean); DB.recordatorios.push({id:uid(),tipo:'listado',titulo:'Lista de compras',content:{items:items.map(function(it){return {text:it,done:false};})},fecha:todayStr(),status:'open'}); save();renderRecordar();goTab('recordar'); return 'Lista creada: '+items.join(', '); }
   if(/ir a|ll[e\u00e9]vame a|abre|mu[e\u00e9]strame/i.test(m)){
     if(/resumen|inicio/i.test(m)){goTab('resumen');return 'Aqui esta tu resumen.';}
     if(/movimientos/i.test(m)){goTab('movimientos');return 'Aqui estan tus movimientos.';}

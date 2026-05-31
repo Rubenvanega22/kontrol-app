@@ -152,6 +152,26 @@ module.exports = async function handler(req, res) {
         partesEvento.push('❌ Hubo un error guardando. Por favor intenta de nuevo.');
       } else if (a.accion === 'recordatorio' && a.error === 'db') {
         partesEvento.push('❌ Hubo un error guardando. Por favor intenta de nuevo.');
+      // Listados — respuesta determinística (✅ solo si la operación se confirmó).
+      } else if (a.accion === 'lista' && a.op === 'creada') {
+        const n = (a.items || []).length;
+        partesEvento.push(`✅ Listo, creé el listado "${a.titulo}"${n ? ` con ${n} ${n === 1 ? 'ítem' : 'ítems'}` : ''}.`);
+      } else if (a.accion === 'lista' && a.op === 'item_agregado') {
+        partesEvento.push(`✅ Agregué "${a.item}" a tu listado "${a.titulo}".`);
+      } else if (a.accion === 'lista' && a.op === 'item_marcado') {
+        partesEvento.push(`✅ Marqué "${a.item}" en "${a.titulo}".`);
+      } else if (a.accion === 'lista' && a.op === 'depurada') {
+        partesEvento.push(`🧹 Depuré "${a.titulo}": quité ${a.borrados} ${a.borrados === 1 ? 'ítem marcado' : 'ítems marcados'}.`);
+      } else if (a.accion === 'lista' && a.error === 'no_encontrada') {
+        partesEvento.push(`❌ No encontré un listado llamado "${a.titulo}". ¿Quieres que lo cree?`);
+      } else if (a.accion === 'lista' && a.error === 'item_no_encontrado') {
+        partesEvento.push(`❌ No encontré "${a.item}" en "${a.titulo}".`);
+      } else if (a.accion === 'lista' && a.error === 'sin_titulo') {
+        partesEvento.push('❌ ¿Cómo quieres que se llame el listado?');
+      } else if (a.accion === 'lista' && a.error === 'sin_item') {
+        partesEvento.push('❌ ¿Qué ítem quieres agregar?');
+      } else if (a.accion === 'lista' && a.error === 'db') {
+        partesEvento.push('❌ Hubo un error con el listado. Intenta de nuevo.');
       }
     }
 
@@ -294,10 +314,13 @@ ${ctx.metas.map(m => {
   return `• ${m.titulo} — ${m.progreso||0}% [ID:${m.id}]${mms ? '\n' + mms : ''}`;
 }).join('\n') || 'ninguna'}
 
-Recordatorios recientes:
-${ctx.recordatorios.map(r => {
-  const tipoEmoji = r.tipo === 'lista' ? '✅' : r.tipo === 'definicion' ? '📖' : '📝';
-  return `• ${tipoEmoji} ${r.titulo} (${r.fecha || ''}) [ID:${r.id}]`;
+Recordatorios (notas sin ítems):
+${ctx.recordatorios.filter(r => r.tipo === 'nota' || r.tipo === 'definicion').map(r => `• ${r.titulo} [ID:${r.id}]`).join('\n') || 'ninguno'}
+
+Listados (listas con ítems marcables — usa el título EXACTO):
+${ctx.recordatorios.filter(r => r.tipo === 'listado' || r.tipo === 'lista').map(l => {
+  const items = ((l.content && l.content.items) || []).map(it => `${it.done ? '✓' : '○'} ${it.text}`).join(', ');
+  return `• "${l.titulo}" [ID:${l.id}]: ${items || '(vacío)'}`;
 }).join('\n') || 'ninguno'}
 
 Lugares guardados (ubicaciones del usuario):
@@ -369,7 +392,14 @@ usa gasto/ingreso. Nunca metas un caja_id en el campo cuenta_id_opcional de gast
 [ACCION:recordatorio|texto]
 [ACCION:borrar_evento|ID]
 [ACCION:borrar_recordatorio|ID]
-  Usa el ID del listado "Recordatorios recientes" de arriba.
+  Usa el ID del listado "Recordatorios" de arriba.
+— Listados (listas con ítems marcables: mercado, tareas, etc.)
+[ACCION:crear_lista|titulo|item1;item2;item3]
+[ACCION:agregar_item|titulo_lista|item]
+[ACCION:marcar_item|titulo_lista|item]   (marca un ítem como hecho ✓)
+[ACCION:depurar_lista|titulo_lista]      (borra los ítems ya marcados ✓)
+  Usa el título EXACTO de un listado de "Listados" de arriba. Si el usuario
+  pide agregar/marcar en una lista que NO existe, créala con crear_lista.
 — Cuentas (no se crean desde aquí — el usuario las crea en Config)
 [ACCION:editar_cuenta|cuenta_id|nuevo_saldo|nuevo_nombre]
   Deja vacíos los campos que NO quieras cambiar. Ej: [ACCION:editar_cuenta|abc||Nuevo nombre]
@@ -563,7 +593,31 @@ IMPORTANTE: si el usuario menciona una cuenta o caja específica por nombre, bus
       "mi agenda" / "qué tengo esta semana"  → [ACCION:navegar|agenda]   (consultar)
       "agenda una cita médica mañana a las 10am" → [ACCION:evento|Cita médica|<mañana>|10:00]  (crear)
       "agéndame el dentista el viernes 3pm"  → [ACCION:evento|Dentista|<viernes>|15:00]        (crear)
-    (En los de CREAR aplica la regla 10: hora explícita → evento, UNA acción.)`;
+    (En los de CREAR aplica la regla 10: hora explícita → evento, UNA acción.)
+
+13. ⚠️ RUTEO: ¿Agenda, Recordatorio o Listado? Aplica en este orden:
+
+    a) ¿Hay HORA EXACTA o "en X minutos/horas"? → AGENDA (evento). SIEMPRE.
+       "recuérdame X mañana a las 10" / "avísame en 30 min" → [ACCION:evento|...].
+
+    b) ¿Menciona "lista" o "listado"? → LISTADOS:
+       "haz una lista de mercado con pan, leche, huevos"
+         → [ACCION:crear_lista|Mercado|pan;leche;huevos]
+       "agrega arroz a mi lista de mercado"  → [ACCION:agregar_item|Mercado|arroz]
+       "marca leche como comprado/hecho"     → [ACCION:marcar_item|Mercado|leche]
+       "depura mi lista de mercado"           → [ACCION:depurar_lista|Mercado]
+
+    c) Si NO hay hora NI "lista" → RECORDATORIO (nota pasiva):
+       "recuérdame que [X]" (sin hora), "anota [X]", "no se me olvide [X]",
+       "guarda esta clave: [X]" → [ACCION:recordatorio|texto].
+
+    d) VERBOS DE VER → consultar, NO crear:
+       "agenda" sola / "mi agenda" / "muéstrame mi agenda"  → [ACCION:navegar|agenda]
+       "mis recordatorios" / "qué hay en recordar"          → [ACCION:navegar|recordar]
+       "mis listas" / "mis listados"                        → [ACCION:navegar|recordar]
+
+    REGLA UNIVERSAL: HORA EXACTA → Agenda. Dice "lista" → Listados.
+    Sin hora ni "lista" → Recordatorio.`;
 }
 
 // ═══ LLAMAR A CLAUDE ═══
@@ -650,6 +704,19 @@ function formatearCuando(fecha, hora) {
   const ampm = h < 12 ? 'am' : 'pm';
   const h12 = h % 12 === 0 ? 12 : h % 12;
   return `${dia} a las ${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+
+// ═══ Busca un listado del usuario por título (case-insensitive, match exacto
+// y luego parcial). Usado por las acciones de listas del bot (agregar/marcar/depurar).
+async function buscarListaPorTitulo(titulo, userId) {
+  const t = (titulo || '').trim().toLowerCase();
+  if (!t) return null;
+  const { data } = await supabase.from('reminders').select('*')
+    .eq('user_id', userId).in('tipo', ['listado', 'lista']);
+  if (!data || !data.length) return null;
+  return data.find(l => (l.titulo || '').toLowerCase() === t)
+      || data.find(l => (l.titulo || '').toLowerCase().includes(t))
+      || null;
 }
 
 // ═══ Helpers de saldo: SIEMPRE leer fresh de la DB antes de actualizar.
@@ -900,6 +967,49 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
           ejecutadas.push({ accion: 'recordatorio', error: 'db', detalle: parts[1] });
         } else {
           ejecutadas.push({ accion: 'recordatorio', ok: true, detalle: parts[1] });
+        }
+
+      } else if (accion === 'crear_lista') {
+        const titulo = (parts[1] || '').trim();
+        const items = (parts[2] || '').split(';').map(s => s.trim()).filter(Boolean)
+          .map(t => ({ text: t, done: false }));
+        if (!titulo) { ejecutadas.push({ accion: 'lista', error: 'sin_titulo' }); continue; }
+        const { data, error } = await supabase.from('reminders').insert({
+          user_id: userId, tipo: 'listado', titulo, content: { items }, fecha: colombiaDateString()
+        }).select().single();
+        if (error || !data) {
+          console.error('[crear_lista] insert falló:', error?.message);
+          ejecutadas.push({ accion: 'lista', error: 'db', titulo });
+        } else {
+          ejecutadas.push({ accion: 'lista', op: 'creada', titulo, items: items.map(i => i.text) });
+        }
+
+      } else if (accion === 'agregar_item' || accion === 'marcar_item' || accion === 'depurar_lista') {
+        const lista = await buscarListaPorTitulo(parts[1], userId);
+        if (!lista) { ejecutadas.push({ accion: 'lista', error: 'no_encontrada', titulo: (parts[1] || '').trim() }); continue; }
+        const content = lista.content || {};
+        const items = Array.isArray(content.items) ? content.items : [];
+        if (accion === 'agregar_item') {
+          const item = (parts[2] || '').trim();
+          if (!item) { ejecutadas.push({ accion: 'lista', error: 'sin_item', titulo: lista.titulo }); continue; }
+          items.push({ text: item, done: false });
+          const { error } = await supabase.from('reminders').update({ content: { ...content, items } }).eq('id', lista.id).eq('user_id', userId);
+          if (error) { ejecutadas.push({ accion: 'lista', error: 'db', titulo: lista.titulo }); continue; }
+          ejecutadas.push({ accion: 'lista', op: 'item_agregado', titulo: lista.titulo, item });
+        } else if (accion === 'marcar_item') {
+          const objetivo = (parts[2] || '').trim().toLowerCase();
+          const it = objetivo ? items.find(i => (i.text || '').toLowerCase().includes(objetivo)) : null;
+          if (!it) { ejecutadas.push({ accion: 'lista', error: 'item_no_encontrado', titulo: lista.titulo, item: parts[2] }); continue; }
+          it.done = true;
+          const { error } = await supabase.from('reminders').update({ content: { ...content, items } }).eq('id', lista.id).eq('user_id', userId);
+          if (error) { ejecutadas.push({ accion: 'lista', error: 'db', titulo: lista.titulo }); continue; }
+          ejecutadas.push({ accion: 'lista', op: 'item_marcado', titulo: lista.titulo, item: it.text });
+        } else { // depurar_lista
+          const quedan = items.filter(i => !i.done);
+          const borrados = items.length - quedan.length;
+          const { error } = await supabase.from('reminders').update({ content: { ...content, items: quedan } }).eq('id', lista.id).eq('user_id', userId);
+          if (error) { ejecutadas.push({ accion: 'lista', error: 'db', titulo: lista.titulo }); continue; }
+          ejecutadas.push({ accion: 'lista', op: 'depurada', titulo: lista.titulo, borrados });
         }
 
       } else if (accion === 'meta') {
