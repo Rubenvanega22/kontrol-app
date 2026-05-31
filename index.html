@@ -1944,6 +1944,7 @@ function filtrarMovsPorPeriodo(movs){
 }
 
 async function guardarMovimiento(){
+  if (!(await sesionLista())) { toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
   const desc = document.getElementById('mov-desc').value.trim();
   const monto = parseCOP(document.getElementById('mov-monto').value);
   const fecha = document.getElementById('mov-fecha').value;
@@ -2512,6 +2513,7 @@ function setPagoFiltro(btn, f){
 }
 
 async function guardarPago(){
+  if (!(await sesionLista())) { toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
   const nombre = document.getElementById('pago-nombre').value.trim();
   const monto = parseCOP(document.getElementById('pago-monto').value);
   const fechaLimite = document.getElementById('pago-fecha').value;
@@ -2647,6 +2649,7 @@ let cajaDetalleId = null;
 let ceTipo = 'in';
 
 async function guardarCaja(){
+  if (!(await sesionLista())) { toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
   const nombre = document.getElementById('caja-nombre').value.trim();
   const saldo = parseCOP(document.getElementById('caja-saldo-ini').value);
   if(!nombre){ toast('⚠️ Escribe un nombre','var(--amber)'); return; }
@@ -2932,6 +2935,7 @@ async function borrarCajaMovimiento(movId){
 // AGENDA
 // ════════════════════════════════════════
 async function guardarEvento(){
+  if (!(await sesionLista())) { toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
   const titulo = document.getElementById('evento-titulo').value.trim();
   const fecha = document.getElementById('evento-fecha').value;
   const hora = document.getElementById('evento-hora').value;
@@ -3144,6 +3148,7 @@ function onRecTipoChange(){
 }
 
 async function guardarRecordatorio(){
+  if (!(await sesionLista())) { toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
   const tipo = document.getElementById('rec-tipo').value;
   const titulo = document.getElementById('rec-titulo').value.trim();
   if(!titulo){ toast('⚠️ Escribe un título','var(--amber)'); return; }
@@ -4642,9 +4647,20 @@ async function doRegistro() {
       options: { data: { nombre } } 
     });
     if (error) return authMsg(error.message);
-    if (data?.user) {
+    if (data?.session) {
+      // Auto-confirm ON: signUp ya devolvió sesión → entrar directo, sin race.
       authMsg('¡Cuenta creada! Entrando...', '#4ade80');
-      setTimeout(() => onLogin(data.user), 1000);
+      await onLogin(data.user);
+    } else if (data?.user) {
+      // Sin sesión inmediata: esperar (hasta ~3s) a que se asiente antes de entrar,
+      // para no disparar inserts con la sesión a medio cargar (datos que se "perdían").
+      authMsg('¡Cuenta creada! Entrando...', '#4ade80');
+      for (let i = 0; i < 15; i++) {
+        const { data: { session } } = await supa.auth.getSession();
+        if (session) break;
+        await new Promise(r => setTimeout(r, 200));
+      }
+      await onLogin(data.user);
     } else {
       authMsg('¡Cuenta creada! Ya puedes entrar.', '#4ade80');
     }
@@ -4653,8 +4669,19 @@ async function doRegistro() {
   }
 }
 
+// Garantiza que el cliente Supabase tiene una sesión asentada y que coincide con
+// currentUser antes de permitir ESCRITURAS. Cierra el race del registro: signUp
+// entrega el `user` antes de que la sesión esté 100% lista en el cliente, y los
+// inserts disparados en esa ventana eran rechazados por RLS y se "perdían".
+async function sesionLista() {
+  const { data: { session } } = await supa.auth.getSession();
+  return !!(session && currentUser?.id && session.user.id === currentUser.id);
+}
+
 async function onLogin(user) {
-  currentUser = user;
+  // Fuente de verdad = la sesión asentada del cliente, no el `user` suelto de signUp.
+  const { data: { session } } = await supa.auth.getSession();
+  currentUser = session?.user || user;
   // Mostrar loading overlay ANTES de ocultar auth-screen para evitar flash de dashboard vacío.
   // Hasta que sync termine el usuario ve la K + "Cargando…" en lugar de saldos en $0.
   const loadingEl = document.getElementById('loading-overlay');
@@ -4854,7 +4881,7 @@ async function sugerirMicrometas(metaId, metaTitulo, metaTipo) {
 }
 
 async function saveMeta() {
-  if (!currentUser) return;
+  if (!(await sesionLista())) { toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
   const titulo = document.getElementById('meta-titulo').value.trim();
   const tipo = document.getElementById('meta-tipo').value;
   const monto = parseFloat(document.getElementById('meta-monto').value) || 0;
@@ -4862,7 +4889,8 @@ async function saveMeta() {
   const desc = document.getElementById('meta-desc').value.trim();
   if (!titulo) return toast('Escribe un título', 'red');
 
-  await supa.from('metas').insert({ user_id: currentUser.id, titulo, tipo, monto_objetivo: monto || null, fecha_limite: fecha || null, descripcion: desc, año: new Date().getFullYear() });
+  const { error } = await supa.from('metas').insert({ user_id: currentUser.id, titulo, tipo, monto_objetivo: monto || null, fecha_limite: fecha || null, descripcion: desc, año: new Date().getFullYear() });
+  if (error) { toast('❌ Error: '+error.message, 'var(--red)'); return; }
   hideModal('modal-meta');
   document.getElementById('meta-titulo').value = '';
   document.getElementById('meta-monto').value = '';

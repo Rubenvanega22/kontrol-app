@@ -119,6 +119,7 @@ module.exports = async function handler(req, res) {
     // la respuesta nosotros y saltamos la verification pass.
     let respuestaFinal = respuestaLimpia;
     const partesUbicacion = [];
+    const partesEvento = [];
     for (const a of acciones) {
       if (a.accion === 'get_ubicacion' && a.encontrado) {
         partesUbicacion.push(`📍 ${a.nombre}\n${a.url}`);
@@ -139,11 +140,25 @@ module.exports = async function handler(req, res) {
         partesUbicacion.push(`⚠️ Ya tienes "${a.nombre}" guardada. Pídeme borrarla primero o usa otro nombre.`);
       } else if (a.accion === 'guardar_ubicacion' && a.id) {
         partesUbicacion.push(`✅ Guardé "${a.nombre}".\n${a.url}`);
+      // BUG 2/3: respuesta DETERMINÍSTICA para eventos — el ✅ solo si el insert
+      // se confirmó, y SIEMPRE con día + hora exacta + qué. Salta la verification pass.
+      } else if (a.accion === 'evento' && a.ok) {
+        partesEvento.push(`✅ Listo, te aviso ${formatearCuando(a.fecha, a.hora)} sobre ${a.titulo}.`);
+      } else if (a.accion === 'evento' && a.error === 'sin_hora') {
+        partesEvento.push('❌ Necesito una hora exacta para programarte el aviso. ¿A qué hora te aviso?');
+      } else if (a.accion === 'evento' && a.error === 'hora_pasada') {
+        partesEvento.push('❌ Esa hora ya pasó. ¿Para qué hora te aviso?');
+      } else if (a.accion === 'evento' && a.error === 'db') {
+        partesEvento.push('❌ Hubo un error guardando. Por favor intenta de nuevo.');
+      } else if (a.accion === 'recordatorio' && a.error === 'db') {
+        partesEvento.push('❌ Hubo un error guardando. Por favor intenta de nuevo.');
       }
     }
 
     if (partesUbicacion.length > 0) {
       respuestaFinal = partesUbicacion.join('\n\n');
+    } else if (partesEvento.length > 0) {
+      respuestaFinal = partesEvento.join('\n\n');
     } else if (accionesIntencion > 0) {
       if (acciones.length === 0) {
         respuestaFinal = 'No se pudo ejecutar el cambio.';
@@ -524,7 +539,31 @@ IMPORTANTE: si el usuario menciona una cuenta o caja específica por nombre, bus
     HORA actual = 14:30. Usuario: "en un rato me acuerdas comprar pan"
     Tu respuesta:
       ¿En cuánto tiempo? Dame los minutos exactos.
-    (Frase vaga sin tiempo concreto → pregunta antes de actuar.)`;
+    (Frase vaga sin tiempo concreto → pregunta antes de actuar.)
+
+12. ⚠️ INTENCIÓN: CREAR vs CONSULTAR (desambiguación de "agenda").
+
+    "agenda" es AMBIGUA: puede ser el VERBO (crear algo) o el SUSTANTIVO
+    (la pantalla de eventos). Decide así:
+
+    VERBOS que indican CREAR → emite la acción correspondiente:
+      recuérdame, recordame, agéndame, "agenda" + objeto + tiempo,
+      programa, programame, "anota" + objeto + tiempo, "crea" + objeto.
+
+    Palabras que indican CONSULTAR → [ACCION:navegar|agenda] (o la
+    sección pedida), SIN crear nada:
+      muéstrame, ver, "qué tengo", "qué eventos", "mi agenda" (sola),
+      lista, "abre la agenda".
+
+    REGLA DE ORO: si el mensaje trae un OBJETO concreto Y un TIEMPO
+    específico, prioriza CREAR sobre CONSULTAR.
+
+    EJEMPLOS:
+      "agenda"                               → [ACCION:navegar|agenda]   (consultar)
+      "mi agenda" / "qué tengo esta semana"  → [ACCION:navegar|agenda]   (consultar)
+      "agenda una cita médica mañana a las 10am" → [ACCION:evento|Cita médica|<mañana>|10:00]  (crear)
+      "agéndame el dentista el viernes 3pm"  → [ACCION:evento|Dentista|<viernes>|15:00]        (crear)
+    (En los de CREAR aplica la regla 10: hora explícita → evento, UNA acción.)`;
 }
 
 // ═══ LLAMAR A CLAUDE ═══
@@ -590,6 +629,27 @@ function parseMontoSeguro(s) {
   if (s === null || s === undefined) return 0;
   const limpio = String(s).replace(/[^\d]/g, '');
   return limpio ? parseFloat(limpio) : 0;
+}
+
+// ═══ Formatea "YYYY-MM-DD" + "HH:MM" a texto humano en hora Colombia:
+// "hoy a las 7:00 am", "mañana a las 2:30 pm", "el lunes 3 de junio a las 9:00 am".
+// Usado por el override determinístico de eventos (BUG 2/3) para garantizar que
+// la confirmación SIEMPRE incluya día + hora exacta.
+function formatearCuando(fecha, hora) {
+  const hoy = colombiaDateString();
+  const manana = colombiaDateString(new Date(Date.now() + 24 * 3600 * 1000));
+  let dia;
+  if (fecha === hoy) dia = 'hoy';
+  else if (fecha === manana) dia = 'mañana';
+  else {
+    // colombiaDateLongEs → "lunes, 3 de junio de 2026"; lo dejamos "el lunes 3 de junio".
+    const largo = colombiaDateLongEs(new Date(`${fecha}T12:00:00-05:00`));
+    dia = 'el ' + largo.replace(/,/g, '').replace(/ de \d{4}$/, '');
+  }
+  const [h, m] = hora.split(':').map(Number);
+  const ampm = h < 12 ? 'am' : 'pm';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${dia} a las ${h12}:${String(m).padStart(2, '0')} ${ampm}`;
 }
 
 // ═══ Helpers de saldo: SIEMPRE leer fresh de la DB antes de actualizar.
@@ -801,18 +861,46 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
         if (!error) ejecutadas.push({ accion, id: parts[1] });
 
       } else if (accion === 'evento') {
-        const { error } = await supabase.from('events').insert({
-          user_id: userId, titulo: parts[1],
-          fecha: parts[2], hora: parts[3] || null, nota: 'Creado por IA'
-        });
-        if (!error) ejecutadas.push({ accion, detalle: parts[1] });
+        const titulo = (parts[1] || '').trim();
+        const fecha = (parts[2] || '').trim();
+        // BUG 3: la hora es OBLIGATORIA para un evento. Normalizar H:MM → HH:MM.
+        let hora = (parts[3] || '').trim();
+        const mHora = hora.match(/^(\d{1,2}):(\d{2})$/);
+        if (!titulo || !fecha || !mHora) {
+          console.warn('[evento] sin hora/fecha válida, no se crea:', JSON.stringify(parts));
+          ejecutadas.push({ accion: 'evento', error: 'sin_hora', titulo });
+          continue;
+        }
+        hora = `${mHora[1].padStart(2, '0')}:${mHora[2]}`;
+        // BUG 2 (REGLA 3): el cron notifica con ventanas relativas a "ahora" hacia
+        // adelante; una hora ya pasada (>15 min) nunca dispararía. No la programamos.
+        const cuando = new Date(`${fecha}T${hora}:00-05:00`);
+        if (isNaN(cuando.getTime()) || cuando.getTime() < Date.now() - 15 * 60 * 1000) {
+          console.warn('[evento] hora pasada o inválida, no se crea:', fecha, hora);
+          ejecutadas.push({ accion: 'evento', error: 'hora_pasada', titulo });
+          continue;
+        }
+        const { data: ev, error } = await supabase.from('events').insert({
+          user_id: userId, titulo, fecha, hora, nota: 'Creado por IA'
+        }).select().single();
+        if (error || !ev) {
+          console.error('[evento] insert events falló:', error?.message);
+          ejecutadas.push({ accion: 'evento', error: 'db', titulo });
+        } else {
+          ejecutadas.push({ accion: 'evento', ok: true, id: ev.id, titulo, fecha, hora });
+        }
 
       } else if (accion === 'recordatorio') {
         const { error } = await supabase.from('reminders').insert({
           user_id: userId, tipo: 'nota', titulo: parts[1],
           content: { texto: parts[1] }, fecha: colombiaDateString()
         });
-        if (!error) ejecutadas.push({ accion, detalle: parts[1] });
+        if (error) {
+          console.error('[recordatorio] insert reminders falló:', error.message);
+          ejecutadas.push({ accion: 'recordatorio', error: 'db', detalle: parts[1] });
+        } else {
+          ejecutadas.push({ accion: 'recordatorio', ok: true, detalle: parts[1] });
+        }
 
       } else if (accion === 'meta') {
         const { error } = await supabase.from('metas').insert({
