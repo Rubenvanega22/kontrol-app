@@ -38,10 +38,7 @@ html,body{width:100%;height:100%;background:var(--bg);font-family:'DM Sans',sans
 .sb-r{display:flex;align-items:center;gap:4px;}
 .hdr{display:flex;align-items:center;justify-content:space-between;padding:7px 18px 5px;flex-shrink:0;z-index:10;}
 .logo{display:flex;align-items:center;gap:7px;}
-.logo-x{width:26px;height:26px;position:relative;display:flex;align-items:center;justify-content:center;}
-.logo-x::before,.logo-x::after{content:'';position:absolute;width:18px;height:3px;background:linear-gradient(90deg,#1d4ed8,#60a5fa);border-radius:3px;}
-.logo-x::before{transform:rotate(45deg);}
-.logo-x::after{transform:rotate(-45deg);}
+.logo-k{display:block;flex-shrink:0;}
 .logo-name{font-family:'Syne',sans-serif;font-size:19px;font-weight:900;letter-spacing:-0.5px;}
 .hdr-right{display:flex;align-items:center;gap:6px;}
 .hbtn{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;position:relative;transition:background 0.15s;}
@@ -50,7 +47,15 @@ html,body{width:100%;height:100%;background:var(--bg);font-family:'DM Sans',sans
 .nav{display:flex;align-items:center;gap:5px;padding:2px 14px 7px;overflow-x:auto;flex-shrink:0;z-index:10;}
 .nav::-webkit-scrollbar{display:none;}
 .ntab{display:flex;align-items:center;gap:4px;padding:5px 11px;border-radius:20px;border:1px solid rgba(255,255,255,0.09);background:transparent;font-family:'DM Sans',sans-serif;font-size:11.5px;font-weight:600;color:var(--t3);cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all 0.18s;}
-.ntab.on{background:rgba(59,130,246,0.16);border-color:rgba(59,130,246,0.35);color:var(--t1);font-weight:700;}
+.ntab.on{background:rgba(74,222,128,0.16);border-color:rgba(74,222,128,0.55);color:#4ade80;font-weight:700;transform:scale(1.08);}
+.ms-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.25s;z-index:200;}
+.ms-overlay.open{opacity:1;pointer-events:auto;}
+.ms-sheet{width:100%;max-width:480px;background:var(--card2);border:1px solid var(--bd);border-bottom:none;border-radius:22px 22px 0 0;padding:10px 14px calc(18px + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform 0.28s cubic-bezier(.22,1,.36,1);}
+.ms-overlay.open .ms-sheet{transform:translateY(0);}
+.ms-handle{width:40px;height:4px;border-radius:3px;background:rgba(255,255,255,0.2);margin:6px auto 12px;}
+.ms-item{display:flex;align-items:center;gap:14px;padding:15px 12px;border-radius:14px;font-size:15px;font-weight:600;color:var(--t1);cursor:pointer;transition:background 0.15s;}
+.ms-item:active{background:rgba(255,255,255,0.08);}
+.ms-ico{width:26px;text-align:center;font-size:18px;}
 .screens{flex:1;overflow:hidden;position:relative;z-index:5;}
 .scr{display:none;flex-direction:column;position:absolute;inset:0;}
 .scr.on{display:flex;}
@@ -194,6 +199,7 @@ html,body{width:100%;height:100%;background:var(--bg);font-family:'DM Sans',sans
 .bb-send-btn{background:none;border:none;font-size:16px;color:var(--blue);flex-shrink:0;cursor:pointer;padding:2px 4px;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 .bb-mic{width:38px;height:38px;border-radius:50%;background:var(--card2);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all 0.15s;color:var(--t1);-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
 .bb-mic.active{background:rgba(248,113,113,0.2);border-color:var(--red);color:var(--red);animation:pulse 1s infinite;}
+.fbtn.active{background:rgba(248,113,113,0.2);border-color:var(--red);color:var(--red);animation:pulse 1s infinite;}
 .rec-led{position:fixed;top:max(8px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);width:10px;height:10px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e, 0 0 18px rgba(34,197,94,0.6);display:none;z-index:9999;pointer-events:none;}
 .rec-led.on{display:block;animation:rec-pulse 1s ease-in-out infinite;}
 @keyframes rec-pulse{0%,100%{opacity:1;transform:translateX(-50%) scale(1);}50%{opacity:0.55;transform:translateX(-50%) scale(1.3);}}
@@ -674,18 +680,15 @@ select.form-inp option{background:#0c1228;}
 <div class="app">
   <div class="app-glow"></div>
 
-  <!-- STATUS BAR -->
-  <div class="sb">
-    <span id="sb-time">9:41</span>
-    <div class="sb-r">
-      <span>📶</span><span>🔋</span>
-    </div>
-  </div>
-
   <!-- HEADER -->
   <div class="hdr">
     <div class="logo">
-      <div class="logo-x"></div>
+      <svg class="logo-k" width="28" height="28" viewBox="0 0 32 32" fill="none" aria-label="Kontrol">
+        <defs><linearGradient id="kg" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#1d4ed8"/><stop offset="1" stop-color="#60a5fa"/></linearGradient></defs>
+        <rect width="32" height="32" rx="9" fill="url(#kg)"/>
+        <path d="M12 7v18M12 16l8-9M12 16l8 9" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
       <span class="logo-name">Kontrol</span><span style="font-size:9px;color:rgba(74,222,128,0.7);margin-left:4px;font-family:monospace">v5.2</span>
     </div>
     <div class="hdr-right">
@@ -697,13 +700,14 @@ select.form-inp option{background:#0c1228;}
   <!-- NAV -->
   <div class="nav">
     <button class="ntab on" id="tab-resumen" onclick="goTab('resumen')">🏠 Resumen</button>
-    <button class="ntab" id="tab-movimientos" onclick="goTab('movimientos')">≡ Movimientos</button>
-    <button class="ntab" id="tab-cajas" onclick="goTab('cajas')">🏦 Cajas</button>
     <button class="ntab" id="tab-pagos" onclick="goTab('pagos')">🗓 Pagos</button>
     <button class="ntab" id="tab-agenda" onclick="goTab('agenda')">📅 Agenda</button>
     <button class="ntab" id="tab-recordar" onclick="goTab('recordar')">📌 Recordar</button>
-    <button class="ntab" id="tab-ia" onclick="goTab('ia')">🧠 IA</button>
-    <button class="ntab" id="tab-metas" onclick="goTab('metas')">🎯 Metas</button>
+    <button class="ntab" id="tab-mas" onclick="abrirMenuMas()">⋯ Más</button>
+    <button class="ntab" id="tab-movimientos" onclick="goTab('movimientos')" style="display:none">≡ Movimientos</button>
+    <button class="ntab" id="tab-cajas" onclick="goTab('cajas')" style="display:none">🏦 Cajas</button>
+    <button class="ntab" id="tab-ia" onclick="goTab('ia')" style="display:none">🧠 IA</button>
+    <button class="ntab" id="tab-metas" onclick="goTab('metas')" style="display:none">🎯 Metas</button>
     <button class="ntab" id="tab-inbox" onclick="goTab('inbox')" style="display:none">📥 Bandeja</button>
     <button class="ntab" id="tab-config" onclick="goTab('config')" style="display:none">⚙️ Config</button>
     <button class="ntab" id="tab-admin" onclick="goTab('admin')" style="display:none">⚙️ Admin</button>
@@ -856,6 +860,16 @@ select.form-inp option{background:#0c1228;}
         <div class="filter-row">
           <button class="fbtn on" id="rsub-recordatorios" onclick="setRecSubtab('recordatorios')">🔔 Recordatorios</button>
           <button class="fbtn" id="rsub-listados" onclick="setRecSubtab('listados')">📋 Listados</button>
+        </div>
+        <div style="display:flex;gap:5px;margin-top:6px">
+          <button class="fbtn" id="mic-rec-btn"
+                  onmousedown="micPress(event,'recordar','mic-rec-btn')" onmouseup="micRelease(event)"
+                  onmouseleave="micRelease(event)"
+                  ontouchstart="micPress(event,'recordar','mic-rec-btn')" ontouchend="micRelease(event)"
+                  ontouchcancel="micRelease(event)"
+                  title="Mantén presionado y dicta: 'lista de mercado con pan, leche' o 'recordatorio mi clave 1234'">🎤 Hablar</button>
+          <button class="fbtn" onclick="abrirCamaraListado()">📷 Foto a lista</button>
+          <input type="file" id="foto-listado-input" accept="image/*" capture="environment" style="display:none" onchange="onFotoListado(event)"/>
         </div>
         <div id="recordar-list"></div>
         <div style="height:80px"></div>
@@ -1270,10 +1284,10 @@ select.form-inp option{background:#0c1228;}
         <button class="bb-send-btn" ontouchend="event.preventDefault();sendIA();" onclick="sendIA()">➤</button>
       </div>
       <div class="bb-mic" id="mic-btn"
-           onmousedown="startRecording(event)" onmouseup="stopRecordingAndSend(event)"
-           onmouseleave="stopRecordingAndSend(event)"
-           ontouchstart="startRecording(event)" ontouchend="stopRecordingAndSend(event)"
-           ontouchcancel="stopRecordingAndSend(event)"
+           onmousedown="micPress(event,'ia','mic-btn')" onmouseup="micRelease(event)"
+           onmouseleave="micRelease(event)"
+           ontouchstart="micPress(event,'ia','mic-btn')" ontouchend="micRelease(event)"
+           ontouchcancel="micRelease(event)"
            title="Mantén presionado para hablar">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" id="mic-wave-icon">
           <line x1="4" y1="11" x2="4" y2="13"/>
@@ -1293,6 +1307,18 @@ select.form-inp option{background:#0c1228;}
 
 <!-- LED de grabación: aparece arriba al centro mientras el usuario mantiene el botón mic -->
 <div class="rec-led" id="rec-led" aria-hidden="true"></div>
+
+<!-- Menú "Más" (bottom sheet) -->
+<div class="ms-overlay" id="menu-mas" onclick="if(event.target===this)cerrarMenuMas()">
+  <div class="ms-sheet">
+    <div class="ms-handle"></div>
+    <div class="ms-item" onclick="goTab('movimientos')"><span class="ms-ico">≡</span> Movimientos</div>
+    <div class="ms-item" onclick="goTab('cajas')"><span class="ms-ico">🏦</span> Cuentas (Cajas)</div>
+    <div class="ms-item" onclick="goTab('metas')"><span class="ms-ico">🎯</span> Metas</div>
+    <div class="ms-item" onclick="goTab('ia')"><span class="ms-ico">🧠</span> Asistente IA</div>
+    <div class="ms-item" onclick="goTab('config')"><span class="ms-ico">⚙️</span> Configuración</div>
+  </div>
+</div>
 
 <!-- ══ MODALES ══ -->
 
@@ -1824,6 +1850,9 @@ function inferTabDestinoIA(acciones){
   return null;
 }
 
+function abrirMenuMas(){ const m=document.getElementById('menu-mas'); if(m) m.classList.add('open'); }
+function cerrarMenuMas(){ const m=document.getElementById('menu-mas'); if(m) m.classList.remove('open'); }
+
 function goTab(id){
   TABS.forEach(t=>{
     const scr = document.getElementById('scr-'+t);
@@ -1831,6 +1860,11 @@ function goTab(id){
     if(scr) scr.classList.toggle('on', t===id);
     if(btn) btn.classList.toggle('on', t===id);
   });
+  // El botón "⋯ Más" queda activo si la sección actual vive dentro del menú.
+  const _enMenu = ['movimientos','cajas','ia','metas','config','inbox','admin'].includes(id);
+  const _btnMas = document.getElementById('tab-mas');
+  if(_btnMas) _btnMas.classList.toggle('on', _enMenu);
+  cerrarMenuMas();
   if(id==='resumen') renderResumen();
   if(id==='movimientos') renderMovimientos();
   if(id==='cajas') renderCajas();
@@ -3324,6 +3358,8 @@ let mediaRecorder = null;
 let audioChunks = [];
 let mediaStream = null;
 let isRecording = false;
+let micDestino = 'ia';     // 'ia' | 'recordar' — a dónde va el texto transcrito
+let micBtnId = 'mic-btn';  // botón con feedback visual durante la grabación
 
 function addIAMsg(text, who){
   const el = document.getElementById('ia-msgs');
@@ -3570,8 +3606,12 @@ async function startRecording(e){
           return;
         }
 
-        document.getElementById('ia-input').value = texto;
-        sendIA({ voz: true });
+        if(micDestino === 'recordar'){
+          procesarTextoRecordar(texto);
+        } else {
+          document.getElementById('ia-input').value = texto;
+          sendIA({ voz: true });
+        }
       } catch(err){
         console.error('[transcribe] error:', err);
         toast('⚠️ Error transcribiendo: ' + err.message, 'var(--red)');
@@ -3581,7 +3621,7 @@ async function startRecording(e){
 
     mediaRecorder.start();
     isRecording = true;
-    const micBtn = document.getElementById('mic-btn');
+    const micBtn = document.getElementById(micBtnId);
     if(micBtn) micBtn.classList.add('active');
     const led = document.getElementById('rec-led');
     if(led) led.classList.add('on');
@@ -3597,7 +3637,7 @@ function stopRecordingAndSend(e){
   if(!isRecording) return;
   isRecording = false;
   // Apagar feedback visual al soltar
-  const micBtn = document.getElementById('mic-btn');
+  const micBtn = document.getElementById(micBtnId);
   if(micBtn) micBtn.classList.remove('active');
   const led = document.getElementById('rec-led');
   if(led) led.classList.remove('on');
@@ -3608,13 +3648,89 @@ function stopRecordingAndSend(e){
 
 function resetMicUI(){
   isRecording = false;
-  const micBtn = document.getElementById('mic-btn');
+  const micBtn = document.getElementById(micBtnId);
   if(micBtn){
     micBtn.classList.remove('active');
     micBtn.style.background = '';
   }
   const led = document.getElementById('rec-led');
   if(led) led.classList.remove('on');
+}
+
+// Wrappers para reutilizar el grabador en distintos destinos (mic de IA y mic de Recordar).
+function micPress(e, destino, btnId){
+  micDestino = destino;
+  micBtnId = btnId;
+  startRecording(e);
+}
+function micRelease(e){
+  stopRecordingAndSend(e);
+}
+
+// La voz dictada en la pestaña Recordar va al bot (mismas reglas de ruteo que el chat).
+async function procesarTextoRecordar(texto){
+  toast('💬 ' + texto, 'var(--t2)');
+  try {
+    const res = await fetch('/api/ai-chat', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ message: texto, history: [], user_id: currentUser?.id || null })
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || 'Error del servidor');
+    await syncDesdeSupabase();
+    renderRecordar();
+    if(data.respuesta) toast(data.respuesta, 'var(--green)');
+  } catch(e){
+    console.error('[voz-recordar] error:', e);
+    toast('⚠️ ' + e.message, 'var(--red)');
+  }
+}
+
+// ── FOTO → LISTADO (OCR con Claude Vision vía /api/ai-chat) ──
+function abrirCamaraListado(){
+  document.getElementById('foto-listado-input').click();
+}
+function onFotoListado(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e)=>{
+    const compressed = await comprimirImagen(e.target.result, 1024, 0.85);
+    await analizarFotoListado(compressed.split(',')[1]);
+  };
+  reader.readAsDataURL(file);
+  event.target.value = '';
+}
+async function analizarFotoListado(b64){
+  if(!(await sesionLista())){ toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
+  toast('📷 Leyendo la lista…','var(--t2)');
+  const prompt = `Eres un lector de listas escritas (manuscritas o impresas). Lee la imagen y extrae el TÍTULO de la lista (si aparece uno arriba) y los ÍTEMS (cada renglón o viñeta es un ítem). Responde SOLO JSON válido, sin markdown ni texto extra: {"titulo":"nombre de la lista o null","items":["item1","item2"]}. Si no hay título claro, usa null.`;
+  try {
+    const res = await fetch('/api/ai-chat', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ message: prompt, imagen_base64: b64, history: [], user_id: currentUser?.id || null })
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || 'Error del servidor');
+    const r = parseIAJson(data.respuesta || '{}');
+    const items = (r && Array.isArray(r.items) ? r.items : [])
+      .map(t => ({ text: String(t).trim(), done: false }))
+      .filter(it => it.text);
+    if(!items.length){ toast('❌ No pude leer ítems en la foto','var(--red)'); return; }
+    const titulo = (r && r.titulo && String(r.titulo).trim()) || 'Lista escaneada';
+    const { data: row, error } = await supa.from('reminders')
+      .insert({ user_id: currentUser.id, tipo: 'listado', titulo, content: { items }, fecha: todayStr() })
+      .select().single();
+    if(error || !row){ toast('❌ Error al guardar: '+(error?.message||'sin confirmación'),'var(--red)'); return; }
+    await syncDesdeSupabase();
+    setRecSubtab('listados');
+    toast(`✅ Listado "${titulo}" con ${items.length} ${items.length===1?'ítem':'ítems'}`,'var(--green)');
+  } catch(e){
+    console.error('[foto-listado] error:', e);
+    toast('⚠️ ' + e.message, 'var(--red)');
+  }
 }
 
 // Fin push-to-talk
@@ -4540,15 +4656,6 @@ document.querySelectorAll('.filter-row').forEach(row=>{
     });
   });
 });
-
-// ════════════════════════════════════════
-// STATUS BAR TIME
-// ════════════════════════════════════════
-function updateTime(){
-  const now = new Date();
-  document.getElementById('sb-time').textContent = now.getHours()+':'+(now.getMinutes()<10?'0':'')+now.getMinutes();
-}
-updateTime(); setInterval(updateTime, 30000);
 
 // ════════════════════════════════════════
 // INIT
