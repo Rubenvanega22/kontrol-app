@@ -1320,6 +1320,37 @@ select.form-inp option{background:#0c1228;}
   </div>
 </div>
 
+<!-- Diálogo de confirmación (reemplaza confirm(), bloqueado en PWA standalone) -->
+<div class="modal-overlay hidden" id="modal-confirm" onclick="if(event.target===this)_uiConfirmResolve(false)">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-ttl" id="confirm-ttl">¿Estás seguro?</span></div>
+    <div id="confirm-msg" style="font-size:14px;color:var(--t2);line-height:1.5;margin:4px 0 18px"></div>
+    <button class="btn-primary" id="confirm-ok" style="background:var(--red);border-color:var(--red)" onclick="_uiConfirmResolve(true)">Sí, eliminar</button>
+    <button class="btn-secondary" onclick="_uiConfirmResolve(false)">Cancelar</button>
+  </div>
+</div>
+
+<!-- Diálogo de texto (reemplaza prompt()) -->
+<div class="modal-overlay hidden" id="modal-prompt" onclick="if(event.target===this)_uiPromptResolve(false)">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-ttl" id="prompt-ttl"></span></div>
+    <div class="form-group"><input class="form-inp" id="prompt-input" onkeydown="if(event.key==='Enter')_uiPromptResolve(true)"/></div>
+    <button class="btn-primary" onclick="_uiPromptResolve(true)">Aceptar</button>
+    <button class="btn-secondary" onclick="_uiPromptResolve(false)">Cancelar</button>
+  </div>
+</div>
+
+<!-- Editar nombre + saldo (Cuentas y Cajas) -->
+<div class="modal-overlay hidden" id="modal-ns" onclick="if(event.target===this)_uiNsResolve(false)">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-ttl" id="ns-ttl">Editar</span><button class="modal-close" onclick="_uiNsResolve(false)">✕</button></div>
+    <div class="form-group"><label class="form-label">Nombre</label><input class="form-inp" id="ns-nombre" placeholder="Nombre"/></div>
+    <div class="form-group"><label class="form-label">Saldo</label><input class="form-inp" id="ns-saldo" type="text" inputmode="numeric" oninput="formatMonto(this)" placeholder="0"/></div>
+    <button class="btn-primary" onclick="_uiNsResolve(true)">Guardar</button>
+    <button class="btn-secondary" onclick="_uiNsResolve(false)">Cancelar</button>
+  </div>
+</div>
+
 <!-- ══ MODALES ══ -->
 
 <!-- Nuevo Movimiento -->
@@ -1915,6 +1946,70 @@ function showModal(id){
 function hideModal(id){ document.getElementById(id).classList.add('hidden'); }
 function closeModalOutside(e,id){ if(e.target===document.getElementById(id)) hideModal(id); }
 
+// ════════════════════════════════════════
+// DIÁLOGOS IN-APP (reemplazan confirm()/prompt() — bloqueados en PWA standalone)
+// ════════════════════════════════════════
+let _uiConfirmCb = null;
+function uiConfirm(msg, opts){
+  opts = opts || {};
+  return new Promise(resolve=>{
+    _uiConfirmCb = resolve;
+    document.getElementById('confirm-ttl').textContent = opts.titulo || '¿Estás seguro?';
+    document.getElementById('confirm-msg').textContent = msg || '';
+    document.getElementById('confirm-ok').textContent = opts.okText || 'Sí, eliminar';
+    showModal('modal-confirm');
+  });
+}
+function _uiConfirmResolve(val){
+  hideModal('modal-confirm');
+  const cb = _uiConfirmCb; _uiConfirmCb = null;
+  if(cb) cb(val);
+}
+
+let _uiPromptCb = null;
+function uiPrompt(titulo, valor){
+  return new Promise(resolve=>{
+    _uiPromptCb = resolve;
+    document.getElementById('prompt-ttl').textContent = titulo || '';
+    const inp = document.getElementById('prompt-input');
+    inp.value = valor || '';
+    showModal('modal-prompt');
+    setTimeout(()=>{ try{ inp.focus(); }catch(_){} }, 60);
+  });
+}
+function _uiPromptResolve(ok){
+  const inp = document.getElementById('prompt-input');
+  const val = ok ? inp.value.trim() : null;
+  hideModal('modal-prompt');
+  const cb = _uiPromptCb; _uiPromptCb = null;
+  if(cb) cb(val);
+}
+
+let _uiNsCb = null;
+function uiEditNombreSaldo(titulo, nombre, saldo){
+  return new Promise(resolve=>{
+    _uiNsCb = resolve;
+    document.getElementById('ns-ttl').textContent = titulo || 'Editar';
+    document.getElementById('ns-nombre').value = nombre || '';
+    document.getElementById('ns-saldo').value = (saldo != null ? String(Math.round(saldo)) : '');
+    showModal('modal-ns');
+  });
+}
+function _uiNsResolve(ok){
+  if(ok){
+    const nombre = document.getElementById('ns-nombre').value.trim();
+    if(!nombre){ toast('Escribe un nombre','var(--amber)'); return; }
+    const saldo = parseCOP(document.getElementById('ns-saldo').value);
+    hideModal('modal-ns');
+    const cb = _uiNsCb; _uiNsCb = null;
+    if(cb) cb({ nombre, saldo });
+  } else {
+    hideModal('modal-ns');
+    const cb = _uiNsCb; _uiNsCb = null;
+    if(cb) cb(null);
+  }
+}
+
 function populateCuentasSelect(selId){
   const sel = document.getElementById(selId);
   sel.innerHTML = DB.cuentas.length
@@ -2223,7 +2318,7 @@ async function borrarMovimientoUI(id) {
   }
 
   const confirmMsg = `¿Eliminar este movimiento de ${fmtCOP(mov.monto)}? Esto revertirá el saldo.`;
-  const userConfirmed = confirm(confirmMsg);
+  const userConfirmed = await uiConfirm(confirmMsg);
   console.log('[borrarMovimiento] confirm respondido:', userConfirmed);
   if (!userConfirmed) return;
 
@@ -2614,30 +2709,42 @@ function abrirPagoDetalle(id){
   showModal('modal-pago-detalle');
 }
 
-function marcarPagado(){
+async function marcarPagado(){
+  if(!(await sesionLista())){ toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
   const p = DB.pagos.find(x=>String(x.id)===String(pagoDetalleId));
   if(!p){ hideModal('modal-pago-detalle'); return; }
   if(p.status==='pagado'){ toast('Ya está marcado como pagado','var(--amber)'); return; }
 
-  p.status = 'pagado';
-  // Crear movimiento automático
-  const cuenta = DB.cuentas.find(c=>String(c.id)===String(p.cuentaId));
-  if(cuenta) cuenta.saldo -= p.monto;
-  DB.movimientos.unshift({ id:uid(), tipo:'gasto', descripcion:'Pago: '+p.nombre, monto:p.monto, fecha:todayStr(), cuentaId:p.cuentaId, categoria:'servicios', nota:'Pago automático', source:'pago' });
-  save();
+  // 1) Persistir el estado del pago en Supabase.
+  const { error: errPago } = await supa.from('payments')
+    .update({ status: 'pagado', fecha_pago: todayStr() }).eq('id', p.id).eq('user_id', currentUser.id);
+  if(errPago){ toast('Error: '+errPago.message,'var(--red)'); return; }
+
+  // 2) Registrar el gasto en movements (Supabase) para que el saldo y el historial cuadren.
+  const cuentaId = p.cuentaId || null;
+  await supa.from('movements').insert({
+    user_id: currentUser.id, tipo: 'gasto', descripcion: 'Pago: '+p.nombre,
+    monto: p.monto, fecha: todayStr(), account_id: cuentaId, categoria: 'servicios', source: 'pago'
+  });
+  // 3) Ajustar saldo de la cuenta si aplica.
+  if(cuentaId){
+    const cuenta = DB.cuentas.find(c=>String(c.id)===String(cuentaId));
+    if(cuenta) await supa.from('accounts').update({ saldo: cuenta.saldo - p.monto }).eq('id', cuentaId).eq('user_id', currentUser.id);
+  }
   hideModal('modal-pago-detalle');
-  toast('✅ Pago registrado — movimiento creado','var(--green)');
-  renderPagos();
-  renderResumen();
+  toast('✓ Pago registrado','var(--green)');
+  await syncDesdeSupabase();
 }
 
-function eliminarPago(){
-  if(!confirm('¿Eliminar este pago?')) return;
-  DB.pagos = DB.pagos.filter(p=>p.id!==pagoDetalleId);
-  save();
+async function eliminarPago(){
+  const p = DB.pagos.find(x=>String(x.id)===String(pagoDetalleId));
+  if(!p){ hideModal('modal-pago-detalle'); return; }
+  if(!(await uiConfirm(`¿Eliminar el pago "${p.nombre}"?`))) return;
+  const { error } = await supa.from('payments').delete().eq('id', p.id).eq('user_id', currentUser.id);
+  if(error){ toast('Error: '+error.message,'var(--red)'); return; }
   hideModal('modal-pago-detalle');
-  toast('🗑 Pago eliminado','var(--red)');
-  renderPagos();
+  toast('🗑 Pago eliminado','var(--t2)');
+  await syncDesdeSupabase();
 }
 
 function duplicarPagosFijos(){
@@ -2768,27 +2875,19 @@ function renderCajaExpandida(c){
 async function editarCuenta(id){
   const c = DB.cuentas.find(x => String(x.id) === String(id));
   if(!c){ toast('Cuenta no encontrada', 'var(--red)'); return; }
-  const nombre = prompt('Nombre de la cuenta:', c.nombre);
-  if(nombre === null) return;
-  const tipo = prompt('Tipo (banco, efectivo, tarjeta...):', c.tipo || 'banco');
-  if(tipo === null) return;
-  const saldoStr = prompt('Saldo:', c.saldo);
-  if(saldoStr === null) return;
-  const saldo = parseFloat(String(saldoStr).replace(/[^\d.-]/g, ''));
-  if(isNaN(saldo)){ toast('Saldo inválido', 'var(--red)'); return; }
-  const { error } = await supa.from('accounts').update({
-    nombre: nombre.trim(), tipo: tipo.trim(), saldo
-  }).eq('id', id);
+  const r = await uiEditNombreSaldo('Editar cuenta', c.nombre, c.saldo);
+  if(!r) return;
+  const { error } = await supa.from('accounts').update({ nombre: r.nombre, saldo: r.saldo }).eq('id', id).eq('user_id', currentUser.id);
   if(error){ toast('Error: '+error.message, 'var(--red)'); return; }
   await syncDesdeSupabase();
-  toast('✅ Cuenta actualizada', 'var(--green)');
+  toast('✓ Guardado', 'var(--green)');
 }
 
 async function borrarCuentaLocal(id){
   const c = DB.cuentas.find(x => String(x.id) === String(id));
   if(!c){ toast('Cuenta no encontrada', 'var(--red)'); return; }
-  if(!confirm(`¿Estás seguro de eliminar "${c.nombre}"?`)) return;
-  const { error } = await supa.from('accounts').delete().eq('id', id);
+  if(!(await uiConfirm(`Vas a eliminar la cuenta "${c.nombre}". Esta acción no se puede deshacer.`))) return;
+  const { error } = await supa.from('accounts').delete().eq('id', id).eq('user_id', currentUser.id);
   if(error){ toast('Error: '+error.message, 'var(--red)'); return; }
   await syncDesdeSupabase();
   toast('🗑️ Cuenta eliminada', 'var(--t2)');
@@ -2797,25 +2896,19 @@ async function borrarCuentaLocal(id){
 async function editarCaja(id){
   const c = DB.cajas.find(x => String(x.id) === String(id));
   if(!c){ toast('Caja no encontrada', 'var(--red)'); return; }
-  const nombre = prompt('Nombre de la caja:', c.nombre);
-  if(nombre === null) return;
-  const saldoStr = prompt('Saldo:', c.saldo);
-  if(saldoStr === null) return;
-  const saldo = parseFloat(String(saldoStr).replace(/[^\d.-]/g, ''));
-  if(isNaN(saldo)){ toast('Saldo inválido', 'var(--red)'); return; }
-  const { error } = await supa.from('cajas').update({
-    nombre: nombre.trim(), saldo
-  }).eq('id', id);
+  const r = await uiEditNombreSaldo('Editar caja', c.nombre, c.saldo);
+  if(!r) return;
+  const { error } = await supa.from('cajas').update({ nombre: r.nombre, saldo: r.saldo }).eq('id', id).eq('user_id', currentUser.id);
   if(error){ toast('Error: '+error.message, 'var(--red)'); return; }
   await syncDesdeSupabase();
-  toast('✅ Caja actualizada', 'var(--green)');
+  toast('✓ Guardado', 'var(--green)');
 }
 
 async function borrarCajaLocal(id){
   const c = DB.cajas.find(x => String(x.id) === String(id));
   if(!c){ toast('Caja no encontrada', 'var(--red)'); return; }
-  if(!confirm(`¿Estás seguro de eliminar "${c.nombre}"?`)) return;
-  const { error } = await supa.from('cajas').delete().eq('id', id);
+  if(!(await uiConfirm(`Vas a eliminar la caja "${c.nombre}". Esta acción no se puede deshacer.`))) return;
+  const { error } = await supa.from('cajas').delete().eq('id', id).eq('user_id', currentUser.id);
   if(error){ toast('Error: '+error.message, 'var(--red)'); return; }
   await syncDesdeSupabase();
   toast('🗑️ Caja eliminada', 'var(--t2)');
@@ -2931,7 +3024,7 @@ function renderCajaEntries(){
 async function borrarCajaMovimiento(movId){
   const mov = (DB.cajaMovimientos || []).find(m => String(m.id) === String(movId));
   if(!mov){ toast('Movimiento no encontrado','var(--red)'); return; }
-  if(!confirm(`¿Eliminar "${mov.descripcion || 'este movimiento'}" por ${fmtCOP(mov.monto)}?`)) return;
+  if(!(await uiConfirm(`¿Eliminar "${mov.descripcion || 'este movimiento'}" por ${fmtCOP(mov.monto)}?`))) return;
 
   const caja = (DB.cajas || []).find(c => String(c.id) === String(mov.caja_id));
   // Revertir el efecto del movimiento sobre el saldo de la caja
@@ -2981,10 +3074,34 @@ function renderAgenda(){
   const hoy = new Date();
   const eventos = DB.eventos.filter(e=>new Date(e.fecha+'T12:00:00')>=new Date(hoy.toDateString())).sort((a,b)=>a.fecha.localeCompare(b.fecha));
   if(!eventos.length){ el.innerHTML='<div class="empty"><div class="empty-ico">📅</div><div class="empty-txt">No hay eventos próximos</div></div>'; return; }
-  el.innerHTML = eventos.map(e=>`<div class="agenda-event">
+  el.innerHTML = eventos.map(e=>`<div class="agenda-event" style="position:relative">
     <div class="ae-time">${e.hora||'—'}</div>
     <div class="ae-info"><div class="ae-title">${e.titulo}</div><div class="ae-sub">${fmtDate(e.fecha)}${e.nota?' · '+e.nota:''}</div></div>
+    <button onclick="borrarEvento('${e.id}')" style="background:rgba(248,113,113,0.15);border:none;border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:12px;flex-shrink:0;align-self:center" title="Eliminar evento">🗑️</button>
   </div>`).join('');
+}
+
+async function borrarEvento(id){
+  const e = DB.eventos.find(x=>String(x.id)===String(id));
+  if(!e){ toast('Evento no encontrado','var(--red)'); return; }
+  if(!(await uiConfirm(`¿Eliminar "${e.titulo}"?`))) return;
+  const { error } = await supa.from('events').delete().eq('id', id).eq('user_id', currentUser.id);
+  if(error){ toast('Error: '+error.message,'var(--red)'); return; }
+  toast('🗑 Evento eliminado','var(--t2)');
+  await syncDesdeSupabase();
+  renderAgenda();
+}
+
+// Borrar evento desde el modal diario: borra y refresca la vista del día.
+async function borrarEventoDiario(id, fechaISO){
+  const e = DB.eventos.find(x=>String(x.id)===String(id));
+  if(!e) return;
+  if(!(await uiConfirm(`¿Eliminar "${e.titulo}"?`))) return;
+  const { error } = await supa.from('events').delete().eq('id', id).eq('user_id', currentUser.id);
+  if(error){ toast('Error: '+error.message,'var(--red)'); return; }
+  toast('🗑 Evento eliminado','var(--t2)');
+  await syncDesdeSupabase();
+  abrirModalDiario(fechaISO);
 }
 
 // Estado del calendario: mes/año actualmente visualizado.
@@ -3068,6 +3185,7 @@ function abrirModalDiario(fechaISO){
       ${eventos.map(e=>`<div class="day-item">
         <span class="day-item-time">${e.hora||'—'}</span>
         <span class="day-item-main">${e.titulo}</span>
+        <button onclick="borrarEventoDiario('${e.id}','${fechaISO}')" style="background:rgba(248,113,113,0.15);border:none;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:11px;flex-shrink:0" title="Eliminar evento">🗑️</button>
       </div>`).join('')}
     </div>`;
   }
@@ -3276,7 +3394,7 @@ async function agregarItemListado(id){
 async function borrarRecordatorioRapido(id){
   const r = DB.recordatorios.find(x => String(x.id) === String(id));
   if(!r){ toast('Recordatorio no encontrado', 'var(--red)'); return; }
-  if(!confirm(`¿Eliminar "${r.titulo}"?`)) return;
+  if(!(await uiConfirm(`¿Eliminar "${r.titulo}"?`))) return;
   const { error } = await supa.from('reminders').delete().eq('id', id);
   if(error){ toast('Error: '+error.message, 'var(--red)'); return; }
   toast('🗑 Eliminado', 'var(--t2)');
@@ -3316,7 +3434,7 @@ function abrirRecDetalle(id){
 }
 
 async function eliminarRecordatorio(){
-  if(!confirm('¿Eliminar este recordatorio?')) return;
+  if(!(await uiConfirm('¿Eliminar este recordatorio?'))) return;
   const id = recDetalleId;
   const { error } = await supa.from('reminders').delete().eq('id', id);
   if(error){ toast('Error: '+error.message, 'var(--red)'); return; }
@@ -3427,7 +3545,7 @@ async function sendIA(opts){
 
       // Procesar confirmaciones primero — bloquean hasta que el usuario decide
       for(const a of accionesConfirmacion){
-        const confirmado = confirm(`¿Seguro que quieres eliminar "${a.nombre}"?\nDi 'sí confirmo' para proceder.`);
+        const confirmado = await uiConfirm(`¿Eliminar "${a.nombre}"?`);
         if(!confirmado) continue;
         const tabla = a.tipo === 'cuenta' ? 'accounts' : 'cajas';
         const { error } = await supa.from(tabla).delete().eq('id', a.id);
@@ -4060,7 +4178,7 @@ function conectarGmail(){
 }
 
 async function desconectarCorreo(id){
-  if(!confirm('¿Desconectar esta cuenta de correo? Kontrol dejará de revisar sus correos.')) return;
+  if(!(await uiConfirm('Kontrol dejará de revisar sus correos.', {titulo:'¿Desconectar correo?', okText:'Desconectar'}))) return;
   const { error } = await supa.from('email_accounts').delete().eq('id', id);
   if(error){ toast('Error: '+error.message,'var(--red)'); return; }
   toast('🗑 Cuenta desconectada','var(--t2)');
@@ -4155,7 +4273,7 @@ async function confirmarMovimiento(id){
 }
 
 async function descartarMovimiento(id){
-  if(!confirm('¿Descartar esta detección? Se eliminará permanentemente.')) return;
+  if(!(await uiConfirm('Se eliminará permanentemente.', {titulo:'¿Descartar detección?', okText:'Descartar'}))) return;
   const { error } = await supa.from('movements').delete().eq('id', id);
   if(error){ toast('Error: '+error.message,'var(--red)'); return; }
   toast('✕ Descartado','var(--t2)');
@@ -4851,7 +4969,7 @@ function addLogoutBtn() {
     btn.textContent = '👤';
     btn.title = 'Salir';
     btn.onclick = () => {
-      if (confirm('¿Cerrar sesión?')) doLogout();
+      uiConfirm('¿Cerrar sesión?', {titulo:'Cerrar sesión', okText:'Cerrar sesión'}).then(ok=>{ if(ok) doLogout(); });
     };
     hdrRight.appendChild(btn);
   }
@@ -5034,7 +5152,7 @@ async function saveMeta() {
 }
 
 async function deleteMeta(id) {
-  if (!confirm('¿Eliminar esta meta?')) return;
+  if (!(await uiConfirm('¿Eliminar esta meta?'))) return;
   await supa.from('metas').delete().eq('id', id);
   renderMetas();
 }
@@ -5055,7 +5173,7 @@ async function toggleMicrometa(microId, metaId) {
 }
 
 async function addMicrometa(metaId) {
-  const titulo = prompt('¿Cuál es el siguiente paso?');
+  const titulo = await uiPrompt('Nuevo paso');
   if (!titulo) return;
   await supa.from('micrometas').insert({ meta_id: metaId, user_id: currentUser.id, titulo });
   renderMetas();
