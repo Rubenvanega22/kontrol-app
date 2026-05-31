@@ -595,29 +595,40 @@ IMPORTANTE: si el usuario menciona una cuenta o caja específica por nombre, bus
       "agéndame el dentista el viernes 3pm"  → [ACCION:evento|Dentista|<viernes>|15:00]        (crear)
     (En los de CREAR aplica la regla 10: hora explícita → evento, UNA acción.)
 
-13. ⚠️ RUTEO: ¿Agenda, Recordatorio o Listado? Aplica en este orden:
+13. ⚠️ RUTEO POR LA PRIMERA PALABRA — ¿CREAR o CONSULTAR?
 
-    a) ¿Hay HORA EXACTA o "en X minutos/horas"? → AGENDA (evento). SIEMPRE.
-       "recuérdame X mañana a las 10" / "avísame en 30 min" → [ACCION:evento|...].
+    Fíjate con qué EMPIEZA el mensaje:
 
-    b) ¿Menciona "lista" o "listado"? → LISTADOS:
-       "haz una lista de mercado con pan, leche, huevos"
-         → [ACCION:crear_lista|Mercado|pan;leche;huevos]
-       "agrega arroz a mi lista de mercado"  → [ACCION:agregar_item|Mercado|arroz]
-       "marca leche como comprado/hecho"     → [ACCION:marcar_item|Mercado|leche]
-       "depura mi lista de mercado"           → [ACCION:depurar_lista|Mercado]
+    A) Empieza con el NOMBRE de una sección (agenda / listado / listados /
+       recordatorio / recordatorios) → intención de CREAR/REGISTRAR:
+         "agenda cita médica mañana a las 10am" → [ACCION:evento|Cita médica|<mañana>|10:00]
+         "listado mercado: pan, leche"          → [ACCION:crear_lista|mercado|pan;leche]
+         "listado tareas"                        → [ACCION:crear_lista|tareas|]  (listado vacío)
+         "recordatorio mi clave es 1234"        → [ACCION:recordatorio|mi clave es 1234]
+       (Si es evento aplica la regla 10: necesita HORA exacta; si no la dan, pídela.)
 
-    c) Si NO hay hora NI "lista" → RECORDATORIO (nota pasiva):
-       "recuérdame que [X]" (sin hora), "anota [X]", "no se me olvide [X]",
-       "guarda esta clave: [X]" → [ACCION:recordatorio|texto].
+    B) Empieza con un VERBO DE VER (muéstrame, dime, ver, lista, "qué tengo",
+       "qué hay", "qué eventos") → CONSULTAR, NO crear. Navega a la sección:
+         "muéstrame la agenda" / "dime qué tengo en agenda" → [ACCION:navegar|agenda]
+         "qué hay en agenda mañana"                          → [ACCION:navegar|agenda]
+         "muéstrame mis listados" / "ver mis recordatorios"  → [ACCION:navegar|recordar]
 
-    d) VERBOS DE VER → consultar, NO crear:
-       "agenda" sola / "mi agenda" / "muéstrame mi agenda"  → [ACCION:navegar|agenda]
-       "mis recordatorios" / "qué hay en recordar"          → [ACCION:navegar|recordar]
-       "mis listas" / "mis listados"                        → [ACCION:navegar|recordar]
+    C) CASOS ESPECIALES (mandan sobre A):
+       • Solo el NOMBRE de la sección → consultar:
+         "agenda" → [ACCION:navegar|agenda] ·
+         "listados"/"recordatorios" → [ACCION:navegar|recordar]
+       • NOMBRE + solo un DÍA (sin objeto ni hora) → consultar (natural en español):
+         "agenda hoy" / "agenda mañana" → [ACCION:navegar|agenda]
+       • NOMBRE + algo VAGO (sin QUÉ ni HORA) → PREGUNTA antes de crear:
+         "agenda para mañana" / "agenda algo mañana" → "¿Qué quieres agendar y a qué hora?"
 
-    REGLA UNIVERSAL: HORA EXACTA → Agenda. Dice "lista" → Listados.
-    Sin hora ni "lista" → Recordatorio.`;
+    D) Operar sobre un listado EXISTENTE (sin importar la primera palabra):
+         "agrega arroz a mi lista de mercado" → [ACCION:agregar_item|mercado|arroz]
+         "marca leche como comprado"          → [ACCION:marcar_item|mercado|leche]
+         "depura mi lista de mercado"          → [ACCION:depurar_lista|mercado]
+
+    RESUMEN: sección + (objeto/hora/ítems) = CREAR · verbo de ver, o solo la
+    sección, o sección+día = CONSULTAR · sección + algo vago = PREGUNTA.`;
 }
 
 // ═══ LLAMAR A CLAUDE ═══
