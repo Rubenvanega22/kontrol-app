@@ -172,6 +172,26 @@ module.exports = async function handler(req, res) {
         partesEvento.push('❌ ¿Qué ítem quieres agregar?');
       } else if (a.accion === 'lista' && a.error === 'db') {
         partesEvento.push('❌ Hubo un error con el listado. Intenta de nuevo.');
+      // Borrado masivo — 2 pasos con confirmación determinística.
+      } else if (a.accion === 'borrado_masivo' && a.fase === 'preguntar') {
+        const c = a.counts || {};
+        const total = Object.values(c).reduce((s, n) => s + n, 0);
+        if (total === 0) {
+          partesEvento.push('No hay nada que borrar ahí — ya está vacío.');
+        } else {
+          const lineas = [];
+          if ('agenda' in c)        lineas.push(`• ${c.agenda} evento(s) en Agenda`);
+          if ('pagos' in c)         lineas.push(`• ${c.pagos} pago(s)`);
+          if ('listados' in c)      lineas.push(`• ${c.listados} listado(s)`);
+          if ('recordatorios' in c) lineas.push(`• ${c.recordatorios} recordatorio(s)`);
+          partesEvento.push(`⚠️ ¿Estás seguro? Voy a borrar:\n${lineas.join('\n')}\n\nResponde *SÍ* para confirmar, o *cancelar* para dejar todo intacto.`);
+        }
+      } else if (a.accion === 'borrado_masivo' && a.fase === 'confirmado') {
+        const c = a.counts || {};
+        const total = Object.values(c).reduce((s, n) => s + n, 0);
+        partesEvento.push(a.alcance === 'borrar_todo'
+          ? `🧹 Listo, borré todo (${total} elemento(s)). Mes nuevo comenzando.`
+          : `🧹 Listo, borré ${total} elemento(s).`);
       }
     }
 
@@ -400,6 +420,14 @@ usa gasto/ingreso. Nunca metas un caja_id en el campo cuenta_id_opcional de gast
 [ACCION:depurar_lista|titulo_lista]      (borra los ítems ya marcados ✓)
   Usa el título EXACTO de un listado de "Listados" de arriba. Si el usuario
   pide agregar/marcar en una lista que NO existe, créala con crear_lista.
+— Borrado MASIVO (2 pasos, ver regla 14). Segundo campo: "preguntar" o "confirmar".
+[ACCION:borrar_todo|preguntar]          (agenda + pagos + listados + recordatorios)
+[ACCION:borrar_agenda|preguntar]        (solo eventos de agenda)
+[ACCION:borrar_pagos|preguntar]
+[ACCION:borrar_listados|preguntar]
+[ACCION:borrar_recordatorios|preguntar]
+  El sistema cuenta y pide confirmación. Solo cuando el usuario confirma, repite
+  la MISMA acción con "confirmar" (ej. [ACCION:borrar_todo|confirmar]).
 — Cuentas (no se crean desde aquí — el usuario las crea en Config)
 [ACCION:editar_cuenta|cuenta_id|nuevo_saldo|nuevo_nombre]
   Deja vacíos los campos que NO quieras cambiar. Ej: [ACCION:editar_cuenta|abc||Nuevo nombre]
@@ -613,14 +641,19 @@ IMPORTANTE: si el usuario menciona una cuenta o caja específica por nombre, bus
          "qué hay en agenda mañana"                          → [ACCION:navegar|agenda]
          "muéstrame mis listados" / "ver mis recordatorios"  → [ACCION:navegar|recordar]
 
-    C) CASOS ESPECIALES (mandan sobre A):
-       • Solo el NOMBRE de la sección → consultar:
-         "agenda" → [ACCION:navegar|agenda] ·
-         "listados"/"recordatorios" → [ACCION:navegar|recordar]
-       • NOMBRE + solo un DÍA (sin objeto ni hora) → consultar (natural en español):
-         "agenda hoy" / "agenda mañana" → [ACCION:navegar|agenda]
-       • NOMBRE + algo VAGO (sin QUÉ ni HORA) → PREGUNTA antes de crear:
-         "agenda para mañana" / "agenda algo mañana" → "¿Qué quieres agendar y a qué hora?"
+    C) CASOS ESPECIALES (mandan sobre A). Mira QUÉ viene justo después de "agenda":
+       • NADA → consultar:  "agenda" → [ACCION:navegar|agenda]
+         (y "listados"/"recordatorios" solos → [ACCION:navegar|recordar])
+       • SOLO una palabra de TIEMPO y nada más (hoy/mañana/lunes/una fecha) → consultar:
+         "agenda hoy" / "agenda mañana" / "agenda el lunes" → [ACCION:navegar|agenda]
+       • CUALQUIER OTRA palabra (para, algo, una, un, el…) aunque incluya un día,
+         PERO sin un QUÉ concreto Y una HORA → NO crees ni muestres: PREGUNTA.
+         "agenda para mañana" / "agenda algo mañana" / "agenda una cita"
+           → responde: "¿Qué quieres agendar y a qué hora?"
+       REGLA FINA: "agenda" + <palabra de tiempo SOLA> = mostrar.
+                   "agenda" + (relleno como "para"/"algo"/"una"…) = intención de crear
+                   → si falta el QUÉ o la HORA, PREGUNTA (nunca muestres la agenda).
+                   "agenda" + objeto concreto + hora = CREAR evento (regla 10).
 
     D) Operar sobre un listado EXISTENTE (sin importar la primera palabra):
          "agrega arroz a mi lista de mercado" → [ACCION:agregar_item|mercado|arroz]
@@ -628,7 +661,31 @@ IMPORTANTE: si el usuario menciona una cuenta o caja específica por nombre, bus
          "depura mi lista de mercado"          → [ACCION:depurar_lista|mercado]
 
     RESUMEN: sección + (objeto/hora/ítems) = CREAR · verbo de ver, o solo la
-    sección, o sección+día = CONSULTAR · sección + algo vago = PREGUNTA.`;
+    sección, o sección+día = CONSULTAR · sección + algo vago = PREGUNTA.
+
+14. ⚠️ BORRADO MASIVO — SIEMPRE en 2 pasos (nunca borres a la primera).
+
+    Detecta intención de borrar en bloque (NO confundir con ver):
+      "borra todo" / "borra todo lo viejo" / "borra todo para empezar el mes"
+        → [ACCION:borrar_todo|preguntar]
+      "borra agenda" / "limpia agenda" / "borra los eventos"
+        → [ACCION:borrar_agenda|preguntar]
+      "borra pagos" / "limpia pagos"            → [ACCION:borrar_pagos|preguntar]
+      "borra listados" / "borra mis listas"     → [ACCION:borrar_listados|preguntar]
+      "borra recordatorios" / "borra mis notas" → [ACCION:borrar_recordatorios|preguntar]
+
+    PASO 1 (usuario pide borrar): emite la acción con "preguntar". El sistema
+    cuenta y muestra la confirmación con los números — tú NO inventes el conteo,
+    solo emite la acción y un texto corto; el sistema arma el "⚠️ ¿Estás seguro?".
+
+    PASO 2 (el usuario responde tras esa pregunta):
+      • "sí" / "SÍ" / "confirmar" / "dale" / "hazlo" → repite la MISMA acción con
+        "confirmar" (ej. [ACCION:borrar_todo|confirmar]). El sistema borra.
+      • "no" / "cancelar" / "mejor no" → NO emitas ninguna acción y responde:
+        "👍 No borré nada. Tu información sigue intacta."
+
+    Solo emite "confirmar" si en el turno ANTERIOR tú pediste confirmación de
+    borrado. Si no hay esa pregunta previa, usa "preguntar".`;
 }
 
 // ═══ LLAMAR A CLAUDE ═══
@@ -922,6 +979,39 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
       } else if (accion === 'borrar_recordatorio') {
         const { error } = await supabase.from('reminders').delete().eq('id', parts[1]).eq('user_id', userId);
         if (!error) ejecutadas.push({ accion: 'borrado', tipo: 'recordatorio', id: parts[1] });
+
+      } else if (accion === 'borrar_todo' || accion === 'borrar_agenda' || accion === 'borrar_pagos' || accion === 'borrar_listados' || accion === 'borrar_recordatorios') {
+        // Borrado MASIVO en 2 pasos. parts[1]: 'confirmar' ejecuta; cualquier otra
+        // cosa ('preguntar'/vacío) solo cuenta y pide confirmación. Siempre scoped al user.
+        const fase = (parts[1] || '').trim().toLowerCase();
+        const quiere = {
+          borrar_todo:          { agenda: true, pagos: true, listados: true, recordatorios: true },
+          borrar_agenda:        { agenda: true },
+          borrar_pagos:         { pagos: true },
+          borrar_listados:      { listados: true },
+          borrar_recordatorios: { recordatorios: true }
+        }[accion];
+        const contar = async (tabla, tipos) => {
+          let q = supabase.from(tabla).select('*', { count: 'exact', head: true }).eq('user_id', userId);
+          if (tipos) q = q.in('tipo', tipos);
+          const { count } = await q;
+          return count || 0;
+        };
+        const counts = {};
+        if (quiere.agenda)        counts.agenda = await contar('events');
+        if (quiere.pagos)         counts.pagos = await contar('payments');
+        if (quiere.listados)      counts.listados = await contar('reminders', ['listado', 'lista']);
+        if (quiere.recordatorios) counts.recordatorios = await contar('reminders', ['nota', 'definicion']);
+
+        if (fase === 'confirmar') {
+          if (quiere.agenda)        await supabase.from('events').delete().eq('user_id', userId);
+          if (quiere.pagos)         await supabase.from('payments').delete().eq('user_id', userId);
+          if (quiere.listados)      await supabase.from('reminders').delete().eq('user_id', userId).in('tipo', ['listado', 'lista']);
+          if (quiere.recordatorios) await supabase.from('reminders').delete().eq('user_id', userId).in('tipo', ['nota', 'definicion']);
+          ejecutadas.push({ accion: 'borrado_masivo', fase: 'confirmado', alcance: accion, counts });
+        } else {
+          ejecutadas.push({ accion: 'borrado_masivo', fase: 'preguntar', alcance: accion, counts });
+        }
 
       } else if (accion === 'borrar_meta') {
         const { error } = await supabase.from('metas').delete().eq('id', parts[1]).eq('user_id', userId);
