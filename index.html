@@ -147,6 +147,29 @@ html,body{width:100%;height:100%;background:var(--bg);font-family:'DM Sans',sans
 .pago-date{font-size:10px;color:var(--t3);margin-top:1px;}
 .pago-right{text-align:right;}
 .pago-amt{font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:var(--t1);}
+/* ── Fase 5: progreso de abono + modal de pago ── */
+.pago-prog{height:6px;background:var(--bd2);border-radius:20px;overflow:hidden;margin-top:6px;}
+.pago-prog-fill{height:100%;background:var(--amber);border-radius:20px;transition:width .3s;}
+.pago-prog-txt{font-size:9.5px;color:var(--t3);margin-top:3px;}
+.pago-continue{margin-top:8px;width:100%;padding:8px;font-size:11px;font-weight:700;border:none;border-radius:10px;background:rgba(245,158,11,0.15);color:#f59e0b;cursor:pointer;}
+.pago-continue:active{background:rgba(245,158,11,0.28);}
+.pagar-modes{display:flex;gap:18px;margin:14px 0;}
+.pagar-chk{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--t2);cursor:pointer;user-select:none;}
+.pagar-chk input{width:16px;height:16px;accent-color:var(--blue);cursor:pointer;}
+.pagar-hint{font-size:11px;color:var(--t3);margin-bottom:10px;}
+.fuente-row{padding:9px 11px;border:1px solid var(--bd2);border-radius:12px;margin-bottom:8px;cursor:pointer;transition:border-color .15s;}
+.fuente-row.sel{border-color:var(--blue);background:rgba(59,130,246,0.06);}
+.fuente-row.disabled{opacity:.42;cursor:not-allowed;}
+.fuente-top{display:flex;align-items:center;gap:8px;}
+.fuente-nombre{flex:1;font-size:12.5px;font-weight:600;color:var(--t1);}
+.fuente-saldo{font-size:11px;color:var(--t3);white-space:nowrap;}
+.fuente-inp{width:100%;margin-top:7px;padding:8px 10px;border:1px solid var(--bd2);border-radius:10px;background:var(--bg);color:var(--t1);font-size:13px;font-weight:700;}
+.fuente-inp.over{border-color:var(--red);color:var(--red);}
+.fuente-rowhint{font-size:9.5px;color:var(--amber);margin-top:4px;}
+.pagar-resumen{font-size:12.5px;font-weight:700;color:var(--t1);margin:12px 0 14px;line-height:1.6;}
+.pagar-resumen .pend{color:var(--amber);}
+.pagar-resumen .ok{color:var(--green);}
+.pagar-resumen .bad{color:var(--red);}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:10px;}
 .cal-day-head{text-align:center;font-size:9px;font-weight:700;color:var(--t3);padding:3px 0;}
 .cal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--t1);border-radius:7px;position:relative;cursor:pointer;}
@@ -1554,8 +1577,31 @@ select.form-inp option{background:#0c1228;}
       <button class="modal-close" onclick="hideModal('modal-pago-detalle')">✕</button>
     </div>
     <div id="pago-detalle-body"></div>
-    <button class="btn-primary" onclick="marcarPagado()">✅ Marcar como pagado</button>
+    <button class="btn-primary" id="pago-detalle-pay" onclick="abrirModalPagar(pagoDetalleId)">💳 Pagar</button>
     <button class="btn-danger" onclick="eliminarPago()">🗑 Eliminar pago</button>
+  </div>
+</div>
+
+<!-- Pagar / Abonar (Fase 5) -->
+<div class="modal-overlay hidden" id="modal-pagar" onclick="closeModalOutside(event,'modal-pagar')">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-ttl" id="pagar-titulo">Pagar</span>
+      <button class="modal-close" onclick="hideModal('modal-pagar')">✕</button>
+    </div>
+    <div style="margin-bottom:6px">
+      <div style="font-size:11px;color:var(--t3)">Monto a pagar</div>
+      <div id="pagar-monto" style="font-size:26px;font-family:'Syne',sans-serif;font-weight:900;color:var(--t1)">$0</div>
+    </div>
+    <div class="pagar-modes">
+      <label class="pagar-chk"><input type="checkbox" id="pagar-multiple" onchange="onPagarModeChange()"> Pago múltiple</label>
+      <label class="pagar-chk"><input type="checkbox" id="pagar-abono" onchange="onPagarModeChange()"> Abono</label>
+    </div>
+    <div id="pagar-hint" class="pagar-hint"></div>
+    <div id="pagar-fuentes"></div>
+    <div id="pagar-resumen" class="pagar-resumen"></div>
+    <button class="btn-primary" id="pagar-guardar" onclick="confirmarPago()" disabled>Guardar pago</button>
+    <button class="btn-secondary" onclick="hideModal('modal-pagar')">Cancelar</button>
   </div>
 </div>
 
@@ -1785,6 +1831,11 @@ async function syncDesdeSupabase() {
       // para no romper consumidores que aún lean snake.
       fecha_limite: p.fecha_limite, fechaLimite: p.fecha_limite,
       fecha_pago: p.fecha_pago, fechaPago: p.fecha_pago,
+      categoria: p.categoria || 'otro',
+      cuentaId: p.account_id,
+      fijo: p.fijo === true,
+      montoAbonado: parseFloat(p.monto_abonado || 0),
+      montoPendiente: parseFloat(p.monto_pendiente != null ? p.monto_pendiente : p.monto),
       status: p.status
     }));
 
@@ -2739,6 +2790,8 @@ async function guardarPago(){
   const monto = parseCOP(document.getElementById('pago-monto').value);
   const fechaLimite = document.getElementById('pago-fecha').value;
   const categoria = document.getElementById('pago-categoria').value;
+  const cuentaSel = document.getElementById('pago-cuenta').value;
+  const fijo = document.getElementById('pago-fijo-toggle').classList.contains('on');
 
   if(!nombre){ toast('⚠️ Escribe un nombre','var(--amber)'); return; }
   if(!monto){ toast('⚠️ Ingresa un monto','var(--amber)'); return; }
@@ -2746,13 +2799,15 @@ async function guardarPago(){
 
   const { error } = await supa.from('payments').insert({
     user_id: currentUser.id, nombre, monto,
-    fecha_limite: fechaLimite, status: 'pendiente'
+    fecha_limite: fechaLimite, categoria, fijo,
+    account_id: cuentaSel || null, status: 'pendiente'
   });
   if(error){ toast('❌ Error: '+error.message,'var(--red)'); return; }
 
   hideModal('modal-nuevo-pago');
   document.getElementById('pago-nombre').value='';
   document.getElementById('pago-monto').value='';
+  document.getElementById('pago-fijo-toggle').classList.remove('on');
   toast('✅ Pago creado','var(--green)');
   await syncDesdeSupabase();
 }
@@ -2763,11 +2818,14 @@ function renderPagos(){
   const hoyStr = todayStr();
   let pagos = DB.pagos.map(p=>{
     const diff = Math.floor((new Date(p.fechaLimite+'T12:00:00')-new Date(hoyStr+'T12:00:00'))/(1000*60*60*24));
-    const status = p.status==='pagado'?'pagado':(diff<0?'vencido':diff<=3?'proximo':'pendiente');
+    let status;
+    if(p.status==='pagado') status='pagado';
+    else if(p.status==='abonado') status='abonado';
+    else status = (diff<0?'vencido':diff<=3?'proximo':'pendiente');
     return {...p, status, diff};
   });
 
-  if(pagoFiltro==='pendiente') pagos=pagos.filter(p=>p.status==='pendiente'||p.status==='proximo');
+  if(pagoFiltro==='pendiente') pagos=pagos.filter(p=>['pendiente','proximo','vencido','abonado'].includes(p.status));
   if(pagoFiltro==='pagado') pagos=pagos.filter(p=>p.status==='pagado');
   if(pagoFiltro==='vencido') pagos=pagos.filter(p=>p.status==='vencido');
 
@@ -2778,15 +2836,38 @@ function renderPagos(){
   }
 
   el.innerHTML = pagos.map(p=>{
+    const abonado = p.montoAbonado || 0;
+    const pendiente = p.montoPendiente != null ? p.montoPendiente : (p.monto - abonado);
+
+    // 🟡 ABONADO — barra de progreso + continuar pagando
+    if(p.status==='abonado'){
+      const pct = p.monto>0 ? Math.min(100, Math.round(abonado/p.monto*100)) : 0;
+      return `<div class="pago-card" style="flex-direction:column;align-items:stretch;gap:0" onclick="abrirPagoDetalle(${p.id})">
+        <div style="display:flex;align-items:center;gap:9px">
+          <div class="pago-ico" style="background:rgba(245,158,11,0.12)">${catPagoIco[p.categoria]||'📦'}</div>
+          <div class="pago-info">
+            <div class="pago-name">${p.nombre}${p.fijo?' 🔁':''}</div>
+            <div class="pago-date">${fmtCOP(p.monto)} total</div>
+          </div>
+          <div class="ar-tag tag-soon" style="align-self:flex-start">🟡 Abonado</div>
+        </div>
+        <div class="pago-prog"><div class="pago-prog-fill" style="width:${pct}%"></div></div>
+        <div class="pago-prog-txt">Pagado: ${fmtCOP(abonado)} · Falta: ${fmtCOP(pendiente)} (${pct}%)</div>
+        <button class="pago-continue" onclick="event.stopPropagation();abrirModalPagar(${p.id})">Continuar pagando</button>
+      </div>`;
+    }
+
+    // 🔴 PENDIENTE/PRÓXIMO/VENCIDO  ·  🟢 PAGADO
     const tagCls = p.status==='pagado'?'tag-paid':p.status==='vencido'?'tag-pend':'tag-soon';
-    const tagTxt = p.status==='pagado'?'Pagado':p.status==='vencido'?'Vencido':p.diff===0?'Hoy':'En '+p.diff+'d';
+    const tagTxt = p.status==='pagado'?'Pagado ✓':p.status==='vencido'?'Vencido':p.diff===0?'Hoy':'En '+p.diff+'d';
+    const dot = p.status==='pagado'?'':'🔴 ';
     const fechaLine = p.status==='pagado' && p.fechaPago
       ? `Pagado el ${fmtDate(p.fechaPago)}`
       : `Vence ${fmtDate(p.fechaLimite)}`;
     return `<div class="pago-card" onclick="abrirPagoDetalle(${p.id})">
       <div class="pago-ico" style="background:rgba(59,130,246,0.1)">${catPagoIco[p.categoria]||'📦'}</div>
       <div class="pago-info">
-        <div class="pago-name">${p.nombre}${p.fijo?' 🔁':''}</div>
+        <div class="pago-name">${dot}${p.nombre}${p.fijo?' 🔁':''}</div>
         <div class="pago-date">${fechaLine}</div>
       </div>
       <div class="pago-right">
@@ -2804,43 +2885,246 @@ function abrirPagoDetalle(id){
   document.getElementById('pago-detalle-nombre').textContent = p.nombre;
   const hoyStr = todayStr();
   const diff = Math.floor((new Date(p.fechaLimite+'T12:00:00')-new Date(hoyStr+'T12:00:00'))/(1000*60*60*24));
-  const cuenta = DB.cuentas.find(c=>String(c.id)===String(p.cuentaId));
+  const esPagado = p.status==='pagado';
+  const esAbonado = p.status==='abonado';
+  const abonado = p.montoAbonado || 0;
+  const pendiente = p.montoPendiente != null ? p.montoPendiente : (p.monto - abonado);
+  let progHtml = '';
+  if(esAbonado){
+    const pct = p.monto>0 ? Math.min(100, Math.round(abonado/p.monto*100)) : 0;
+    progHtml = `<div class="pago-prog" style="margin-top:10px"><div class="pago-prog-fill" style="width:${pct}%"></div></div>
+      <div class="pago-prog-txt">Pagado: ${fmtCOP(abonado)} · Falta: ${fmtCOP(pendiente)} (${pct}%)</div>`;
+  }
   document.getElementById('pago-detalle-body').innerHTML = `
     <div style="margin-bottom:12px">
       <div style="font-size:26px;font-family:'Syne',sans-serif;font-weight:900;color:var(--t1)">${fmtCOP(p.monto)}</div>
-      <div style="font-size:11px;color:var(--t3);margin-top:3px">Vence: ${fmtDate(p.fechaLimite)} ${diff<0?'· <span style="color:var(--red)">Vencido</span>':diff===0?'· <span style="color:var(--amber)">Hoy</span>':''}</div>
-      ${cuenta?`<div style="font-size:11px;color:var(--t3)">Cuenta: ${cuenta.nombre}</div>`:''}
+      <div style="font-size:11px;color:var(--t3);margin-top:3px">Vence: ${fmtDate(p.fechaLimite)} ${diff<0&&!esPagado?'· <span style="color:var(--red)">Vencido</span>':diff===0&&!esPagado?'· <span style="color:var(--amber)">Hoy</span>':''}</div>
       ${p.fijo?'<div style="font-size:11px;color:var(--blue);margin-top:4px">🔁 Gasto fijo</div>':''}
-      ${p.status==='pagado'?`<div style="font-size:12px;font-weight:700;color:var(--green);margin-top:8px">✅ Pagado${p.fechaPago?` el ${fmtDate(p.fechaPago)}`:''}</div>`:''}
+      ${esPagado?`<div style="font-size:12px;font-weight:700;color:var(--green);margin-top:8px">✅ Pagado${p.fechaPago?` el ${fmtDate(p.fechaPago)}`:''}</div>`:''}
+      ${progHtml}
     </div>`;
+  const payBtn = document.getElementById('pago-detalle-pay');
+  if(esPagado){
+    payBtn.style.display = 'none';
+  } else {
+    payBtn.style.display = '';
+    payBtn.textContent = esAbonado ? '💳 Continuar pagando' : '💳 Pagar';
+  }
   showModal('modal-pago-detalle');
 }
 
-async function marcarPagado(){
-  if(!(await sesionLista())){ toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
-  const p = DB.pagos.find(x=>String(x.id)===String(pagoDetalleId));
-  if(!p){ hideModal('modal-pago-detalle'); return; }
-  if(p.status==='pagado'){ toast('Ya está marcado como pagado','var(--amber)'); return; }
+// ════════════════════════════════════════
+// PAGAR / ABONAR (Fase 5) — modal de 4 modos + RPC atómica registrar_pago
+// ════════════════════════════════════════
+let pagarState = null; // { pago, target }
+let pagarSel = null;   // { multiple, abono, radioIdx, fuentes, lineas }
 
-  // 1) Persistir el estado del pago en Supabase.
-  const { error: errPago } = await supa.from('payments')
-    .update({ status: 'pagado', fecha_pago: todayStr() }).eq('id', p.id).eq('user_id', currentUser.id);
-  if(errPago){ toast('Error: '+errPago.message,'var(--red)'); return; }
+function fuentesDisponibles(){
+  const cuentas = (DB.cuentas||[]).map(c=>({tipo:'cuenta', id:c.id, nombre:c.nombre, saldo:parseFloat(c.saldo||0)}));
+  const cajas   = (DB.cajas||[]).map(c=>({tipo:'caja',   id:c.id, nombre:'🏦 '+c.nombre, saldo:parseFloat(c.saldo||0)}));
+  return [...cuentas, ...cajas];
+}
 
-  // 2) Registrar el gasto en movements (Supabase) para que el saldo y el historial cuadren.
-  const cuentaId = p.cuentaId || null;
-  await supa.from('movements').insert({
-    user_id: currentUser.id, tipo: 'gasto', descripcion: 'Pago: '+p.nombre,
-    monto: p.monto, fecha: todayStr(), account_id: cuentaId, categoria: 'servicios', source: 'pago'
-  });
-  // 3) Ajustar saldo de la cuenta si aplica.
-  if(cuentaId){
-    const cuenta = DB.cuentas.find(c=>String(c.id)===String(cuentaId));
-    if(cuenta) await supa.from('accounts').update({ saldo: cuenta.saldo - p.monto }).eq('id', cuentaId).eq('user_id', currentUser.id);
-  }
+function abrirModalPagar(id){
+  const p = DB.pagos.find(x=>String(x.id)===String(id));
+  if(!p){ toast('Pago no encontrado','var(--red)'); return; }
+  if(p.status==='pagado'){ toast('Ya está pagado','var(--amber)'); return; }
+  const abonado = p.montoAbonado || 0;
+  const target = p.montoPendiente != null ? p.montoPendiente : (p.monto - abonado);
+  pagarState = { pago: p, target };
   hideModal('modal-pago-detalle');
-  toast('✓ Pago registrado','var(--green)');
+  document.getElementById('pagar-titulo').textContent = p.nombre;
+  document.getElementById('pagar-monto').textContent = fmtCOP(target);
+  document.getElementById('pagar-multiple').checked = false;
+  document.getElementById('pagar-abono').checked = false;
+  renderFuentesPago();
+  showModal('modal-pagar');
+}
+
+function onPagarModeChange(){ renderFuentesPago(); }
+
+function renderFuentesPago(){
+  const multiple = document.getElementById('pagar-multiple').checked;
+  const abono = document.getElementById('pagar-abono').checked;
+  const fuentes = fuentesDisponibles();
+  const cont = document.getElementById('pagar-fuentes');
+  const hint = document.getElementById('pagar-hint');
+  const target = pagarState.target;
+  pagarSel = { multiple, abono, radioIdx:null, fuentes, lineas:[] };
+
+  if(!fuentes.length){
+    cont.innerHTML = '<div style="font-size:12px;color:var(--t3)">No tienes cuentas ni cajas para pagar.</div>';
+    hint.textContent='';
+    document.getElementById('pagar-resumen').textContent='';
+    document.getElementById('pagar-guardar').disabled = true;
+    return;
+  }
+
+  if(multiple){
+    hint.textContent = abono
+      ? 'Marca las fuentes del abono e ingresa cuánto sale de cada una.'
+      : 'Marca las fuentes y reparte el monto exacto entre ellas.';
+    cont.innerHTML = fuentes.map((f,i)=>`
+      <div class="fuente-row" id="frow-${i}">
+        <div class="fuente-top">
+          <input type="checkbox" id="fchk-${i}" style="width:16px;height:16px;accent-color:var(--blue)" onchange="onFuenteToggle(${i})">
+          <div class="fuente-nombre">${f.nombre}</div>
+          <div class="fuente-saldo">${fmtCOP(f.saldo)}</div>
+        </div>
+        <input class="fuente-inp" id="finp-${i}" type="text" inputmode="numeric" placeholder="0" style="display:none" oninput="onFuenteInput(${i})">
+        <div class="fuente-rowhint" id="fhint-${i}" style="display:none"></div>
+      </div>`).join('');
+  } else {
+    hint.textContent = abono ? 'Elige la cuenta y cuánto vas a abonar.' : 'Elige de dónde sale el pago.';
+    cont.innerHTML = fuentes.map((f,i)=>{
+      const insuf = !abono && f.saldo < target; // en pago simple debe alcanzar el total
+      return `
+      <div class="fuente-row ${insuf?'disabled':''}" id="frow-${i}" ${insuf?'':`onclick="selectFuenteRadio(${i})"`}>
+        <div class="fuente-top">
+          <input type="radio" name="pagar-fuente" id="frad-${i}" ${insuf?'disabled':''} style="width:16px;height:16px;accent-color:var(--blue)" onchange="selectFuenteRadio(${i})">
+          <div class="fuente-nombre">${f.nombre}</div>
+          <div class="fuente-saldo">${fmtCOP(f.saldo)}</div>
+        </div>
+        ${insuf?'<div class="fuente-rowhint">Activa Pago múltiple o Abono</div>':''}
+      </div>`;
+    }).join('');
+    if(abono){
+      cont.innerHTML += `
+      <div style="margin-top:10px">
+        <div style="font-size:11px;color:var(--t2);margin-bottom:5px">¿Cuánto abonas?</div>
+        <input class="fuente-inp" id="abono-monto" type="text" inputmode="numeric" placeholder="0" oninput="onAbonoMontoInput()">
+        <div class="fuente-rowhint" id="abono-hint" style="margin-top:4px"></div>
+      </div>`;
+    }
+  }
+  recalcPagar();
+}
+
+function onFuenteToggle(i){
+  const checked = document.getElementById('fchk-'+i).checked;
+  const inp = document.getElementById('finp-'+i);
+  inp.style.display = checked ? '' : 'none';
+  if(!checked){ inp.value=''; inp.classList.remove('over'); document.getElementById('fhint-'+i).style.display='none'; }
+  document.getElementById('frow-'+i).classList.toggle('sel', checked);
+  recalcPagar();
+}
+
+function onFuenteInput(i){
+  const f = pagarSel.fuentes[i];
+  const inp = document.getElementById('finp-'+i);
+  const hintEl = document.getElementById('fhint-'+i);
+  let val = parseCOP(inp.value);
+  if(val > f.saldo){ inp.classList.add('over'); hintEl.textContent='Máx: '+fmtCOP(f.saldo); hintEl.style.display=''; }
+  else { inp.classList.remove('over'); hintEl.style.display='none'; }
+  if(val>0) inp.value = val.toLocaleString('es-CO');
+  recalcPagar();
+}
+
+function selectFuenteRadio(i){
+  const f = pagarSel.fuentes[i];
+  if(!pagarSel.abono && f.saldo < pagarState.target) return; // insuficiente en pago simple
+  document.querySelectorAll('#pagar-fuentes .fuente-row').forEach(r=>r.classList.remove('sel'));
+  const row = document.getElementById('frow-'+i); if(row) row.classList.add('sel');
+  const rad = document.getElementById('frad-'+i); if(rad) rad.checked = true;
+  pagarSel.radioIdx = i;
+  recalcPagar();
+}
+
+function onAbonoMontoInput(){
+  const inp = document.getElementById('abono-monto');
+  let val = parseCOP(inp.value);
+  if(val>0) inp.value = val.toLocaleString('es-CO');
+  recalcPagar();
+}
+
+function recalcPagar(){
+  if(!pagarSel) return;
+  const target = pagarState.target;
+  const resumen = document.getElementById('pagar-resumen');
+  const btn = document.getElementById('pagar-guardar');
+  let total = 0, valido = true, lineas = [];
+
+  if(pagarSel.multiple){
+    pagarSel.fuentes.forEach((f,i)=>{
+      const chk = document.getElementById('fchk-'+i);
+      if(chk && chk.checked){
+        const v = parseCOP(document.getElementById('finp-'+i).value);
+        if(v>0){ lineas.push({tipo:f.tipo,id:f.id,monto:v}); total+=v; if(v>f.saldo) valido=false; }
+      }
+    });
+    if(!lineas.length) valido=false;
+    if(pagarSel.abono){ if(total<=0 || total>target) valido=false; }
+    else { if(total!==target) valido=false; }
+  } else if(pagarSel.abono){
+    const i = pagarSel.radioIdx;
+    const v = parseCOP((document.getElementById('abono-monto')||{}).value);
+    total = v;
+    if(i==null){ valido=false; }
+    else {
+      const f = pagarSel.fuentes[i];
+      const mx = Math.min(f.saldo, target);
+      const hintEl = document.getElementById('abono-hint');
+      if(hintEl){ hintEl.textContent='Máx: '+fmtCOP(mx); hintEl.style.display=''; }
+      if(v<=0 || v>f.saldo || v>target) valido=false;
+      else lineas.push({tipo:f.tipo,id:f.id,monto:v});
+    }
+  } else {
+    const i = pagarSel.radioIdx;
+    if(i==null){ valido=false; }
+    else {
+      const f = pagarSel.fuentes[i];
+      total = target;
+      if(f.saldo < target) valido=false;
+      else lineas.push({tipo:f.tipo,id:f.id,monto:target});
+    }
+  }
+
+  // Resumen visual
+  if(pagarSel.multiple){
+    if(pagarSel.abono){
+      resumen.innerHTML = `Total abono: <span class="ok">${fmtCOP(total)}</span><br>Pendiente del pago: <span class="pend">${fmtCOP(Math.max(0,target-total))}</span>`;
+    } else {
+      const cls = total===target?'ok':(total>target?'bad':'');
+      resumen.innerHTML = `Total ingresado: <span class="${cls}">${fmtCOP(total)}</span> / ${fmtCOP(target)}`;
+    }
+  } else if(pagarSel.abono){
+    resumen.innerHTML = `Abonando: <span class="ok">${fmtCOP(total)}</span><br>Pendiente: <span class="pend">${fmtCOP(Math.max(0,target-total))}</span>`;
+  } else {
+    resumen.innerHTML = pagarSel.radioIdx!=null ? `Pagando: <span class="ok">${fmtCOP(target)}</span>` : 'Selecciona una cuenta';
+  }
+
+  pagarSel.lineas = lineas;
+  btn.disabled = !valido;
+  const esAbono = pagarSel.abono || (pagarSel.multiple ? total<target : false);
+  btn.textContent = esAbono ? 'Guardar abono' : 'Guardar pago';
+}
+
+async function confirmarPago(){
+  if(!(await sesionLista())){ toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
+  if(!pagarSel || !pagarSel.lineas || !pagarSel.lineas.length){ toast('Selecciona el medio de pago','var(--amber)'); return; }
+  const btn = document.getElementById('pagar-guardar');
+  btn.disabled = true;
+  const { data, error } = await supa.rpc('registrar_pago', {
+    p_user_id: currentUser.id,
+    p_pago_id: pagarState.pago.id,
+    p_lineas: pagarSel.lineas,
+    p_fecha: todayStr()
+  });
+  if(error){
+    const m = error.message || '';
+    let msg = '❌ No se pudo registrar el pago';
+    if(m.includes('SALDO_INSUFICIENTE')) msg='❌ Saldo insuficiente en una de las fuentes';
+    else if(m.includes('EXCEDE_PENDIENTE')) msg='❌ El monto supera lo pendiente';
+    else if(m.includes('YA_PAGADO')) msg='Este pago ya está saldado';
+    else if(m) msg='❌ '+m;
+    toast(msg,'var(--red)');
+    btn.disabled = false;
+    return;
+  }
+  hideModal('modal-pagar');
+  toast(data && data.status==='pagado' ? '✅ Pago completado' : '🟡 Abono registrado','var(--green)');
   await syncDesdeSupabase();
+  renderPagos();
 }
 
 async function eliminarPago(){
