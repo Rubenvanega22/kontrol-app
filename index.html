@@ -126,6 +126,11 @@ html,body{width:100%;height:100%;background:var(--bg);font-family:'DM Sans',sans
 .filter-row::-webkit-scrollbar{display:none;}
 .fbtn{padding:5px 11px;border-radius:20px;border:1px solid var(--bd);background:transparent;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;color:var(--t3);cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all 0.15s;}
 .fbtn.on{background:rgba(59,130,246,0.15);border-color:rgba(59,130,246,0.3);color:var(--t1);}
+/* Sub-tabs de Recordar (Recordatorios / Listados): +2px sobre .fbtn */
+#rsub-recordatorios,#rsub-listados{font-size:13px;}
+/* Animación del botón de refresco manual 🔄 */
+@keyframes kspin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.spin{animation:kspin 0.6s linear;}
 .search-wrap{display:flex;align-items:center;gap:7px;background:var(--card2);border:1px solid var(--bd);border-radius:12px;padding:8px 12px;margin-bottom:10px;}
 .search-ico{font-size:13px;color:var(--t3);}
 .search-inp{flex:1;background:transparent;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--t1);}
@@ -203,12 +208,12 @@ html,body{width:100%;height:100%;background:var(--bg);font-family:'DM Sans',sans
 .day-empty-btn:active{background:rgba(74,222,128,0.15);}
 .rec-card{background:var(--card);border:1px solid var(--bd2);border-radius:14px;padding:11px 12px;margin-bottom:8px;}
 .rec-type{font-size:9.5px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:4px;}
-.rec-title{font-size:13px;font-weight:600;color:var(--t1);margin-bottom:6px;}
+.rec-title{font-size:15px;font-weight:600;color:var(--t1);margin-bottom:6px;}
 .rec-check{display:flex;align-items:center;gap:7px;padding:4px 0;border-bottom:1px solid var(--bd2);cursor:pointer;user-select:none;}
 .rec-check:last-child{border:none;}
 .rec-cb{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--t3);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;}
 .rec-cb.done{background:var(--green);border-color:var(--green);}
-.rec-label{font-size:11.5px;color:var(--t2);}
+.rec-label{font-size:13.5px;color:var(--t2);}
 .rec-label.done{text-decoration:line-through;color:var(--t3);}
 .fab{position:absolute;bottom:70px;right:16px;width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#1a56db,#4a8fe8);border:none;color:#fff;font-size:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 16px rgba(26,86,219,0.4);z-index:20;}
 .bbar-wrap{flex-shrink:0;padding:6px 12px env(safe-area-inset-bottom, 12px);background:var(--bg);z-index:10;}
@@ -715,6 +720,7 @@ select.form-inp option{background:#0c1228;}
       <span class="logo-name">Kontrol</span><span style="font-size:9px;color:rgba(74,222,128,0.7);margin-left:4px;font-family:monospace">v5.2</span>
     </div>
     <div class="hdr-right">
+      <div class="hbtn" id="btn-refresh" onclick="refrescarPestana(this)" title="Actualizar">🔄</div>
       <div class="hbtn" onclick="goTab('inbox');setScanTab('bandeja')">🔔<div class="badge" id="notif-badge" style="display:none">0</div></div>
       <div class="hbtn" onclick="goTab('config')">⚙️</div>
     </div>
@@ -759,10 +765,7 @@ select.form-inp option{background:#0c1228;}
         <div class="bal">
           <div class="bal-top">
             <div class="bal-text">
-              <div class="bal-lbl">Saldo total
-                <button id="btn-refresh-resumen" onclick="refrescarManual()" title="Sincronizar con servidor"
-                  style="background:rgba(255,255,255,0.06);border:none;border-radius:5px;width:22px;height:22px;cursor:pointer;font-size:11px;padding:0;margin-left:6px;color:var(--t2);vertical-align:middle">🔄</button>
-              </div>
+              <div class="bal-lbl">Saldo total</div>
               <div class="bal-amt" id="bal-total">$0</div>
               <div class="bal-sub">Este mes <b id="bal-cambio">+$0</b></div>
             </div>
@@ -889,16 +892,6 @@ select.form-inp option{background:#0c1228;}
         <div class="filter-row">
           <button class="fbtn on" id="rsub-recordatorios" onclick="setRecSubtab('recordatorios')">🔔 Recordatorios</button>
           <button class="fbtn" id="rsub-listados" onclick="setRecSubtab('listados')">📋 Listados</button>
-        </div>
-        <div style="display:flex;gap:5px;margin-top:6px">
-          <button class="fbtn" id="mic-rec-btn"
-                  onmousedown="micPress(event,'recordar','mic-rec-btn')" onmouseup="micRelease(event)"
-                  onmouseleave="micRelease(event)"
-                  ontouchstart="micPress(event,'recordar','mic-rec-btn')" ontouchend="micRelease(event)"
-                  ontouchcancel="micRelease(event)"
-                  title="Mantén presionado y dicta: 'lista de mercado con pan, leche' o 'recordatorio mi clave 1234'">🎤 Hablar</button>
-          <button class="fbtn" onclick="abrirCamaraListado()">📷 Foto a lista</button>
-          <input type="file" id="foto-listado-input" accept="image/*" capture="environment" style="display:none" onchange="onFotoListado(event)"/>
         </div>
         <div id="recordar-list"></div>
         <div style="height:80px"></div>
@@ -1366,6 +1359,17 @@ select.form-inp option{background:#0c1228;}
   </div>
 </div>
 
+<!-- Cámara inteligente: imagen indecisa (otro / confianza baja) -->
+<div class="modal-overlay hidden" id="modal-clasif-imagen" onclick="if(event.target===this)clasifCancelar()">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-ttl">¿Qué hago con esta foto?</span></div>
+    <div style="font-size:14px;color:var(--t2);line-height:1.5;margin:4px 0 18px">No estoy seguro de qué es. Elige cómo quieres guardarla:</div>
+    <button class="btn-primary" onclick="clasifComoGasto()">📊 Registrar como gasto</button>
+    <button class="btn-secondary" onclick="clasifComoListado()">📋 Crear listado</button>
+    <button class="btn-secondary" onclick="clasifCancelar()">❌ Cancelar</button>
+  </div>
+</div>
+
 <!-- Diálogo de texto (reemplaza prompt()) -->
 <div class="modal-overlay hidden" id="modal-prompt" onclick="if(event.target===this)_uiPromptResolve(false)">
   <div class="modal">
@@ -1771,18 +1775,21 @@ function save(){
 // Refresca manualmente desde Supabase. Útil cuando cambios externos
 // (cron de emails, bot de WhatsApp) modificaron saldos en el servidor
 // y la instancia abierta del frontend aún tiene el snapshot anterior.
-async function refrescarManual() {
-  const btn = document.getElementById('btn-refresh-resumen');
-  if (btn) { btn.disabled = true; btn.style.opacity = '0.4'; btn.textContent = '⏳'; }
+// Refresco manual de la pestaña activa: anima el botón, sincroniza con
+// Supabase y re-renderiza solo la pantalla visible. Usado por el botón 🔄
+// global del header (visible en las 4 pestañas y todas las demás).
+async function refrescarPestana(btn) {
+  btn = btn || document.getElementById('btn-refresh');
+  if (btn) { btn.style.pointerEvents = 'none'; btn.classList.remove('spin'); void btn.offsetWidth; btn.classList.add('spin'); }
   try {
-    await syncDesdeSupabase();
-    renderResumen();
+    await syncDesdeSupabase();      // ya re-renderiza la pantalla activa
+    renderCurrentScreen();          // garantía extra por si la activa no entró en sync
     toast('✅ Actualizado', 'var(--green)');
   } catch (e) {
-    console.error('refrescarManual error:', e);
+    console.error('refrescarPestana error:', e);
     toast('Error al actualizar', 'var(--red)');
   } finally {
-    if (btn) { btn.disabled = false; btn.style.opacity = ''; btn.textContent = '🔄'; }
+    if (btn) setTimeout(() => { btn.style.pointerEvents = ''; btn.classList.remove('spin'); }, 600);
   }
 }
 
@@ -1861,9 +1868,10 @@ async function syncDesdeSupabase() {
     }));
 
     save();
-    renderResumen();
-    renderMovimientos();
-    renderRecordar();
+    // Re-renderiza SOLO la pantalla activa. Antes se renderizaban a mano
+    // resumen/movimientos/recordar, dejando fuera Pagos y Agenda (no se
+    // auto-refrescaban tras una acción). renderCurrentScreen cubre todas.
+    renderCurrentScreen();
   } catch(e) {
     console.error('Error sync Supabase:', e);
   }
@@ -3734,8 +3742,8 @@ function renderRecordar(){
         <div class="rec-title" style="padding-right:96px">📋 ${r.titulo}</div>
         <div style="margin-top:8px">${filas}</div>
         <div style="display:flex;gap:6px;margin-top:8px">
-          <input id="additem-${r.id}" class="form-inp" style="flex:1;font-size:12px;padding:6px 8px" placeholder="+ agregar ítem" onkeydown="if(event.key==='Enter')agregarItemListado('${r.id}')"/>
-          <button class="btn-secondary" style="padding:6px 12px;font-size:12px" onclick="agregarItemListado('${r.id}')">Agregar</button>
+          <input id="additem-${r.id}" class="form-inp" style="flex:1;min-width:0;font-size:14px;padding:6px 8px" placeholder="+ agregar ítem" onkeydown="if(event.key==='Enter')agregarItemListado('${r.id}')"/>
+          <button class="btn-secondary" style="width:auto;flex:0 0 auto;margin-bottom:0;padding:6px 14px;font-size:14px" onclick="agregarItemListado('${r.id}')">Agregar</button>
         </div>
       </div>`;
     }).join('');
@@ -4197,20 +4205,7 @@ async function procesarTextoRecordar(texto){
 }
 
 // ── FOTO → LISTADO (OCR con Claude Vision vía /api/ai-chat) ──
-function abrirCamaraListado(){
-  document.getElementById('foto-listado-input').click();
-}
-function onFotoListado(event){
-  const file = event.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = async (e)=>{
-    const compressed = await comprimirImagen(e.target.result, 1024, 0.85);
-    await analizarFotoListado(compressed.split(',')[1]);
-  };
-  reader.readAsDataURL(file);
-  event.target.value = '';
-}
+// Reutilizada por la cámara inteligente (clasificarYRutear / clasifComoListado).
 async function analizarFotoListado(b64){
   if(!(await sesionLista())){ toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
   toast('📷 Leyendo la lista…','var(--t2)');
@@ -4958,11 +4953,69 @@ function onImageSelected(event){
     document.getElementById("scan-preview-wrap").style.display="";
     document.getElementById("scan-empty-frame").style.display="none";
     document.getElementById("scan-result").style.display="none";
-    await analizarFactura();
+    await clasificarYRutear();   // cámara inteligente: decide factura/lista/otro
   };
   reader.readAsDataURL(file);
   event.target.value="";
 }
+
+// ── CÁMARA INTELIGENTE ──
+// Clasifica la imagen (factura | lista | otro) con Claude Haiku visión y rutea:
+//   factura → analizarFactura()  (flujo de facturas intacto, con form de confirmación)
+//   lista   → analizarFotoListado() (crea un listado en Recordar)
+//   otro / confianza baja → modal para que el usuario decida
+async function clasificarYRutear(){
+  document.getElementById('scan-loading').style.display='block';
+  document.getElementById('scan-no-key').style.display='none';
+  document.getElementById('scan-result').style.display='none';
+
+  const prompt = `Analiza esta imagen y clasifícala. Responde SOLO en JSON estricto, sin explicación ni markdown:
+{
+  "tipo": "factura" | "lista" | "otro",
+  "confianza": "alta" | "media" | "baja"
+}
+Criterio:
+- "factura": recibo, factura, comprobante de pago o de compra con un monto total.
+- "lista": una lista de tareas, de mercado o de ítems (manuscrita o impresa) sin ser un recibo.
+- "otro": cualquier otra cosa.`;
+
+  try{
+    const res = await fetch('/api/ai-chat', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ message: prompt, imagen_base64: scanImageBase64, history: [], user_id: currentUser?.id || null })
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || 'Error del servidor');
+    const c = parseIAJson(data.respuesta || '{}') || {};
+    const tipo = (c.tipo||'').toLowerCase();
+    const conf = (c.confianza||'').toLowerCase();
+
+    if(conf==='baja' || (tipo!=='factura' && tipo!=='lista')){
+      // Indeciso: que el usuario elija
+      document.getElementById('scan-loading').style.display='none';
+      showModal('modal-clasif-imagen');
+      return;
+    }
+    if(tipo==='lista'){
+      await analizarFotoListado(scanImageBase64);
+      resetScan();
+      goTab('recordar');
+      return;
+    }
+    // factura → flujo actual (analizarFactura gestiona su propio loading/result)
+    await analizarFactura();
+  }catch(e){
+    // Ante fallo de red/parseo, asumir factura (caso más común) en vez de bloquear
+    console.warn('[clasificar] fallback a factura:', e.message);
+    await analizarFactura();
+  }
+}
+
+// Handlers del modal de imagen indecisa
+function clasifComoGasto(){ hideModal('modal-clasif-imagen'); analizarFactura(); }
+async function clasifComoListado(){ hideModal('modal-clasif-imagen'); await analizarFotoListado(scanImageBase64); resetScan(); goTab('recordar'); }
+function clasifCancelar(){ hideModal('modal-clasif-imagen'); resetScan(); }
 
 function comprimirImagen(dataUrl, maxSize, quality){
   return new Promise(resolve=>{
