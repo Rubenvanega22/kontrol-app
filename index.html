@@ -178,8 +178,18 @@ html,body{width:100%;height:100%;background:var(--bg);font-family:'DM Sans',sans
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:10px;}
 .cal-day-head{text-align:center;font-size:9px;font-weight:700;color:var(--t3);padding:3px 0;}
 .cal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--t1);border-radius:7px;position:relative;cursor:pointer;}
-.cal-day.today{background:linear-gradient(135deg,#1a56db,#4a8fe8);color:#fff;font-weight:700;box-shadow:0 2px 8px rgba(26,86,219,0.4);}
-.cal-day.has-event::after{content:'';position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:3px;height:3px;border-radius:50%;background:var(--amber);}
+/* HOY no seleccionado: borde verde. */
+.cal-day.today:not(.selected){border:1.5px solid var(--green);font-weight:700;}
+/* Día seleccionado (no hoy): fondo azul. */
+.cal-day.selected:not(.today){background:linear-gradient(135deg,#1a56db,#4a8fe8);color:#fff;font-weight:700;box-shadow:0 2px 8px rgba(26,86,219,0.4);}
+/* HOY seleccionado: fondo verde, texto oscuro. */
+.cal-day.today.selected{background:var(--green);color:#08110a;font-weight:700;box-shadow:0 2px 8px rgba(74,222,128,0.4);}
+/* Puntos: azul = evento, ámbar = pago. */
+.cal-day .cd-dots{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);display:flex;gap:2px;line-height:0;}
+.cd-dot{width:3px;height:3px;border-radius:50%;}
+.cd-dot.ev{background:#4a8fe8;}
+.cd-dot.pg{background:var(--amber);}
+.cal-day.selected .cd-dot,.cal-day.today .cd-dot{background:#fff;}
 .cal-day.faded{color:var(--t4);cursor:default;}
 .cal-day:not(.faded):active{background:rgba(255,255,255,0.07);}
 /* Navegador de meses del calendario */
@@ -189,6 +199,15 @@ html,body{width:100%;height:100%;background:var(--bg);font-family:'DM Sans',sans
 .cal-nav-label{flex:1;text-align:center;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--t1);text-transform:capitalize;}
 .cal-nav-hoy{padding:0 12px;height:34px;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--t2);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;cursor:pointer;}
 .cal-nav-hoy:active{background:rgba(255,255,255,0.05);}
+/* Header de fecha de la Agenda */
+.agenda-day-hdr{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;}
+.agenda-fecha{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--t1);text-transform:capitalize;}
+.btn-volver-hoy{padding:0 12px;height:30px;border-radius:10px;border:1px solid rgba(74,222,128,0.3);background:rgba(74,222,128,0.08);color:var(--green);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;}
+.btn-volver-hoy:active{background:rgba(74,222,128,0.15);}
+.ver-dia-btn{padding:0 10px;height:28px;border-radius:9px;border:1px solid var(--bd);background:var(--card);color:var(--t2);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0;}
+.ver-dia-btn:active{background:rgba(255,255,255,0.05);}
+.agenda-next{margin-top:10px;text-align:center;font-size:12px;color:var(--t3);}
+.agenda-next b{color:var(--t2);}
 /* Modal vista diaria */
 .day-sec{margin-bottom:16px;}
 .day-sec-ttl{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--bd);}
@@ -869,16 +888,23 @@ select.form-inp option{background:#0c1228;}
     <div class="scr" id="scr-agenda">
       <div class="scroll">
         <div class="sc">
+          <div class="agenda-day-hdr">
+            <div class="agenda-fecha" id="agenda-fecha-txt"></div>
+            <button class="btn-volver-hoy" id="btn-volver-hoy" onclick="volverAHoy()" style="display:none">📍 Hoy</button>
+          </div>
           <div class="cal-nav">
             <button class="cal-nav-btn" onclick="prevMes()" aria-label="Mes anterior">‹</button>
             <span class="cal-nav-label" id="cal-nav-label"></span>
             <button class="cal-nav-btn" onclick="nextMes()" aria-label="Mes siguiente">›</button>
-            <button class="cal-nav-hoy" onclick="irHoy()">Hoy</button>
+            <button class="cal-nav-hoy" onclick="volverAHoy()">Hoy</button>
           </div>
           <div class="cal-grid" id="cal-grid"></div>
         </div>
         <div class="sc">
-          <div class="sc-hdr"><div class="sc-ttl">📋 Eventos</div></div>
+          <div class="sc-hdr">
+            <div class="sc-ttl" id="agenda-list-ttl">📋 Eventos de hoy</div>
+            <button class="ver-dia-btn" onclick="abrirModalDiario(agendaDiaSel)">📋 Ver día completo</button>
+          </div>
           <div id="agenda-list"></div>
         </div>
         <div style="height:80px"></div>
@@ -3467,17 +3493,68 @@ async function guardarEvento(){
   await syncDesdeSupabase();
 }
 
+// Día actualmente seleccionado en la Agenda (YYYY-MM-DD). Default: hoy.
+let agendaDiaSel = null;
+
+// Fecha de hoy en local (no UTC) como YYYY-MM-DD, coherente con renderCalendario.
+function hoyISO(){
+  const h = new Date();
+  return `${h.getFullYear()}-${String(h.getMonth()+1).padStart(2,'0')}-${String(h.getDate()).padStart(2,'0')}`;
+}
+
 function renderAgenda(){
+  if(!agendaDiaSel) agendaDiaSel = hoyISO();
   renderCalendario();
+  renderAgendaHeader();
+
   const el = document.getElementById('agenda-list');
-  const hoy = new Date();
-  const eventos = DB.eventos.filter(e=>new Date(e.fecha+'T12:00:00')>=new Date(hoy.toDateString())).sort((a,b)=>a.fecha.localeCompare(b.fecha));
-  if(!eventos.length){ el.innerHTML='<div class="empty"><div class="empty-ico">📅</div><div class="empty-txt">No hay eventos próximos</div></div>'; return; }
+  const eventos = DB.eventos
+    .filter(e=>e.fecha===agendaDiaSel)
+    .sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
+
+  if(!eventos.length){
+    let extra='';
+    const fut = DB.eventos
+      .filter(e=>e.fecha>agendaDiaSel)
+      .sort((a,b)=>a.fecha.localeCompare(b.fecha))[0];
+    if(fut) extra=`<div class="agenda-next">Próximo evento: <b>${fut.titulo}</b> · ${fmtDate(fut.fecha)}</div>`;
+    el.innerHTML=`<div class="empty"><div class="empty-ico">🎉</div><div class="empty-txt">Sin eventos. ¡Día libre!</div></div>${extra}`;
+    return;
+  }
   el.innerHTML = eventos.map(e=>`<div class="agenda-event" style="position:relative">
     <div class="ae-time">${e.hora||'—'}</div>
     <div class="ae-info"><div class="ae-title">${e.titulo}</div><div class="ae-sub">${fmtDate(e.fecha)}${e.nota?' · '+e.nota:''}</div></div>
     <button onclick="borrarEvento('${e.id}')" style="background:rgba(248,113,113,0.15);border:none;border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:12px;flex-shrink:0;align-self:center" title="Eliminar evento">🗑️</button>
   </div>`).join('');
+}
+
+// Header de fecha + título de la lista + visibilidad del botón "Volver a hoy".
+function renderAgendaHeader(){
+  const d = new Date(agendaDiaSel+'T12:00:00');
+  const cap = s => s.charAt(0).toUpperCase()+s.slice(1);
+  const dow = cap(d.toLocaleDateString('es-CO',{weekday:'long'}));
+  const dia = d.getDate();
+  const mes = d.toLocaleDateString('es-CO',{month:'long'});
+  const esHoy = agendaDiaSel === hoyISO();
+
+  document.getElementById('agenda-fecha-txt').textContent = `${dow}, ${dia} de ${mes}`;
+  document.getElementById('btn-volver-hoy').style.display = esHoy ? 'none' : '';
+  document.getElementById('agenda-list-ttl').textContent = esHoy ? '📋 Eventos de hoy' : `📋 Eventos del ${dia} de ${mes}`;
+}
+
+// Tocar un día del calendario: lo selecciona y refresca la Agenda.
+function onDiaClick(fecha){
+  agendaDiaSel = fecha;
+  renderAgenda();
+}
+
+// Volver a hoy: re-selecciona hoy y lleva el calendario al mes actual.
+function volverAHoy(){
+  const h = new Date();
+  agendaDiaSel = hoyISO();
+  calMes = h.getMonth();
+  calAnio = h.getFullYear();
+  renderAgenda();
 }
 
 async function borrarEvento(id){
@@ -3504,7 +3581,7 @@ async function borrarEventoDiario(id, fechaISO){
 }
 
 // Estado del calendario: mes/año actualmente visualizado.
-// renderCalendario lee estas vars; prevMes/nextMes/irHoy las modifican.
+// renderCalendario lee estas vars; prevMes/nextMes/volverAHoy las modifican.
 let calMes = new Date().getMonth();
 let calAnio = new Date().getFullYear();
 
@@ -3518,37 +3595,41 @@ function nextMes(){
   if(calMes > 11){ calMes = 0; calAnio++; }
   renderCalendario();
 }
-function irHoy(){
-  const h = new Date();
-  calMes = h.getMonth();
-  calAnio = h.getFullYear();
-  renderCalendario();
-}
 
 function renderCalendario(){
   const hoy = new Date();
   const esMesActual = (calMes === hoy.getMonth() && calAnio === hoy.getFullYear());
   const primerDia = new Date(calAnio, calMes, 1).getDay();
   const diasEnMes = new Date(calAnio, calMes+1, 0).getDate();
-  const eventoDias = new Set(DB.eventos.filter(e=>{
-    const d=new Date(e.fecha+'T12:00:00');
-    return d.getMonth()===calMes && d.getFullYear()===calAnio;
-  }).map(e=>new Date(e.fecha+'T12:00:00').getDate()));
+  const mesPad = String(calMes+1).padStart(2,'0');
+  const enEsteMes = iso => iso && iso.slice(0,7) === `${calAnio}-${mesPad}`;
+  // Días con evento (punto azul) y con pago/vencimiento (punto ámbar).
+  const eventoDias = new Set(DB.eventos
+    .filter(e=>enEsteMes(e.fecha))
+    .map(e=>parseInt(e.fecha.slice(8,10),10)));
+  const pagoDias = new Set((DB.pagos||[])
+    .map(p=>p.fechaLimite||p.fecha_limite)
+    .filter(enEsteMes)
+    .map(f=>parseInt(f.slice(8,10),10)));
 
   // Etiqueta "Mes Año" del navegador (capitalizada).
   const nombreMes = new Date(calAnio, calMes, 1).toLocaleDateString('es-CO', {month:'long', year:'numeric'});
   const labelEl = document.getElementById('cal-nav-label');
   if (labelEl) labelEl.textContent = nombreMes;
 
+  const selISO = agendaDiaSel || hoyISO();
   const heads = ['D','L','M','M','J','V','S'].map(d=>`<div class="cal-day-head">${d}</div>`).join('');
   let cells = '';
   for(let i=0;i<primerDia;i++) cells+=`<div class="cal-day faded"></div>`;
-  const mesPad = String(calMes+1).padStart(2,'0');
   for(let d=1;d<=diasEnMes;d++){
-    const isToday = esMesActual && d===hoy.getDate();
-    const hasEv = eventoDias.has(d);
     const fechaISO = `${calAnio}-${mesPad}-${String(d).padStart(2,'0')}`;
-    cells+=`<div class="cal-day${isToday?' today':''}${hasEv?' has-event':''}" onclick="abrirModalDiario('${fechaISO}')">${d}</div>`;
+    const isToday = esMesActual && d===hoy.getDate();
+    const isSel = fechaISO===selISO;
+    let dots='';
+    if(eventoDias.has(d)) dots+='<span class="cd-dot ev"></span>';
+    if(pagoDias.has(d)) dots+='<span class="cd-dot pg"></span>';
+    const dotsHtml = dots ? `<span class="cd-dots">${dots}</span>` : '';
+    cells+=`<div class="cal-day${isToday?' today':''}${isSel?' selected':''}" onclick="onDiaClick('${fechaISO}')">${d}${dotsHtml}</div>`;
   }
   document.getElementById('cal-grid').innerHTML = heads+cells;
 }
