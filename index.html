@@ -1199,8 +1199,8 @@ select.form-inp option{background:#0c1228;}
           <p style="font-size:11.5px;color:var(--t3);margin-bottom:10px;line-height:1.5">Elige cómo suena tu asistente cuando te responde.</p>
           <div class="voz-list">
             <label class="voz-card">
-              <input type="radio" name="voz" value="EXAVITQu4vr4xnSDxMaL" onchange="seleccionarVoz(this.value)"/>
-              <div><div class="voz-name">👩 Sofia</div><div class="voz-sub">Mujer · cálida</div></div>
+              <input type="radio" name="voz" value="zrHiDhphv9ZnVXBqCLjz" onchange="seleccionarVoz(this.value)"/>
+              <div><div class="voz-name">👩 Sofia</div><div class="voz-sub">alegre · natural</div></div>
             </label>
             <label class="voz-card">
               <input type="radio" name="voz" value="b2htR0pMe28pYwCY9gnP" onchange="seleccionarVoz(this.value)"/>
@@ -4596,7 +4596,7 @@ function renderConfig(){
   if(inpTel) inpTel.value = currentProfile?.telefono || '';
 
   // Voz seleccionada (radio del id guardado en profiles.voz_id; default Sofia)
-  const vozId = currentProfile?.voz_id || 'EXAVITQu4vr4xnSDxMaL';
+  const vozId = currentProfile?.voz_id || 'zrHiDhphv9ZnVXBqCLjz';
   const radio = document.querySelector(`input[name="voz"][value="${vozId}"]`);
   if(radio) radio.checked = true;
 
