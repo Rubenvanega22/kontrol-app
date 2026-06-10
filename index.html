@@ -185,11 +185,13 @@ html,body{width:100%;height:100%;background:var(--bg);font-family:'DM Sans',sans
 /* HOY seleccionado: fondo verde, texto oscuro. */
 .cal-day.today.selected{background:var(--green);color:#08110a;font-weight:700;box-shadow:0 2px 8px rgba(74,222,128,0.4);}
 /* Puntos: azul = evento, ámbar = pago. */
-.cal-day .cd-dots{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);display:flex;gap:2px;line-height:0;}
+.cal-day .cd-dots{position:absolute;bottom:5px;left:50%;transform:translateX(-50%);display:flex;gap:2px;line-height:0;}
 .cd-dot{width:3px;height:3px;border-radius:50%;}
 .cd-dot.ev{background:#4a8fe8;}
 .cd-dot.pg{background:var(--amber);}
 .cal-day.selected .cd-dot,.cal-day.today .cd-dot{background:#fff;}
+/* Festivo Colombia: rayita roja al fondo del día (no pisa los puntos). */
+.cal-day.festivo::after{content:'';position:absolute;bottom:2px;left:25%;width:50%;height:2px;background:#ef4444;border-radius:1px;pointer-events:none;}
 .cal-day.faded{color:var(--t4);cursor:default;}
 .cal-day:not(.faded):active{background:rgba(255,255,255,0.07);}
 /* Navegador de meses del calendario */
@@ -208,6 +210,7 @@ html,body{width:100%;height:100%;background:var(--bg);font-family:'DM Sans',sans
 .ver-dia-btn:active{background:rgba(255,255,255,0.05);}
 .agenda-next{margin-top:10px;text-align:center;font-size:12px;color:var(--t3);}
 .agenda-next b{color:var(--t2);}
+.agenda-festivo-nombre{font-size:11px;color:#ef4444;margin-top:2px;font-weight:500;}
 /* Modal vista diaria */
 .day-sec{margin-bottom:16px;}
 .day-sec-ttl{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--bd);}
@@ -892,6 +895,7 @@ select.form-inp option{background:#0c1228;}
             <div class="agenda-fecha" id="agenda-fecha-txt"></div>
             <button class="btn-volver-hoy" id="btn-volver-hoy" onclick="volverAHoy()" style="display:none">📍 Hoy</button>
           </div>
+          <div class="agenda-festivo-nombre" id="agenda-festivo" style="display:none"></div>
           <div class="cal-nav">
             <button class="cal-nav-btn" onclick="prevMes()" aria-label="Mes anterior">‹</button>
             <span class="cal-nav-label" id="cal-nav-label"></span>
@@ -3540,6 +3544,12 @@ function renderAgendaHeader(){
   document.getElementById('agenda-fecha-txt').textContent = `${dow}, ${dia} de ${mes}`;
   document.getElementById('btn-volver-hoy').style.display = esHoy ? 'none' : '';
   document.getElementById('agenda-list-ttl').textContent = esHoy ? '📋 Eventos de hoy' : `📋 Eventos del ${dia} de ${mes}`;
+
+  // Si el día seleccionado es festivo, mostrar su nombre debajo de la fecha.
+  const fest = document.getElementById('agenda-festivo');
+  const nombreFest = FESTIVOS_COLOMBIA_2026[agendaDiaSel];
+  if(nombreFest){ fest.textContent = `🇨🇴 ${nombreFest}`; fest.style.display=''; }
+  else { fest.style.display='none'; }
 }
 
 // Tocar un día del calendario: lo selecciona y refresca la Agenda.
@@ -3579,6 +3589,28 @@ async function borrarEventoDiario(id, fechaISO){
   await syncDesdeSupabase();
   abrirModalDiario(fechaISO);
 }
+
+// Festivos de Colombia 2026 (lista fija). Clave: YYYY-MM-DD → nombre.
+const FESTIVOS_COLOMBIA_2026 = {
+  '2026-01-01': 'Año Nuevo',
+  '2026-01-06': 'Reyes Magos',
+  '2026-03-23': 'San José',
+  '2026-04-02': 'Jueves Santo',
+  '2026-04-03': 'Viernes Santo',
+  '2026-05-01': 'Día del Trabajo',
+  '2026-05-18': 'Ascensión del Señor',
+  '2026-06-08': 'Corpus Christi',
+  '2026-06-15': 'Sagrado Corazón',
+  '2026-06-29': 'San Pedro y San Pablo',
+  '2026-07-20': 'Día de la Independencia',
+  '2026-08-07': 'Batalla de Boyacá',
+  '2026-08-17': 'Asunción de la Virgen',
+  '2026-10-12': 'Día de la Raza',
+  '2026-11-02': 'Todos los Santos',
+  '2026-11-16': 'Independencia de Cartagena',
+  '2026-12-08': 'Inmaculada Concepción',
+  '2026-12-25': 'Navidad'
+};
 
 // Estado del calendario: mes/año actualmente visualizado.
 // renderCalendario lee estas vars; prevMes/nextMes/volverAHoy las modifican.
@@ -3625,11 +3657,12 @@ function renderCalendario(){
     const fechaISO = `${calAnio}-${mesPad}-${String(d).padStart(2,'0')}`;
     const isToday = esMesActual && d===hoy.getDate();
     const isSel = fechaISO===selISO;
+    const isFest = !!FESTIVOS_COLOMBIA_2026[fechaISO];
     let dots='';
     if(eventoDias.has(d)) dots+='<span class="cd-dot ev"></span>';
     if(pagoDias.has(d)) dots+='<span class="cd-dot pg"></span>';
     const dotsHtml = dots ? `<span class="cd-dots">${dots}</span>` : '';
-    cells+=`<div class="cal-day${isToday?' today':''}${isSel?' selected':''}" onclick="onDiaClick('${fechaISO}')">${d}${dotsHtml}</div>`;
+    cells+=`<div class="cal-day${isToday?' today':''}${isSel?' selected':''}${isFest?' festivo':''}" onclick="onDiaClick('${fechaISO}')">${d}${dotsHtml}</div>`;
   }
   document.getElementById('cal-grid').innerHTML = heads+cells;
 }
