@@ -50,16 +50,18 @@ async function disparoSendWhatsApp() {
 }
 
 // ─── MODO A: resumen diario (8am Colombia) ──────────────────────────
+// Solo avisa eventos cuya fecha es HOY. Antes incluía "mañana", pero el flag
+// único notificado_agenda se consumía en ese aviso previo y el evento nunca
+// se anunciaba el día real (BUG 2/3). Ahora avisa exactamente el día del evento.
 async function modoResumenDiario() {
   const ahora = new Date();
   const hoy = colombiaDateString(ahora);
-  const manana = colombiaDateString(new Date(ahora.getTime() + 24 * 3600 * 1000));
 
-  console.log('[reminders-cron daily] hoy=', hoy, 'manana=', manana);
+  console.log('[reminders-cron daily] hoy=', hoy);
 
   const { data: eventos, error } = await supabase
     .from('events').select('*')
-    .in('fecha', [hoy, manana])
+    .eq('fecha', hoy)
     .eq('notificado_agenda', false);
   if (error) { console.error('[reminders-cron daily] query error:', error.message); return { error: error.message }; }
 
@@ -68,9 +70,8 @@ async function modoResumenDiario() {
   const porUsuario = {};
   for (const e of eventos) {
     if (!e.user_id) continue;
-    if (!porUsuario[e.user_id]) porUsuario[e.user_id] = { hoy: [], manana: [] };
-    if (e.fecha === hoy) porUsuario[e.user_id].hoy.push(e);
-    else porUsuario[e.user_id].manana.push(e);
+    if (!porUsuario[e.user_id]) porUsuario[e.user_id] = [];
+    porUsuario[e.user_id].push(e);
   }
 
   const userIds = Object.keys(porUsuario);
@@ -86,23 +87,20 @@ async function modoResumenDiario() {
   for (const userId of userIds) {
     const info = tels[userId];
     if (!info) continue;
-    const { hoy: eHoy, manana: eMan } = porUsuario[userId];
-    const partes = [];
-    if (eHoy.length) partes.push('📅 *Hoy:*\n' + eHoy.map(e => `• ${formatearEvento(e)}`).join('\n'));
-    if (eMan.length) partes.push('📆 *Mañana:*\n' + eMan.map(e => `• ${formatearEvento(e)}`).join('\n'));
-    if (!partes.length) continue;
+    const eHoy = porUsuario[userId];
+    if (!eHoy.length) continue;
+    const lista = '📅 *Hoy:*\n' + eHoy.map(e => `• ${formatearEvento(e)}`).join('\n');
     const saludo = info.nombre ? `Hola ${info.nombre}, ` : '';
-    const mensaje = `${saludo}aquí tus recordatorios de Kontrol:\n\n${partes.join('\n\n')}`;
+    const mensaje = `${saludo}aquí tus recordatorios de Kontrol:\n\n${lista}`;
     const { error: insErr } = await supabase.from('whatsapp_alerts').insert({
       tipo: 'recordatorio_agenda', mensaje, telefono: info.telefono, enviado: false
     });
     if (insErr) { console.error('[reminders-cron daily] insert failed', userId, insErr.message); continue; }
     alertas++;
     for (const e of eHoy) eventoIds.push(e.id);
-    for (const e of eMan) eventoIds.push(e.id);
   }
   if (eventoIds.length) await supabase.from('events').update({ notificado_agenda: true }).in('id', eventoIds);
-  return { alertas, marcados: eventoIds.length, hoy, manana };
+  return { alertas, marcados: eventoIds.length, hoy };
 }
 
 // ─── Helpers de teléfonos por user_id ──────────────────────────────
