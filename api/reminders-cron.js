@@ -82,25 +82,39 @@ async function modoResumenDiario() {
     if (p.telefono) tels[p.id] = { telefono: p.telefono, nombre: p.nombre };
   }
 
+  // Reclamo atómico: marcamos notificado_agenda de los eventos de usuarios CON
+  // teléfono antes de encolar, para que ticks concurrentes no dupliquen el envío.
+  const recipientUserIds = userIds.filter(u => tels[u]);
+  const recipientEventIds = recipientUserIds.flatMap(u => porUsuario[u].map(e => e.id));
+  const claimed = await reclamar('events', recipientEventIds,
+    { notificado_agenda: true }, q => q.eq('notificado_agenda', false));
+
+  const claimedPorUsuario = {};
+  for (const e of claimed) {
+    if (!claimedPorUsuario[e.user_id]) claimedPorUsuario[e.user_id] = [];
+    claimedPorUsuario[e.user_id].push(e);
+  }
+
   let alertas = 0;
-  const eventoIds = [];
-  for (const userId of userIds) {
+  for (const userId of Object.keys(claimedPorUsuario)) {
     const info = tels[userId];
     if (!info) continue;
-    const eHoy = porUsuario[userId];
-    if (!eHoy.length) continue;
+    const eHoy = claimedPorUsuario[userId];
     const lista = '📅 *Hoy:*\n' + eHoy.map(e => `• ${formatearEvento(e)}`).join('\n');
     const saludo = info.nombre ? `Hola ${info.nombre}, ` : '';
     const mensaje = `${saludo}aquí tus recordatorios de Kontrol:\n\n${lista}`;
     const { error: insErr } = await supabase.from('whatsapp_alerts').insert({
       tipo: 'recordatorio_agenda', mensaje, telefono: info.telefono, enviado: false
     });
-    if (insErr) { console.error('[reminders-cron daily] insert failed', userId, insErr.message); continue; }
+    if (insErr) {
+      console.error('[reminders-cron daily] insert failed', userId, insErr.message);
+      // revertir el reclamo para reintentar en el próximo tick
+      await supabase.from('events').update({ notificado_agenda: false }).in('id', eHoy.map(e => e.id));
+      continue;
+    }
     alertas++;
-    for (const e of eHoy) eventoIds.push(e.id);
   }
-  if (eventoIds.length) await supabase.from('events').update({ notificado_agenda: true }).in('id', eventoIds);
-  return { alertas, marcados: eventoIds.length, hoy };
+  return { alertas, marcados: claimed.length, hoy };
 }
 
 // ─── MODO C: recordatorios de la pestaña "Recordar" (tabla reminders) ──
@@ -132,12 +146,23 @@ async function modoRecordatorios() {
     if (p.telefono) tels[p.id] = { telefono: p.telefono, nombre: p.nombre };
   }
 
+  // Reclamo atómico de los recordatorios de usuarios CON teléfono (anti-duplicados).
+  const recipientUserIds = userIds.filter(u => tels[u]);
+  const recipientIds = recipientUserIds.flatMap(u => porUsuario[u].map(r => r.id));
+  const claimed = await reclamar('reminders', recipientIds,
+    { notificado: true }, q => q.eq('notificado', false));
+
+  const claimedPorUsuario = {};
+  for (const r of claimed) {
+    if (!claimedPorUsuario[r.user_id]) claimedPorUsuario[r.user_id] = [];
+    claimedPorUsuario[r.user_id].push(r);
+  }
+
   let alertas = 0;
-  const recIds = [];
-  for (const userId of userIds) {
+  for (const userId of Object.keys(claimedPorUsuario)) {
     const info = tels[userId];
     if (!info) continue;
-    const items = porUsuario[userId];
+    const items = claimedPorUsuario[userId];
     const lista = items.map(r => {
       const esListado = (r.tipo === 'listado' || r.tipo === 'lista');
       const subitems = (r.content && r.content.items) || [];
@@ -152,12 +177,14 @@ async function modoRecordatorios() {
     const { error: insErr } = await supabase.from('whatsapp_alerts').insert({
       tipo: 'recordatorio_nota', mensaje, telefono: info.telefono, enviado: false
     });
-    if (insErr) { console.error('[reminders-cron recordar] insert failed', userId, insErr.message); continue; }
+    if (insErr) {
+      console.error('[reminders-cron recordar] insert failed', userId, insErr.message);
+      await supabase.from('reminders').update({ notificado: false }).in('id', items.map(r => r.id));
+      continue;
+    }
     alertas++;
-    for (const r of items) recIds.push(r.id);
   }
-  if (recIds.length) await supabase.from('reminders').update({ notificado: true }).in('id', recIds);
-  return { alertas, marcados: recIds.length, hoy };
+  return { alertas, marcados: claimed.length, hoy };
 }
 
 // ─── Helpers de teléfonos por user_id ──────────────────────────────
@@ -167,6 +194,22 @@ async function telefonosPorUsuario(userIds) {
   const tels = {};
   for (const p of (profiles || [])) if (p.telefono) tels[p.id] = p.telefono;
   return tels;
+}
+
+// ─── Anti-duplicados: reclamo atómico de filas ─────────────────────
+// Marca como notificadas SOLO las filas que ESTA ejecución logra reclamar y
+// las devuelve. Si dos ticks del cron corren a la vez (cron-job.org + Vercel),
+// el UPDATE ... RETURNING toma lock por fila: el primero obtiene las filas; el
+// segundo, al re-evaluar la condición (ya marcada), no obtiene ninguna. Así la
+// misma alerta no se encola dos veces. `aplicarCond` re-aplica el filtro de
+// "no notificado" dentro del UPDATE para que el lock haga el trabajo.
+async function reclamar(tabla, ids, patch, aplicarCond) {
+  if (!ids || !ids.length) return [];
+  let q = supabase.from(tabla).update(patch).in('id', ids);
+  q = aplicarCond(q);
+  const { data, error } = await q.select();
+  if (error) { console.error(`[reminders-cron] reclamar ${tabla} error:`, error.message); return []; }
+  return data || [];
 }
 
 // Guarda estado conversacional event_1h_response para el usuario.
@@ -210,11 +253,14 @@ async function modoUnaHoraAntes() {
   const userIds = [...new Set(candidatos.map(e => e.user_id).filter(Boolean))];
   const tels = await telefonosPorUsuario(userIds);
 
+  // Reclamo atómico de los eventos con teléfono antes de encolar (anti-duplicados).
+  const destinatarios = candidatos.filter(e => tels[e.user_id]);
+  const claimed = await reclamar('events', destinatarios.map(e => e.id),
+    { notificado_1h: true }, q => q.eq('notificado_1h', false));
+
   let alertas = 0;
-  const eventoIds = [];
-  for (const e of candidatos) {
+  for (const e of claimed) {
     const tel = tels[e.user_id];
-    if (!tel) continue;
     const mensaje =
       `⏰ *En 1 hora:* ${e.titulo}${e.hora ? ` a las ${e.hora}` : ''}${e.nota ? `\n${e.nota}` : ''}\n` +
       `\n¿Necesitas recordatorio de salida?\n` +
@@ -223,14 +269,16 @@ async function modoUnaHoraAntes() {
     const { error: insErr } = await supabase.from('whatsapp_alerts').insert({
       tipo: 'recordatorio_1h', mensaje, telefono: tel, enviado: false
     });
-    if (insErr) { console.error('[reminders-cron 1h] insert failed event', e.id, insErr.message); continue; }
+    if (insErr) {
+      console.error('[reminders-cron 1h] insert failed event', e.id, insErr.message);
+      await supabase.from('events').update({ notificado_1h: false }).eq('id', e.id);
+      continue;
+    }
     alertas++;
-    eventoIds.push(e.id);
     // Guardamos estado para que el "1"/"2" del usuario se asocie a este evento.
     await setStateEvento1h(tel, e.user_id, e);
   }
-  if (eventoIds.length) await supabase.from('events').update({ notificado_1h: true }).in('id', eventoIds);
-  return { alertas, marcados: eventoIds.length, candidatos: candidatos.length, hoyCol };
+  return { alertas, marcados: claimed.length, candidatos: candidatos.length, hoyCol };
 }
 
 // ─── MODO E: recordatorio 15 min antes ──────────────────────────────
@@ -263,21 +311,26 @@ async function modoQuinceMinAntes() {
   const userIds = [...new Set(candidatos.map(e => e.user_id).filter(Boolean))];
   const tels = await telefonosPorUsuario(userIds);
 
+  // Reclamo atómico de los eventos con teléfono antes de encolar (anti-duplicados).
+  const destinatarios = candidatos.filter(e => tels[e.user_id]);
+  const claimed = await reclamar('events', destinatarios.map(e => e.id),
+    { notificado_15min: true }, q => q.eq('notificado_15min', false));
+
   let alertas = 0;
-  const eventoIds = [];
-  for (const e of candidatos) {
+  for (const e of claimed) {
     const tel = tels[e.user_id];
-    if (!tel) continue;
     const mensaje = `🕐 *En ~15 min:* ${e.titulo}${e.hora ? ` a las ${e.hora}` : ''}${e.nota ? `\n${e.nota}` : ''}`;
     const { error: insErr } = await supabase.from('whatsapp_alerts').insert({
       tipo: 'recordatorio_15min', mensaje, telefono: tel, enviado: false
     });
-    if (insErr) { console.error('[reminders-cron 15m] insert failed event', e.id, insErr.message); continue; }
+    if (insErr) {
+      console.error('[reminders-cron 15m] insert failed event', e.id, insErr.message);
+      await supabase.from('events').update({ notificado_15min: false }).eq('id', e.id);
+      continue;
+    }
     alertas++;
-    eventoIds.push(e.id);
   }
-  if (eventoIds.length) await supabase.from('events').update({ notificado_15min: true }).in('id', eventoIds);
-  return { alertas, marcados: eventoIds.length, candidatos: candidatos.length, hoyCol };
+  return { alertas, marcados: claimed.length, candidatos: candidatos.length, hoyCol };
 }
 
 // ─── PAGOS: recordatorio diario hasta que se pague (BUG 1) ──────────
@@ -306,20 +359,28 @@ async function modoPagos() {
   const tels = await telefonosPorUsuario(userIds);
   const fmt = n => new Intl.NumberFormat('es-CO', { style:'currency', currency:'COP', minimumFractionDigits:0 }).format(n);
 
+  // Reclamo atómico de los pagos con teléfono (anti-duplicados). notificado_pago=true
+  // mantiene la asociación de respuesta en whatsapp.js; notificado_fecha=hoy = dedup
+  // diario. La condición re-aplicada evita reclamar un pago ya avisado hoy por otro tick.
+  const destinatarios = pagos.filter(p => tels[p.user_id]);
+  const claimed = await reclamar('payments', destinatarios.map(p => p.id),
+    { notificado_pago: true, notificado_fecha: hoy },
+    q => q.or(`notificado_fecha.is.null,notificado_fecha.lt.${hoy}`));
+
   let alertas = 0;
-  for (const pago of pagos) {
-    const tel = tels[pago.user_id]; if (!tel) continue;
+  for (const pago of claimed) {
+    const tel = tels[pago.user_id];
     const cuando = pago.fecha_limite === hoy ? 'vence hoy' : `venció el ${pago.fecha_limite} y sigue pendiente`;
     const msg = `🔔 *${pago.nombre}* por ${fmt(pago.monto)} ${cuando}.\n\n¿Lo pagaste?\n\n1️⃣ Sí, ya está pagado\n2️⃣ No, lo aplazaré`;
     const { error: insErr } = await supabase.from('whatsapp_alerts').insert({
       tipo: 'pago_recordatorio', mensaje: msg, telefono: tel, enviado: false
     });
-    if (insErr) { console.error('[reminders-cron pagos] insert alerta fail', pago.id, insErr.message); continue; }
-    // notificado_pago=true para que whatsapp.js (pagoEnEspera) asocie la respuesta
-    // "1"/"2" del usuario a este pago. notificado_fecha=hoy = dedup del día.
-    const { error: upErr } = await supabase
-      .from('payments').update({ notificado_pago: true, notificado_fecha: hoy }).eq('id', pago.id);
-    if (upErr) console.warn('[reminders-cron pagos] no se pudo marcar pago', pago.id, upErr.message);
+    if (insErr) {
+      console.error('[reminders-cron pagos] insert alerta fail', pago.id, insErr.message);
+      // revertir el dedup del día para reintentar en el próximo tick
+      await supabase.from('payments').update({ notificado_fecha: null }).eq('id', pago.id);
+      continue;
+    }
     alertas++;
   }
   return { alertas, hoy };
