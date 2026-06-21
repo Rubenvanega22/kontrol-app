@@ -767,8 +767,9 @@ async function despacharRespuestaPago(userId, phone, text, estado) {
     const nuevaFecha = await parsearFechaEspanol(text);
     if (!nuevaFecha) return 'No entendí la fecha. Cámbiala desde la app cuando puedas.';
     // Reseteamos las flags de notificación para que vuelva a recordar en la nueva fecha.
+    // notificado_fecha=null limpia el dedup diario del recordatorio de pagos.
     const { error } = await supabase.from('payments')
-      .update({ fecha_limite: nuevaFecha, notificado_pago: false, notificado_6pm: false })
+      .update({ fecha_limite: nuevaFecha, notificado_pago: false, notificado_6pm: false, notificado_fecha: null })
       .eq('id', payment_id).eq('user_id', userId);
     if (error) { console.error('[whatsapp] postpone error:', error.message); return '⚠️ No pude posponer el pago.'; }
     return `🗓️ Listo, lo aplacé para ${nuevaFecha}.`;

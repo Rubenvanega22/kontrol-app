@@ -223,56 +223,47 @@ async function modoQuinceMinAntes() {
   return { alertas, marcados: eventoIds.length, candidatos: candidatos.length, hoyCol };
 }
 
-// ─── PAGOS: helper común — busca pagos que vencen HOY con filtro ────
-async function pagosQueVencenHoy(extraFilter) {
-  const ahora = new Date();
-  const hoy = colombiaDateString(ahora);
-  let q = supabase.from('payments').select('*')
-    .eq('fecha_limite', hoy).neq('status', 'pagado');
-  q = extraFilter(q);
-  const { data, error } = await q;
-  if (error) { console.error('[reminders-cron pagos] query error:', error.message); return { hoy, pagos: [] }; }
-  return { hoy, pagos: data || [] };
-}
+// ─── PAGOS: recordatorio diario hasta que se pague (BUG 1) ──────────
+// Antes había dos modos (matutino solo a las 8am exactas + vespertino que
+// dependía de que el matutino hubiera corrido). Un pago creado después de
+// las 8am nunca se notificaba. Ahora:
+//   • Corre en ventana 8am-6pm Col → captura pagos creados tarde el mismo día.
+//   • Recuerda CADA día (dedup por notificado_fecha) hasta status=pagado.
+//   • Incluye vencidos no pagados (fecha_limite <= hoy), no solo "hoy exacto".
+//   • FECHA_CORTE_PAGOS evita avisos retroactivos de pagos viejos previos al deploy.
+const FECHA_CORTE_PAGOS = '2026-06-20'; // día del deploy del ARREGLO 2
 
-async function crearAlertaPago(pago, telefono, mensaje, marcarCol) {
-  const { error: insErr } = await supabase.from('whatsapp_alerts').insert({
-    tipo: 'pago_recordatorio', mensaje, telefono, enviado: false
-  });
-  if (insErr) { console.error('[reminders-cron pagos] insert alerta fail', pago.id, insErr.message); return false; }
-  const { error: upErr } = await supabase
-    .from('payments').update({ [marcarCol]: true }).eq('id', pago.id);
-  if (upErr) console.warn('[reminders-cron pagos] no se pudo marcar', marcarCol, 'en pago', pago.id, upErr.message);
-  return true;
-}
+async function modoPagos() {
+  const hoy = colombiaDateString(new Date());
 
-async function modoPagosMatutino() {
-  const { hoy, pagos } = await pagosQueVencenHoy(q => q.eq('notificado_pago', false));
-  if (!pagos.length) return { alertas: 0 };
+  const { data: pagos, error } = await supabase
+    .from('payments').select('*')
+    .neq('status', 'pagado')
+    .lte('fecha_limite', hoy)
+    .gte('fecha_limite', FECHA_CORTE_PAGOS)
+    .or(`notificado_fecha.is.null,notificado_fecha.lt.${hoy}`);
+  if (error) { console.error('[reminders-cron pagos] query error:', error.message); return { error: error.message, hoy }; }
+  if (!pagos || !pagos.length) return { alertas: 0, hoy };
+
   const userIds = [...new Set(pagos.map(p => p.user_id).filter(Boolean))];
   const tels = await telefonosPorUsuario(userIds);
   const fmt = n => new Intl.NumberFormat('es-CO', { style:'currency', currency:'COP', minimumFractionDigits:0 }).format(n);
-  let alertas = 0;
-  for (const pago of pagos) {
-    const tel = tels[pago.user_id]; if (!tel) continue;
-    const msg = `🔔 *${pago.nombre}* por ${fmt(pago.monto)} vence hoy.\n\n¿Lo pagaste?\n\n1️⃣ Sí, ya está pagado\n2️⃣ No, lo aplazaré`;
-    if (await crearAlertaPago(pago, tel, msg, 'notificado_pago')) alertas++;
-  }
-  return { alertas, hoy };
-}
 
-async function modoPagosVespertino() {
-  const { hoy, pagos } = await pagosQueVencenHoy(q =>
-    q.eq('notificado_pago', true).eq('notificado_6pm', false));
-  if (!pagos.length) return { alertas: 0 };
-  const userIds = [...new Set(pagos.map(p => p.user_id).filter(Boolean))];
-  const tels = await telefonosPorUsuario(userIds);
-  const fmt = n => new Intl.NumberFormat('es-CO', { style:'currency', currency:'COP', minimumFractionDigits:0 }).format(n);
   let alertas = 0;
   for (const pago of pagos) {
     const tel = tels[pago.user_id]; if (!tel) continue;
-    const msg = `🔔 *${pago.nombre}* por ${fmt(pago.monto)} vence hoy.\n\n¿Lo pagaste?\n\n1️⃣ Sí, ya está pagado\n2️⃣ No, lo aplazaré`;
-    if (await crearAlertaPago(pago, tel, msg, 'notificado_6pm')) alertas++;
+    const cuando = pago.fecha_limite === hoy ? 'vence hoy' : `venció el ${pago.fecha_limite} y sigue pendiente`;
+    const msg = `🔔 *${pago.nombre}* por ${fmt(pago.monto)} ${cuando}.\n\n¿Lo pagaste?\n\n1️⃣ Sí, ya está pagado\n2️⃣ No, lo aplazaré`;
+    const { error: insErr } = await supabase.from('whatsapp_alerts').insert({
+      tipo: 'pago_recordatorio', mensaje: msg, telefono: tel, enviado: false
+    });
+    if (insErr) { console.error('[reminders-cron pagos] insert alerta fail', pago.id, insErr.message); continue; }
+    // notificado_pago=true para que whatsapp.js (pagoEnEspera) asocie la respuesta
+    // "1"/"2" del usuario a este pago. notificado_fecha=hoy = dedup del día.
+    const { error: upErr } = await supabase
+      .from('payments').update({ notificado_pago: true, notificado_fecha: hoy }).eq('id', pago.id);
+    if (upErr) console.warn('[reminders-cron pagos] no se pudo marcar pago', pago.id, upErr.message);
+    alertas++;
   }
   return { alertas, hoy };
 }
@@ -292,24 +283,24 @@ module.exports = async function handler(req, res) {
 
     const results = {};
 
-    // Modo forzado (testing): ?modo=diario|1h|15min|pagos_am|pagos_pm
+    // Modo forzado (testing): ?modo=diario|1h|15min|pagos
     if (force) {
       if (force === 'diario')    results.diario    = await modoResumenDiario();
       if (force === '1h')        results.h1        = await modoUnaHoraAntes();
       if (force === '15min')     results.q15       = await modoQuinceMinAntes();
-      if (force === 'pagos_am')  results.pagos_am  = await modoPagosMatutino();
-      if (force === 'pagos_pm')  results.pagos_pm  = await modoPagosVespertino();
+      if (force === 'pagos')     results.pagos     = await modoPagos();
     } else {
       // Rolling cada tick (cron-job.org cada 15 min): 15-min + 1h
       results.q15 = await modoQuinceMinAntes();
       results.h1  = await modoUnaHoraAntes();
-      // Time-specific (Vercel cron también dispara estas como respaldo)
+      // Resumen de agenda: una vez al día a las 8am Col.
       if (utcHour === DAILY_UTC_HOUR) {
-        results.diario   = await modoResumenDiario();
-        results.pagos_am = await modoPagosMatutino();
+        results.diario = await modoResumenDiario();
       }
-      if (utcHour === EVENING_UTC_HOUR) {
-        results.pagos_pm = await modoPagosVespertino();
+      // Pagos: ventana 8am-6pm Col. El dedup por notificado_fecha garantiza
+      // un solo recordatorio por día aunque el cron corra cada 15 min.
+      if (utcHour >= DAILY_UTC_HOUR && utcHour <= EVENING_UTC_HOUR) {
+        results.pagos = await modoPagos();
       }
     }
 
