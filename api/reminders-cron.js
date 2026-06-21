@@ -103,6 +103,63 @@ async function modoResumenDiario() {
   return { alertas, marcados: eventoIds.length, hoy };
 }
 
+// ─── MODO C: recordatorios de la pestaña "Recordar" (tabla reminders) ──
+// Solo los que tienen recordar_fecha = hoy reciben WhatsApp ese día. Los que
+// no tienen recordar_fecha (null) viven solo en la app. Un WhatsApp consolidado
+// por usuario con sus notas y listados del día. Dedup por flag notificado.
+async function modoRecordatorios() {
+  const hoy = colombiaDateString(new Date());
+
+  const { data: recs, error } = await supabase
+    .from('reminders').select('*')
+    .eq('recordar_fecha', hoy)
+    .eq('notificado', false);
+  if (error) { console.error('[reminders-cron recordar] query error:', error.message); return { error: error.message, hoy }; }
+  if (!recs || !recs.length) return { alertas: 0, hoy };
+
+  const porUsuario = {};
+  for (const r of recs) {
+    if (!r.user_id) continue;
+    if (!porUsuario[r.user_id]) porUsuario[r.user_id] = [];
+    porUsuario[r.user_id].push(r);
+  }
+
+  const userIds = Object.keys(porUsuario);
+  const { data: profiles } = await supabase
+    .from('profiles').select('id, telefono, nombre').in('id', userIds);
+  const tels = {};
+  for (const p of (profiles || [])) {
+    if (p.telefono) tels[p.id] = { telefono: p.telefono, nombre: p.nombre };
+  }
+
+  let alertas = 0;
+  const recIds = [];
+  for (const userId of userIds) {
+    const info = tels[userId];
+    if (!info) continue;
+    const items = porUsuario[userId];
+    const lista = items.map(r => {
+      const esListado = (r.tipo === 'listado' || r.tipo === 'lista');
+      const subitems = (r.content && r.content.items) || [];
+      if (esListado && subitems.length) {
+        const its = subitems.map(it => `   ${it.done ? '✓' : '○'} ${it.text}`).join('\n');
+        return `📋 *${r.titulo}*\n${its}`;
+      }
+      return `• ${r.titulo}`;
+    }).join('\n');
+    const saludo = info.nombre ? `Hola ${info.nombre}, ` : '';
+    const mensaje = `${saludo}recordatorio para hoy:\n\n🔔 ${lista}`;
+    const { error: insErr } = await supabase.from('whatsapp_alerts').insert({
+      tipo: 'recordatorio_nota', mensaje, telefono: info.telefono, enviado: false
+    });
+    if (insErr) { console.error('[reminders-cron recordar] insert failed', userId, insErr.message); continue; }
+    alertas++;
+    for (const r of items) recIds.push(r.id);
+  }
+  if (recIds.length) await supabase.from('reminders').update({ notificado: true }).in('id', recIds);
+  return { alertas, marcados: recIds.length, hoy };
+}
+
 // ─── Helpers de teléfonos por user_id ──────────────────────────────
 async function telefonosPorUsuario(userIds) {
   const { data: profiles } = await supabase
@@ -283,19 +340,21 @@ module.exports = async function handler(req, res) {
 
     const results = {};
 
-    // Modo forzado (testing): ?modo=diario|1h|15min|pagos
+    // Modo forzado (testing): ?modo=diario|1h|15min|pagos|recordatorios
     if (force) {
-      if (force === 'diario')    results.diario    = await modoResumenDiario();
-      if (force === '1h')        results.h1        = await modoUnaHoraAntes();
-      if (force === '15min')     results.q15       = await modoQuinceMinAntes();
-      if (force === 'pagos')     results.pagos     = await modoPagos();
+      if (force === 'diario')        results.diario        = await modoResumenDiario();
+      if (force === '1h')            results.h1            = await modoUnaHoraAntes();
+      if (force === '15min')         results.q15           = await modoQuinceMinAntes();
+      if (force === 'pagos')         results.pagos         = await modoPagos();
+      if (force === 'recordatorios') results.recordatorios = await modoRecordatorios();
     } else {
       // Rolling cada tick (cron-job.org cada 15 min): 15-min + 1h
       results.q15 = await modoQuinceMinAntes();
       results.h1  = await modoUnaHoraAntes();
-      // Resumen de agenda: una vez al día a las 8am Col.
+      // Resumen de agenda + recordatorios con fecha: una vez al día a las 8am Col.
       if (utcHour === DAILY_UTC_HOUR) {
-        results.diario = await modoResumenDiario();
+        results.diario        = await modoResumenDiario();
+        results.recordatorios = await modoRecordatorios();
       }
       // Pagos: ventana 8am-6pm Col. El dedup por notificado_fecha garantiza
       // un solo recordatorio por día aunque el cron corra cada 15 min.

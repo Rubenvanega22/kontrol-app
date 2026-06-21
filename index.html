@@ -1713,6 +1713,11 @@ select.form-inp option{background:#0c1228;}
       <label class="form-label">Ítems (uno por línea)</label>
       <textarea class="form-inp" id="rec-items" rows="4" placeholder="Arroz&#10;Leche&#10;Huevos"></textarea>
     </div>
+    <div class="form-group">
+      <label class="form-label">Avisarme por WhatsApp el (opcional)</label>
+      <input class="form-inp" type="date" id="rec-recordar-fecha"/>
+      <div style="font-size:11px;color:var(--t3);margin-top:4px">Si lo dejas vacío, solo aparece en la app.</div>
+    </div>
     <button class="btn-primary" onclick="guardarRecordatorio()">Guardar</button>
     <button class="btn-secondary" onclick="hideModal('modal-nuevo-recordar')">Cancelar</button>
   </div>
@@ -1897,6 +1902,7 @@ async function syncDesdeSupabase() {
 
     if (recordatorios) DB.recordatorios = recordatorios.map(r => ({
       id: r.id, tipo: r.tipo, titulo: r.titulo, fecha: r.fecha,
+      recordar_fecha: r.recordar_fecha || null,
       content: r.content || {}, status: r.status || 'open',
       created_at: r.created_at
     }));
@@ -3824,16 +3830,21 @@ async function guardarRecordatorio(){
     content = { texto: titulo };
   }
 
+  // recordar_fecha es opcional: si tiene valor, el cron manda WhatsApp ese día;
+  // si queda null, el recordatorio solo se ve en la app.
+  const recordarFecha = (document.getElementById('rec-recordar-fecha').value || '').trim() || null;
+
   // .select().single() para CONFIRMAR que la fila se creó — antes un fallo de
   // insert no se detectaba y el dato "desaparecía" al recargar.
   const { data, error } = await supa.from('reminders')
-    .insert({ user_id: currentUser.id, tipo, titulo, content, fecha: todayStr() })
+    .insert({ user_id: currentUser.id, tipo, titulo, content, fecha: todayStr(), recordar_fecha: recordarFecha })
     .select().single();
   if(error || !data){ toast('❌ Error al guardar: '+(error?.message||'sin confirmación'),'var(--red)'); return; }
 
   hideModal('modal-nuevo-recordar');
   document.getElementById('rec-titulo').value='';
   document.getElementById('rec-items').value='';
+  document.getElementById('rec-recordar-fecha').value='';
   toast(tipo==='listado'?'✅ Listado creado':'✅ Recordatorio guardado','var(--green)');
   await syncDesdeSupabase();
   renderRecordar();   // refresca la pestaña (antes no se re-renderizaba tras guardar)
