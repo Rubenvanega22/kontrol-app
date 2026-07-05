@@ -1957,6 +1957,12 @@ function fmtDate(d){
 function todayStr(){
   return new Date().toISOString().split('T')[0];
 }
+// 'YYYY-MM' del mes en curso en zona horaria de Colombia (America/Bogota),
+// robusto sin importar la zona del dispositivo. Se usa para filtrar la card
+// "Actividad reciente" al mes actual.
+function mesActualColombia(){
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit' }).format(new Date());
+}
 function formatMonto(inp){
   const raw = parseCOP(inp.value);
   if(raw>0) inp.value = raw.toLocaleString('es-CO');
@@ -2700,11 +2706,13 @@ function renderResumen(){
   // Actividad reciente (excluye cajas y transferencias).
   // Tap a la fila expande/colapsa el form de edición. El 🗑️ borra directo con confirm.
   const arEl = document.getElementById('actividad-reciente-list');
+  const mesCol = mesActualColombia();
   const recientes = (DB.movimientos||[])
     .filter(m => m.categoria !== 'caja' && m.categoria !== 'transferencia')
+    .filter(m => String(m.fecha||'').slice(0,7) === mesCol)
     .slice(0,5);
   if(!recientes.length){
-    arEl.innerHTML = `<div class="empty"><div class="empty-ico">📊</div><div class="empty-txt">Sin movimientos aún</div></div>`;
+    arEl.innerHTML = `<div class="empty"><div class="empty-ico">📊</div><div class="empty-txt">Sin movimientos este mes</div></div>`;
   } else {
     const catIco = {alimentacion:'🍔',transporte:'🚗',servicios:'💡',salud:'🏥',educacion:'📚',hogar:'🏠',entretenimiento:'🎮',salario:'💼',freelance:'💻',negocio:'🏪',otro:'📦'};
     arEl.innerHTML = recientes.map(m=>{
