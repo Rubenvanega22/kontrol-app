@@ -3306,7 +3306,15 @@ async function editarCuenta(id){
 async function borrarCuentaLocal(id){
   const c = DB.cuentas.find(x => String(x.id) === String(id));
   if(!c){ toast('Cuenta no encontrada', 'var(--red)'); return; }
-  if(!(await uiConfirm(`Vas a eliminar la cuenta "${c.nombre}". Esta acción no se puede deshacer.`))) return;
+  const nMovs = (DB.movimientos || []).filter(m => String(m.cuentaId) === String(id)).length;
+  const nPagos = (DB.pagos || []).filter(p => String(p.cuentaId) === String(id)).length;
+  const partes = [];
+  if(nMovs) partes.push(`${nMovs} movimiento${nMovs === 1 ? '' : 's'}`);
+  if(nPagos) partes.push(`${nPagos} pago${nPagos === 1 ? '' : 's'}`);
+  const detalle = partes.length
+    ? ` Sus ${partes.join(' y ')} se conservarán como "Sin cuenta asociada".`
+    : '';
+  if(!(await uiConfirm(`Vas a eliminar la cuenta "${c.nombre}".${detalle} Esta acción no se puede deshacer.`))) return;
   const { error } = await supa.from('accounts').delete().eq('id', id).eq('user_id', currentUser.id);
   if(error){ toast('Error: '+error.message, 'var(--red)'); return; }
   await syncDesdeSupabase();
