@@ -1954,14 +1954,18 @@ function fmtDate(d){
   const dt = new Date(d+'T12:00:00');
   return dt.toLocaleDateString('es-CO',{day:'2-digit',month:'short'});
 }
-function todayStr(){
-  return new Date().toISOString().split('T')[0];
+// Fecha de HOY en zona horaria de Colombia (America/Bogota) como 'YYYY-MM-DD',
+// robusta sin importar la zona del dispositivo. Fuente única de "hoy" en el
+// frontend: todayStr, hoyISO y mesActualColombia derivan de aquí.
+function hoyColombia(){
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 }
-// 'YYYY-MM' del mes en curso en zona horaria de Colombia (America/Bogota),
-// robusto sin importar la zona del dispositivo. Se usa para filtrar la card
-// "Actividad reciente" al mes actual.
+function todayStr(){
+  return hoyColombia();
+}
+// 'YYYY-MM' del mes en curso en Colombia (para filtrar "Actividad reciente").
 function mesActualColombia(){
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit' }).format(new Date());
+  return hoyColombia().slice(0,7);
 }
 function formatMonto(inp){
   const raw = parseCOP(inp.value);
@@ -3511,10 +3515,9 @@ async function guardarEvento(){
 // Día actualmente seleccionado en la Agenda (YYYY-MM-DD). Default: hoy.
 let agendaDiaSel = null;
 
-// Fecha de hoy en local (no UTC) como YYYY-MM-DD, coherente con renderCalendario.
+// Fecha de hoy (zona Colombia) como YYYY-MM-DD. Alias de hoyColombia().
 function hoyISO(){
-  const h = new Date();
-  return `${h.getFullYear()}-${String(h.getMonth()+1).padStart(2,'0')}-${String(h.getDate()).padStart(2,'0')}`;
+  return hoyColombia();
 }
 
 function renderAgenda(){
