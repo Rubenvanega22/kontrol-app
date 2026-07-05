@@ -881,7 +881,6 @@ select.form-inp option{background:#0c1228;}
           <button class="fbtn" onclick="setPagoFiltro(this,'vencido')">Vencidos</button>
         </div>
         <div id="pagos-list"></div>
-        <button style="width:100%;padding:10px;border-radius:12px;border:1px dashed rgba(59,130,246,0.25);background:transparent;color:#7ab8ff;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;margin-top:4px" onclick="duplicarPagosFijos()">🔁 Duplicar gastos fijos al siguiente mes</button>
         <div style="height:80px"></div>
       </div>
       <button class="fab" onclick="showModal('modal-nuevo-pago')">＋</button>
@@ -1599,7 +1598,7 @@ select.form-inp option{background:#0c1228;}
       <select class="form-inp" id="pago-cuenta"></select>
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-      <span style="font-size:13px;color:var(--t2)">Gasto fijo (recurrente)</span>
+      <span style="font-size:13px;color:var(--t2)">🔁 Se repite cada mes</span>
       <div class="toggle" id="pago-fijo-toggle" onclick="this.classList.toggle('on')"><div class="toggle-thumb"></div></div>
     </div>
     <button class="btn-primary" onclick="guardarPago()">Crear pago</button>
@@ -2947,9 +2946,12 @@ function abrirPagoDetalle(id){
     <div style="margin-bottom:12px">
       <div style="font-size:26px;font-family:'Syne',sans-serif;font-weight:900;color:var(--t1)">${fmtCOP(p.monto)}</div>
       <div style="font-size:11px;color:var(--t3);margin-top:3px">Vence: ${fmtDate(p.fechaLimite)} ${diff<0&&!esPagado?'· <span style="color:var(--red)">Vencido</span>':diff===0&&!esPagado?'· <span style="color:var(--amber)">Hoy</span>':''}</div>
-      ${p.fijo?'<div style="font-size:11px;color:var(--blue);margin-top:4px">🔁 Gasto fijo</div>':''}
       ${esPagado?`<div style="font-size:12px;font-weight:700;color:var(--green);margin-top:8px">✅ Pagado${p.fechaPago?` el ${fmtDate(p.fechaPago)}`:''}</div>`:''}
       ${progHtml}
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin:4px 0 14px">
+      <span style="font-size:13px;color:var(--t2)">🔁 Se repite cada mes</span>
+      <div class="toggle${p.fijo?' on':''}" onclick="toggleRecurrenciaPago(${p.id}, this)"><div class="toggle-thumb"></div></div>
     </div>`;
   const payBtn = document.getElementById('pago-detalle-pay');
   if(esPagado){
@@ -3186,25 +3188,19 @@ async function eliminarPago(){
   await syncDesdeSupabase();
 }
 
-function duplicarPagosFijos(){
-  const fijos = DB.pagos.filter(p=>p.fijo);
-  if(!fijos.length){ toast('No hay gastos fijos marcados','var(--amber)'); return; }
-  const nextMonth = new Date(); nextMonth.setMonth(nextMonth.getMonth()+1);
-  const mes = String(nextMonth.getMonth()+1).padStart(2,'0');
-  const anio = nextMonth.getFullYear();
-  let creados = 0;
-  fijos.forEach(p=>{
-    const dia = p.fechaLimite.split('-')[2]||'01';
-    const nuevaFecha = `${anio}-${mes}-${dia}`;
-    const yaExiste = DB.pagos.some(x=>x.nombre===p.nombre&&x.fechaLimite===nuevaFecha);
-    if(!yaExiste){
-      DB.pagos.push({...p, id:uid(), status:'pendiente', fechaLimite:nuevaFecha});
-      creados++;
-    }
-  });
-  save();
-  toast(`✅ ${creados} pagos duplicados para ${mes}/${anio}`,'var(--green)');
-  renderPagos();
+// Activa/desactiva la recurrencia mensual de un pago existente (edicion).
+// Cuando fijo=true, al marcarlo pagado el trigger de BD crea el pago del mes
+// siguiente automaticamente (conserva el dia; dias 29-31 -> ultimo del mes).
+async function toggleRecurrenciaPago(id, el){
+  const p = DB.pagos.find(x=>String(x.id)===String(id));
+  if(!p){ toast('Pago no encontrado','var(--red)'); return; }
+  const nuevo = !p.fijo;
+  const { error } = await supa.from('payments').update({ fijo: nuevo }).eq('id', id).eq('user_id', currentUser.id);
+  if(error){ toast('Error: '+error.message,'var(--red)'); return; }
+  if(el) el.classList.toggle('on', nuevo);
+  p.fijo = nuevo;
+  toast(nuevo ? '🔁 Se repetirá cada mes' : 'Recurrencia desactivada','var(--green)');
+  await syncDesdeSupabase();
 }
 
 // ════════════════════════════════════════
