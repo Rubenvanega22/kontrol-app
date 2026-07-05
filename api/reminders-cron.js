@@ -11,19 +11,14 @@
 // Vercel cron en vercel.json conserva los disparos a 13/23 UTC como respaldo.
 
 const supabase = require('../lib/supabase');
+const { colombiaDateString } = require('../lib/datetime');
 
-const COLOMBIA_OFFSET_HOURS = -5;
 const DAILY_UTC_HOUR = 13;   // 13:00 UTC = 8:00 am Colombia
 const EVENING_UTC_HOUR = 23; // 23:00 UTC = 6:00 pm Colombia
 
 function formatearEvento(e) {
   const hora = e.hora ? ` a las ${e.hora}` : '';
   return `${e.titulo}${hora}`;
-}
-
-function colombiaDateString(date) {
-  const ms = date.getTime() + COLOMBIA_OFFSET_HOURS * 3600 * 1000;
-  return new Date(ms).toISOString().split('T')[0];
 }
 
 // Postgres TIME llega como "HH:MM:SS" vía PostgREST; toleramos "HH:MM" por si
