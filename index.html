@@ -3346,7 +3346,11 @@ async function editarCaja(id){
 async function borrarCajaLocal(id){
   const c = DB.cajas.find(x => String(x.id) === String(id));
   if(!c){ toast('Caja no encontrada', 'var(--red)'); return; }
-  if(!(await uiConfirm(`Vas a eliminar la caja "${c.nombre}". Esta acción no se puede deshacer.`))) return;
+  const nMovs = (DB.cajaMovimientos || []).filter(m => String(m.caja_id) === String(id)).length;
+  const detalle = nMovs
+    ? ` Se borrarán su saldo (${fmtCOP(c.saldo)}) y sus ${nMovs} movimiento${nMovs === 1 ? '' : 's'}.`
+    : ` Se borrará su saldo (${fmtCOP(c.saldo)}).`;
+  if(!(await uiConfirm(`Vas a eliminar la caja "${c.nombre}".${detalle} Esta acción no se puede deshacer.`))) return;
   const { error } = await supa.from('cajas').delete().eq('id', id).eq('user_id', currentUser.id);
   if(error){ toast('Error: '+error.message, 'var(--red)'); return; }
   await syncDesdeSupabase();
