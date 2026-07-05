@@ -5464,9 +5464,25 @@ async function doRegistro() {
   const codigo = document.getElementById('reg-codigo').value.trim().toUpperCase();
   if (!nombre || !email || !pass || !codigo) return authMsg('Completa todos los campos');
   if (pass.length < 6) return authMsg('La contraseña debe tener al menos 6 caracteres');
-  const CODIGOS_VALIDOS = ['RUBEN2026', 'BETA2026'];
-  if (!CODIGOS_VALIDOS.includes(codigo)) return authMsg('Código de invitación inválido');
-  
+
+  // Validar el código en el backend contra la tabla `invitaciones` (service key).
+  // El frontend no puede leer esa tabla directo por RLS; por eso va vía endpoint.
+  authMsg('Validando código...', 'rgba(232,238,248,0.5)');
+  try {
+    const rv = await fetch('/api/validar-invitacion', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ codigo })
+    });
+    const jv = await rv.json();
+    if (!jv.valid) {
+      return authMsg(jv.reason === 'agotado'
+        ? 'Este código ya alcanzó su límite de usos'
+        : 'Código de invitación inválido');
+    }
+  } catch (e) {
+    return authMsg('No se pudo validar el código. Intenta de nuevo.');
+  }
+
   authMsg('Creando cuenta...', 'rgba(232,238,248,0.5)');
   try {
     const { data, error } = await supa.auth.signUp({ 
