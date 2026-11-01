@@ -131,7 +131,8 @@ async function modoRecordatorios() {
     .from('reminders').select('*')
     .eq('recordar_fecha', hoy)
     .eq('notificado', false)
-    .eq('hecho', false); // lo ya hecho no necesita aviso
+    .eq('hecho', false) // lo ya hecho no necesita aviso
+    .eq('avisar', true); // apagado desde el menú de la fila
   if (error) { console.error('[reminders-cron recordar] query error:', error.message); return { error: error.message, hoy }; }
   if (!recs || !recs.length) return { alertas: 0, hoy };
 
@@ -174,7 +175,7 @@ async function modoRecordatorios() {
         const its = subitems.map(it => `   ${it.done ? '✓' : '○'} ${it.text}`).join('\n');
         return `📋 *${r.titulo}*\n${its}`;
       }
-      let linea = `🔔 *${r.titulo}*`;
+      let linea = `🔔 *${r.titulo || 'Recordatorio'}*`;
       if (Number(r.valor) > 0) linea += `\n💰 $${Math.round(Number(r.valor)).toLocaleString('es-CO')}`;
       if (r.nota) linea += `\n📝 ${r.nota}`;
       return linea;

@@ -176,48 +176,148 @@ html,body{width:100%;height:100%;background:var(--bg);font-family:'DM Sans',sans
 .rt-search input{flex:1;min-width:0;width:100%;background:transparent;border:none;outline:none;font:500 16px 'DM Sans',sans-serif;color:var(--t1);}
 .rt-search input::placeholder{color:var(--t3);}
 .rt-nueva{flex-shrink:0;height:48px;padding:0 13px;border:none;border-radius:14px;background:linear-gradient(135deg,#1a56db,#4a8fe8);color:#fff;font:700 15px 'DM Sans',sans-serif;white-space:nowrap;cursor:pointer;}
-.rt-leyenda{padding:0 16px 8px;font-size:13px;color:var(--t2);flex-shrink:0;}
-.rt-wrap{flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;margin:0 14px 6px;border:1px solid var(--bd);border-radius:14px;background:var(--card);-webkit-overflow-scrolling:touch;}
-.rt-tabla{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:0;}
-.rt-col-fecha{width:88px;}
-.rt-col-valor{width:104px;}
-.rt-tabla th,.rt-tabla td{text-align:left;vertical-align:top;border-bottom:1px solid var(--bd);border-right:1px solid var(--bd2);}
-.rt-tabla tr:last-child td{border-bottom:none;}
-.rt-tabla th:last-child,.rt-tabla td:last-child{border-right:none;}
-.rt-tabla th{position:sticky;top:0;z-index:2;background:var(--card3);padding:10px 8px;font-size:13px;font-weight:700;color:var(--t2);white-space:nowrap;}
-.rt-tabla td{padding:11px 8px;font-size:17px;line-height:1.28;}
-.rt-tabla th.rt-der{text-align:right;}
-.rt-fila{cursor:pointer;}
-.rt-fila:active td{background:rgba(255,255,255,0.04);}
-.rt-que{display:block;font-weight:600;overflow-wrap:anywhere;}
-.rt-nota{display:block;margin-top:4px;font-size:14px;line-height:1.3;color:var(--t2);overflow-wrap:anywhere;}
-.rt-creada{display:block;margin-top:4px;font-size:12px;color:rgba(232,238,248,0.52);}
-.rt-tabla td.rt-fecha{font-size:16px;padding-right:4px;}
-.rt-campana{font-size:14px;}
-.rt-tabla td.rt-valor{font-size:15px;font-weight:700;text-align:right;overflow-wrap:anywhere;}
-.rt-vacio{color:rgba(232,238,248,0.52);font-weight:400;}
-.rt-tabla td.rt-msg{padding:28px 12px;text-align:center;font-size:15px;color:var(--t2);}
-.rt-estado{display:block;margin-top:3px;font-size:12px;font-weight:700;color:#fca5a5;}
-.rt-fila.rt-vencida td{background:rgba(248,113,113,0.2);}
-.rt-fila.rt-hoy td{animation:rt-palpita 1.8s ease-in-out infinite;}
-@keyframes rt-palpita{0%,100%{background:rgba(248,113,113,0.05);}50%{background:rgba(248,113,113,0.28);}}
-@media (prefers-reduced-motion:reduce){.rt-fila.rt-hoy td{animation:none;background:rgba(248,113,113,0.16);}}
-.rt-fila.rt-hecha .rt-que,.rt-fila.rt-hecha .rt-nota,.rt-fila.rt-hecha td.rt-fecha,.rt-fila.rt-hecha td.rt-valor{color:rgba(232,238,248,0.5);}
-.rt-chulito{color:var(--green);font-weight:800;margin-right:4px;}
-.rt-marcar{display:inline-block;margin-top:8px;min-height:36px;padding:4px 8px;border-radius:10px;border:1px solid rgba(74,222,128,0.5);background:rgba(74,222,128,0.1);color:var(--green);font:700 14px 'DM Sans',sans-serif;cursor:pointer;max-width:100%;overflow-wrap:anywhere;}
-.rt-marcar.desmarcar{border-color:var(--bd);background:transparent;color:var(--t2);}
-.rt-tabla tr.rt-edit td{background:rgba(59,130,246,0.1);padding:10px 8px;border-bottom:1px solid rgba(59,130,246,0.45);}
-.rt-campos{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:8px;}
-.rt-ancho{grid-column:1 / -1;}
-.rt-campo{display:block;min-width:0;}
-.rt-etq{display:block;margin-bottom:3px;font-size:12px;font-weight:600;color:#93c5fd;}
-.rt-campo input{display:block;width:100%;min-width:0;height:46px;padding:0 9px;background:rgba(255,255,255,0.06);border:1px solid rgba(59,130,246,0.45);border-radius:9px;outline:none;color:var(--t1);font:500 16px 'DM Sans',sans-serif;color-scheme:dark;-webkit-appearance:none;appearance:none;}
-.rt-campo input::placeholder{color:var(--t3);}
-.rt-edit .rt-creada{color:#93c5fd;margin-top:7px;}
-.rt-acciones{display:flex;gap:8px;margin-top:9px;}
-.rt-btn{flex:1;min-width:0;height:44px;border-radius:11px;border:1px solid var(--bd);background:transparent;color:var(--t2);font:700 14px 'DM Sans',sans-serif;cursor:pointer;}
-.rt-btn.ok{border:none;background:linear-gradient(135deg,#1a56db,#4a8fe8);color:#fff;}
-.rt-btn.borrar{color:var(--red);border-color:rgba(248,113,113,0.4);}
+/* ── Hojas tipo Excel (Recordatorios, hojas del usuario y Caja fuerte) ── */
+.hj-vista{display:none;flex:1;min-height:0;flex-direction:column;}
+.hj-vista.on{display:flex;}
+.hj-tools{display:flex;gap:6px;padding:0 8px 7px;flex-shrink:0;}
+.hj-buscar{flex:1;min-width:0;display:flex;align-items:center;gap:6px;height:40px;padding:0 10px;background:var(--card2);border:1px solid var(--bd2);border-radius:10px;}
+.hj-buscar input{flex:1;min-width:0;width:100%;background:transparent;border:none;outline:none;font:500 16px 'DM Sans',sans-serif;color:var(--t1);}
+.hj-buscar input::placeholder{color:var(--t3);}
+.hj-btn-fila{flex-shrink:0;height:40px;padding:0 11px;border:none;border-radius:10px;background:linear-gradient(135deg,#1a56db,#4a8fe8);color:#fff;font:700 14px 'DM Sans',sans-serif;cursor:pointer;}
+.hj-btn-hoja{flex-shrink:0;width:40px;height:40px;border:1px solid var(--bd);border-radius:10px;background:var(--card2);color:var(--t1);font-size:17px;cursor:pointer;}
+.hj-btn-hoja.on{border-color:var(--blue);}
+.hj-wrap{flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;margin:0 8px;border:1px solid var(--bd);background:var(--card);-webkit-overflow-scrolling:touch;}
+.hj-tabla{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:0;}
+.hj-tabla th,.hj-tabla td{border-right:1px solid var(--bd);border-bottom:1px solid var(--bd);vertical-align:middle;}
+.hj-tabla th:last-child,.hj-tabla td:last-child{border-right:none;}
+.hj-tabla th{position:sticky;top:0;z-index:3;height:32px;padding:0 5px;background:var(--card3);font-size:12px;font-weight:700;color:var(--t2);text-align:left;white-space:nowrap;overflow:hidden;}
+.hj-tabla th.hj-der{text-align:right;}
+.hj-col-fecha{width:56px;}.hj-col-valor{width:88px;}.hj-col-nota{width:17%;}.hj-col-menu{width:27px;}
+/* Celdas opacas con el color encima: al deslizar, lo de abajo no se transparenta en las fijas */
+.hj-tabla td{height:46px;font-size:15px;position:relative;background-color:var(--card);background-image:linear-gradient(var(--fila,transparent),var(--fila,transparent));}
+.hj-celda{display:block;width:100%;min-height:45px;padding:13px 5px;outline:none;border:none;background:transparent;color:var(--t1);font:500 15px/1.28 'DM Sans',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:text;}
+/* Al tocarla se ve completo y la fila crece */
+.hj-celda:focus{white-space:normal;overflow-wrap:anywhere;box-shadow:inset 0 0 0 2px var(--blue);background:rgba(59,130,246,0.14);position:relative;z-index:1;}
+.hj-celda:empty::before{content:attr(data-vacio);color:var(--t3);font-weight:400;}
+/* El título muestra hasta dos líneas antes de cortar: es lo que distingue una fila de otra */
+.hj-celda[data-campo="titulo"]:not(:focus){display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;white-space:normal;overflow-wrap:anywhere;padding:0 5px;margin:6px 0;min-height:0;}
+.hj-celda[data-marca]:not([data-marca=""])::before{content:attr(data-marca) " ";font-weight:800;}
+.hj-celda[data-tipo="alta"]::before{color:var(--red);}
+.hj-celda[data-tipo="media"]::before{color:var(--amber);}
+.hj-celda[data-tipo="hecho"]::before{color:var(--green);}
+.hj-nota{font-size:14px;color:var(--t2);}
+input.hj-valor{height:45px;padding:0 5px;text-align:right;font-weight:700;font-size:14px;}
+input.hj-valor:focus{white-space:nowrap;}
+input.hj-valor::placeholder{color:var(--t3);font-weight:400;}
+input.hj-num{height:45px;padding:0 5px;text-align:right;}
+.hj-fecha-td{cursor:pointer;}
+.hj-fecha-txt{display:block;padding:0 4px;font-size:14px;line-height:1.2;}
+.hj-fecha-txt.vacia{color:var(--t3);}
+/* El selector de fecha real, invisible sobre la casilla: tocarla lo abre */
+input.hj-fecha{position:absolute;inset:0;width:100%;height:100%;opacity:0;border:none;font-size:16px;color-scheme:dark;z-index:2;}
+.hj-fecha-td:focus-within{box-shadow:inset 0 0 0 2px var(--blue);}
+.hj-campana{position:absolute;right:2px;top:2px;font-size:10px;line-height:1;}
+.hj-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);}
+.hj-btn-menu{display:block;width:100%;height:45px;border:none;background:transparent;color:var(--t2);font-size:17px;cursor:pointer;}
+.hj-sino{display:block;width:100%;height:45px;border:none;background:transparent;font:700 14px 'DM Sans',sans-serif;color:var(--t3);cursor:pointer;}
+.hj-sino.si{color:var(--green);}
+.hj-tabla tr.hj-hoy td{background-image:none;animation:hj-palpita 1.8s ease-in-out infinite;}
+@keyframes hj-palpita{0%,100%{background-color:#161a31;}50%{background-color:#4f2836;}}
+@media (prefers-reduced-motion:reduce){.hj-tabla tr.hj-hoy td{animation:none;background-color:#3c2332;}}
+.hj-tabla tr.hj-vencida td{background-image:none;background-color:#452432;}
+.hj-tabla tr.hj-hecha td{background-image:none;}
+.hj-tabla tr.hj-hecha .hj-celda,.hj-tabla tr.hj-hecha .hj-fecha-txt{color:rgba(232,238,248,0.48);}
+.hj-tabla td.hj-msg{height:auto;padding:26px 12px;text-align:center;font-size:15px;color:var(--t2);}
+
+/* Menú ☰: se abre debajo de su fila, dentro de la hoja */
+.hj-tabla td.hj-menu-td{height:auto;padding:0;background:var(--card3);box-shadow:inset 0 2px 0 var(--blue);}
+.hj-menu-in{position:sticky;left:0;width:var(--hj-ancho-hoja,100%);padding:10px 9px 11px;}
+.hj-grupo{margin-bottom:10px;}
+.hj-etq{display:block;margin-bottom:5px;font-size:12px;font-weight:700;color:var(--t2);}
+.hj-colores{display:flex;gap:7px;flex-wrap:wrap;}
+.hj-color{width:34px;height:34px;border-radius:50%;border:2px solid var(--bd);cursor:pointer;background:var(--c);color:var(--t2);font-size:14px;}
+.hj-color.on{border-color:#fff;box-shadow:0 0 0 2px var(--blue);}
+.hj-seg{display:flex;border:1px solid var(--bd);border-radius:10px;overflow:hidden;}
+.hj-seg button{flex:1;height:38px;border:none;border-right:1px solid var(--bd);background:transparent;color:var(--t2);font:600 14px 'DM Sans',sans-serif;cursor:pointer;}
+.hj-seg button:last-child{border-right:none;}
+.hj-seg button.on{background:rgba(59,130,246,0.25);color:#fff;font-weight:700;}
+.hj-m-fila{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:42px;font-size:14px;font-weight:600;}
+.hj-sub{display:block;font-size:12px;font-weight:400;color:var(--t3);margin-top:1px;}
+.hj-tg{flex-shrink:0;width:46px;height:27px;border-radius:14px;border:none;background:rgba(255,255,255,0.14);position:relative;cursor:pointer;}
+.hj-tg::after{content:'';position:absolute;top:3px;left:3px;width:21px;height:21px;border-radius:50%;background:#fff;transition:left .15s;}
+.hj-tg:disabled{opacity:.4;cursor:default;}
+.hj-tg.on{background:var(--blue);}.hj-tg.on::after{left:22px;}
+.hj-acc{display:flex;gap:7px;margin-top:6px;}
+.hj-m-btn{flex:1;min-width:0;height:42px;border-radius:10px;border:1px solid var(--bd);background:transparent;color:var(--t1);font:700 14px 'DM Sans',sans-serif;cursor:pointer;}
+.hj-m-btn.ok{border-color:rgba(74,222,128,0.5);color:var(--green);background:rgba(74,222,128,0.1);}
+.hj-m-btn.rojo{border-color:rgba(248,113,113,0.5);color:var(--red);background:rgba(248,113,113,0.1);}
+
+/* Con más de 4 columnas: las dos primeras inmovilizadas, el ☰ a mano y el resto se desliza */
+.hj-wrap.hj-con-extras{overflow-x:auto;}
+.hj-con-extras .hj-tabla{width:var(--hj-ancho-tabla);}
+.hj-con-extras .hj-tabla td:nth-child(1):not(.hj-menu-td),.hj-con-extras .hj-tabla th:nth-child(1){position:sticky;left:0;z-index:2;}
+.hj-con-extras .hj-tabla td:nth-child(2),.hj-con-extras .hj-tabla th:nth-child(2){position:sticky;left:var(--hj-ancho-1);z-index:2;box-shadow:2px 0 0 rgba(96,165,250,0.55);}
+.hj-con-extras .hj-tabla td.hj-col-m,.hj-con-extras .hj-tabla th.hj-col-m{position:sticky;right:0;z-index:2;box-shadow:-1px 0 0 var(--bd);}
+.hj-con-extras .hj-tabla th:nth-child(1),.hj-con-extras .hj-tabla th:nth-child(2),.hj-con-extras .hj-tabla th.hj-col-m{z-index:5;}
+.hj-tabla th.hj-th-extra{padding:0;}
+.hj-th-btn{display:block;width:100%;height:32px;padding:0 5px;border:none;background:transparent;color:#93c5fd;font:700 12px 'DM Sans',sans-serif;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;}
+
+/* Paneles de la hoja: dentro de la página, sin modales */
+.hj-panel{margin:0 8px 7px;padding:10px;border:1px solid var(--bd);border-radius:12px;background:var(--card3);}
+.hj-p-tit{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;font-size:14px;font-weight:700;}
+.hj-p-x{flex-shrink:0;width:30px;height:30px;border:none;background:transparent;color:var(--t2);font-size:15px;cursor:pointer;}
+.hj-input{display:block;width:100%;min-width:0;height:42px;padding:0 10px;margin-bottom:8px;background:var(--card);border:1px solid var(--bd);border-radius:9px;outline:none;color:var(--t1);font:500 16px 'DM Sans',sans-serif;}
+.hj-input::placeholder{color:var(--t3);}
+.hj-tipos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin-bottom:9px;}
+.hj-tipo{min-width:0;height:36px;padding:0 2px;border:1px solid var(--bd);border-radius:9px;background:transparent;color:var(--t2);font:600 13px 'DM Sans',sans-serif;cursor:pointer;}
+.hj-tipo.on{border-color:var(--blue);background:rgba(59,130,246,0.25);color:#fff;font-weight:700;}
+.hj-p-acc{display:flex;gap:6px;}
+.hj-p-btn{flex:1;min-width:0;height:40px;padding:0 4px;border-radius:9px;border:1px solid var(--bd);background:transparent;color:var(--t1);font:700 14px 'DM Sans',sans-serif;cursor:pointer;}
+.hj-p-btn.ok{border:none;background:linear-gradient(135deg,#1a56db,#4a8fe8);color:#fff;}
+.hj-p-btn.rojo{border-color:rgba(248,113,113,0.5);color:var(--red);}
+.hj-p-btn:disabled{opacity:.4;cursor:default;}
+.hj-p-sub{margin-bottom:8px;font-size:12px;color:var(--t3);}
+
+/* Pestañas de hojas, abajo como Excel */
+.hj-tabs{display:flex;gap:3px;padding:6px 8px 0;flex-shrink:0;overflow-x:auto;scrollbar-width:none;}
+.hj-tabs::-webkit-scrollbar{display:none;}
+.hj-tab{flex:0 0 auto;max-width:150px;height:36px;padding:0 8px;border:1px solid var(--bd);border-bottom:none;border-radius:8px 8px 0 0;background:var(--card);color:var(--t2);font:600 12px 'DM Sans',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;}
+.hj-tab.on{background:var(--card3);color:var(--green);font-weight:700;box-shadow:inset 0 2px 0 var(--green);}
+.hj-tab.hj-nueva-tab{color:#93c5fd;}
+
+/* Nueva hoja */
+.hj-nueva{flex:1;min-height:0;overflow-y:auto;padding:4px 10px 12px;}
+.hj-nueva h2{font-size:17px;margin-bottom:9px;}
+.hj-plantillas{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:12px;}
+.hj-plantilla{min-width:0;padding:10px;border-radius:11px;border:1px solid var(--bd);background:var(--card);color:var(--t1);text-align:left;cursor:pointer;font-family:inherit;}
+.hj-plantilla b{display:block;font-size:14px;}
+.hj-plantilla span{display:block;margin-top:3px;font-size:12px;color:var(--t3);line-height:1.3;}
+.hj-plantilla.on{border-color:var(--blue);background:rgba(59,130,246,0.14);}
+.hj-cols{display:grid;grid-template-columns:1fr 1fr;gap:8px 6px;margin-bottom:12px;}
+.hj-cols .hj-input{margin-bottom:4px;}
+.hj-cols select{display:block;width:100%;min-width:0;height:36px;padding:0 6px;background:var(--card);border:1px solid var(--bd);border-radius:9px;color:var(--t2);font:500 16px 'DM Sans',sans-serif;}
+.hj-crear{width:100%;height:46px;border:none;border-radius:12px;background:linear-gradient(135deg,#1a56db,#4a8fe8);color:#fff;font:700 15px 'DM Sans',sans-serif;cursor:pointer;}
+
+/* Caja fuerte */
+.hj-pin{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;align-items:center;padding:10px 16px;}
+.hj-pin h2{font-size:18px;margin-top:4px;}
+.hj-pin p{margin-top:4px;font-size:13px;color:var(--t2);text-align:center;line-height:1.35;}
+.hj-puntos{display:flex;gap:13px;margin:13px 0;}
+.hj-punto{width:15px;height:15px;border-radius:50%;border:2px solid var(--t2);}
+.hj-punto.on{background:var(--green);border-color:var(--green);}
+.hj-teclado{display:grid;grid-template-columns:repeat(3,68px);gap:8px;}
+.hj-tecla{height:50px;border-radius:13px;border:1px solid var(--bd);background:var(--card2);color:var(--t1);font:600 21px 'DM Sans',sans-serif;cursor:pointer;}
+.hj-pin-error{min-height:18px;margin-top:8px;font-size:13px;font-weight:600;color:var(--red);text-align:center;}
+.hj-link{margin-top:6px;min-height:40px;padding:0 10px;border:none;background:transparent;color:#93c5fd;font:600 14px 'DM Sans',sans-serif;cursor:pointer;}
+.hj-olvido{width:100%;max-width:340px;margin-top:10px;}
+.hj-aviso-caja{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 8px 7px;padding:7px 10px;border-radius:10px;background:rgba(74,222,128,0.09);border:1px solid rgba(74,222,128,0.3);font-size:12.5px;color:var(--t2);flex-shrink:0;}
+.hj-cerrar{flex-shrink:0;height:32px;padding:0 10px;border-radius:8px;border:1px solid var(--bd);background:transparent;color:var(--t1);font:700 13px 'DM Sans',sans-serif;cursor:pointer;}
+.hj-caja .hj-celda{font-size:14px;}
+.hj-clave{display:flex;align-items:center;min-height:45px;}
+.hj-clave input{flex:1;min-width:0;width:100%;height:45px;padding:0 2px 0 5px;border:none;outline:none;background:transparent;color:var(--t1);font:600 14px 'DM Sans',sans-serif;}
+.hj-clave input::placeholder{color:var(--t3);font-weight:400;}
+.hj-clave input:focus{box-shadow:inset 0 0 0 2px var(--blue);background:rgba(59,130,246,0.14);}
+.hj-copiar{flex-shrink:0;width:28px;height:45px;border:none;background:transparent;font-size:13px;cursor:pointer;}
 /* ── Pestaña Listado: mismo estilo de Recordatorios ── */
 .lt-wrap{flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;padding:0 14px 8px;-webkit-overflow-scrolling:touch;}
 .lt-card{border:1px solid var(--bd);border-radius:14px;background:var(--card);overflow:hidden;margin-bottom:12px;}
@@ -927,20 +1027,26 @@ select.form-inp option{background:#0c1228;}
       <div class="lt-wrap" id="listado-list"></div>
     </div>
 
-    <!-- ══ RECORDATORIOS ══ -->
+    <!-- ══ RECORDATORIOS Y HOJAS ══ -->
     <div class="scr" id="scr-recordatorios">
-      <div class="rt-tools">
-        <label class="rt-search">🔍<input id="rt-buscar" type="text" placeholder="Buscar…" aria-label="Buscar en recordatorios" oninput="renderRecordar()"/></label>
-        <button class="rt-nueva" type="button" onclick="nuevaFilaRecordatorio()">+ Nueva fila</button>
+      <div class="hj-vista on" id="hj-hoja">
+        <div class="hj-tools">
+          <label class="hj-buscar">🔍<input id="hj-buscar" type="text" placeholder="Buscar…" aria-label="Buscar en la hoja"/></label>
+          <button class="hj-btn-fila" id="hj-btn-fila" type="button">+ Fila</button>
+          <button class="hj-btn-hoja" id="hj-btn-hoja" type="button" aria-label="Menú de la hoja">⋮</button>
+        </div>
+        <div id="hj-panel"></div>
+        <div class="hj-wrap" id="hj-wrap">
+          <table class="hj-tabla">
+            <colgroup id="hj-columnas"></colgroup>
+            <thead><tr id="hj-encabezado"></tr></thead>
+            <tbody id="hj-filas"></tbody>
+          </table>
+        </div>
       </div>
-      <div class="rt-leyenda">🔔 Ese día llega aviso por WhatsApp</div>
-      <div class="rt-wrap" id="rt-wrap">
-        <table class="rt-tabla">
-          <colgroup><col/><col class="rt-col-fecha"/><col class="rt-col-valor"/></colgroup>
-          <thead><tr><th>Qué recordar</th><th>Fecha</th><th class="rt-der">Valor</th></tr></thead>
-          <tbody id="recordatorios-list"></tbody>
-        </table>
-      </div>
+      <div class="hj-vista" id="hj-caja"></div>
+      <div class="hj-vista" id="hj-nueva"></div>
+      <div class="hj-tabs" id="hj-tabs"></div>
     </div>
 
     <!-- ══ IA CHAT ══ -->
@@ -1438,11 +1544,13 @@ async function syncDesdeSupabase() {
     const [
       { data: pagos },
       { data: eventos },
-      { data: recordatorios }
+      { data: recordatorios },
+      { data: hojas }
     ] = await Promise.all([
       supa.from('payments').select('*').eq('user_id', uid),
       supa.from('events').select('*').eq('user_id', uid),
-      supa.from('reminders').select('*').eq('user_id', uid)
+      supa.from('reminders').select('*').eq('user_id', uid),
+      supa.from('hojas').select('*').eq('user_id', uid)
     ]);
 
     // Actualizar DB local con datos de Supabase
@@ -1470,8 +1578,13 @@ async function syncDesdeSupabase() {
       nota: r.nota || '',
       hecho: r.hecho === true,
       content: r.content || {}, status: r.status || 'open',
-      created_at: r.created_at
+      created_at: r.created_at,
+      color: r.color || '', prioridad: r.prioridad || 'baja',
+      avisar: r.avisar !== false, rojo: r.rojo !== false,
+      extras: r.extras || {}, hoja_id: r.hoja_id || null
     }));
+    if (hojas) DB.hojas = hojas;
+    hjReaplicarPendientes();
 
     save();
     // Re-renderiza SOLO la pantalla activa. Antes se renderizaban a mano
@@ -1579,6 +1692,7 @@ function goTab(id){
   });
   if(id==='pagos') renderPagos();
   if(id==='agenda') renderAgenda();
+  if(id!=='recordatorios') hjAlSalirDeTab();
   if(id==='listado' || id==='recordatorios') renderRecordar();
   if(id==='config') renderConfig();
   if(id==='admin') renderAdmin();
@@ -2381,10 +2495,6 @@ function agendarDesdeDiario(fechaISO){
 // ════════════════════════════════════════
 // RECORDATORIOS
 // ════════════════════════════════════════
-let recEdit = null;          // fila abierta: { id:'nueva'|número, titulo, fecha, valor, nota }
-let recEditOriginal = '';    // para saber si tiene cambios sin guardar
-let recGuardando = false;
-
 // Recordatorio = tipo 'nota' (legacy 'definicion' también cae aquí).
 // Listado = tipo 'listado' (legacy 'lista'); su content.items = [{text,done}].
 const ES_NOTA = r => r.tipo === 'nota' || r.tipo === 'definicion';
@@ -2444,7 +2554,7 @@ function renderRecordar(){
   const tsOf = r => r.created_at ? new Date(r.created_at).getTime() : (r.fecha ? new Date(r.fecha+'T12:00:00').getTime() : 0);
   recs.sort((a,b)=> tsOf(b) - tsOf(a));
   renderListados(recs.filter(ES_LISTADO));
-  renderRecordatorios(recs.filter(ES_NOTA));
+  hjRender();
 }
 
 function renderListados(todas){
@@ -2487,127 +2597,6 @@ function fmtFechaFila(iso){
   const base = fmtDiaMes(iso);
   return iso.slice(0,4) === todayStr().slice(0,4) ? base : base+' '+iso.slice(2,4);
 }
-function creadaFila(r){
-  const iso = r.created_at ? new Date(r.created_at).toLocaleDateString('en-CA',{timeZone:'America/Bogota'}) : r.fecha;
-  return iso ? 'Creada '+fmtFechaFila(iso) : '';
-}
-
-function filaEdicionRecordatorio(r){
-  const e = recEdit;
-  const creada = r ? creadaFila(r) : 'Nueva · hoy, '+fmtFechaFila(todayStr());
-  return `<tr class="rt-edit"><td colspan="3">
-    <div class="rt-campos">
-      <label class="rt-campo rt-ancho"><span class="rt-etq">Qué recordar</span><input id="rt-titulo" type="text" maxlength="200" placeholder="Escribe aquí…" value="${escAttr(e.titulo)}" oninput="recEdit.titulo=this.value"/></label>
-      <label class="rt-campo rt-ancho"><span class="rt-etq">Nota</span><input type="text" maxlength="300" placeholder="Opcional" value="${escAttr(e.nota)}" oninput="recEdit.nota=this.value"/></label>
-      <label class="rt-campo"><span class="rt-etq">Fecha</span><input type="date" value="${escAttr(e.fecha)}" onchange="recEdit.fecha=this.value" oninput="recEdit.fecha=this.value"/></label>
-      <label class="rt-campo"><span class="rt-etq">Valor (COP)</span><input type="text" inputmode="numeric" placeholder="$0" value="${escAttr(e.valor)}" oninput="formatMonto(this);recEdit.valor=this.value"/></label>
-    </div>
-    <span class="rt-creada">${escAttr(creada)}</span>
-    <div class="rt-acciones">
-      <button type="button" class="rt-btn ok" onclick="guardarFilaRecordatorio()">Guardar</button>
-      <button type="button" class="rt-btn" onclick="cancelarFilaRecordatorio()">Cancelar</button>
-      ${r ? `<button type="button" class="rt-btn borrar" onclick="borrarFilaRecordatorio()">🗑 Borrar</button>` : ''}
-    </div>
-  </td></tr>`;
-}
-
-// 0 vencida sin hacer · 1 de hoy · 2 próxima · 3 sin fecha · 4 hecha. También fija el orden.
-function grupoRecordatorio(r){
-  if(r.hecho) return 4;
-  if(!r.recordar_fecha) return 3;
-  const hoy = todayStr();
-  return r.recordar_fecha < hoy ? 0 : r.recordar_fecha === hoy ? 1 : 2;
-}
-
-function filaRecordatorio(r){
-  const grupo = grupoRecordatorio(r);
-  const clase = ['rt-vencida','rt-hoy','','','rt-hecha'][grupo];
-  const estado = grupo===0 ? '<span class="rt-estado">Vencida</span>' : grupo===1 ? '<span class="rt-estado">Hoy</span>' : '';
-  // Una fila hecha ya no genera aviso: conserva la fecha, sin campana.
-  const campana = r.hecho ? '' : ' <span class="rt-campana" role="img" aria-label="Aviso por WhatsApp">🔔</span>';
-  const fecha = r.recordar_fecha
-    ? `<td class="rt-fecha">${fmtFechaFila(r.recordar_fecha)}${campana}${estado}</td>`
-    : '<td class="rt-fecha rt-vacio">—</td>';
-  const valor = r.valor > 0 ? `<td class="rt-valor">${fmtCOP(r.valor)}</td>` : '<td class="rt-valor rt-vacio">—</td>';
-  const boton = r.hecho
-    ? `<button type="button" class="rt-marcar desmarcar" onclick="event.stopPropagation();marcarRecordatorioHecho(${r.id},false)">↩ Desmarcar</button>`
-    : `<button type="button" class="rt-marcar" onclick="event.stopPropagation();marcarRecordatorioHecho(${r.id},true)">✓ Hecho</button>`;
-  return `<tr class="rt-fila ${clase}" onclick="abrirFilaRecordatorio(${r.id})">
-    <td><span class="rt-que">${r.hecho ? '<span class="rt-chulito" role="img" aria-label="Hecho">✓</span>' : ''}${escAttr(r.titulo)}</span>${r.nota ? `<span class="rt-nota">${escAttr(r.nota)}</span>` : ''}<span class="rt-creada">${escAttr(creadaFila(r))}</span>${boton}</td>
-    ${fecha}${valor}
-  </tr>`;
-}
-
-// Vencidas, de hoy, próximas, sin fecha y hechas. El buscador mira qué recordar y nota.
-function renderRecordatorios(notas){
-  const el = document.getElementById('recordatorios-list');
-  if(!el) return;
-  const terminos = recNormalizar((document.getElementById('rt-buscar')||{}).value).split(/\s+/).filter(Boolean);
-  const visibles = notas.filter(r=>{
-    if(recEdit && String(recEdit.id)===String(r.id)) return true;
-    const texto = recNormalizar(r.titulo+' '+r.nota);
-    return terminos.every(t=>texto.includes(t));
-  }).sort((a,b)=>{
-    const ga = grupoRecordatorio(a), gb = grupoRecordatorio(b);
-    if(ga !== gb) return ga - gb;
-    if(ga <= 2 && a.recordar_fecha !== b.recordar_fecha) return a.recordar_fecha.localeCompare(b.recordar_fecha);
-    return new Date(b.created_at||0) - new Date(a.created_at||0);
-  });
-  let html = recEdit && recEdit.id==='nueva' ? filaEdicionRecordatorio(null) : '';
-  html += visibles.map(r=> recEdit && String(recEdit.id)===String(r.id) ? filaEdicionRecordatorio(r) : filaRecordatorio(r)).join('');
-  if(!html){
-    html = `<tr><td colspan="3" class="rt-msg">${terminos.length ? 'Nada coincide con tu búsqueda.' : 'No hay recordatorios. Toca + Nueva fila para crear uno.'}</td></tr>`;
-  }
-  el.innerHTML = html;
-}
-
-const recMarcando = new Set(); // evita repetir el cambio con un doble toque
-async function marcarRecordatorioHecho(id, hecho){
-  if(recMarcando.has(id)) return;
-  recMarcando.add(id);
-  const { error } = await supa.from('reminders').update({ hecho }).eq('id', id).eq('user_id', currentUser.id);
-  recMarcando.delete(id);
-  if(error){ toast('❌ No se pudo cambiar: '+error.message,'var(--red)'); return; }
-  const r = DB.recordatorios.find(x=>String(x.id)===String(id));
-  if(r) r.hecho = hecho;
-  save();
-  renderRecordar();
-  toast(hecho ? '✅ Marcado como hecho' : '↩ Desmarcado', hecho ? 'var(--green)' : 'var(--t2)');
-}
-
-function recTieneCambios(){
-  return !!recEdit && JSON.stringify(recEdit) !== recEditOriginal;
-}
-function recAbrirEdicion(datos){
-  if(recTieneCambios()){ toast('Guarda o cancela la fila abierta','var(--amber)'); return false; }
-  recEdit = datos;
-  recEditOriginal = JSON.stringify(datos);
-  renderRecordar();
-  return true;
-}
-function nuevaFilaRecordatorio(){
-  if(!recAbrirEdicion({ id:'nueva', titulo:'', fecha:'', valor:'', nota:'' })) return;
-  document.getElementById('rt-wrap').scrollTop = 0;
-  const inp = document.getElementById('rt-titulo');
-  if(inp) inp.focus();
-}
-function abrirFilaRecordatorio(id){
-  const r = DB.recordatorios.find(x=>String(x.id)===String(id));
-  if(!r) return;
-  const abierta = recAbrirEdicion({
-    id: r.id, titulo: r.titulo||'', fecha: r.recordar_fecha||'',
-    valor: r.valor>0 ? Math.round(r.valor).toLocaleString('es-CO') : '', nota: r.nota||''
-  });
-  if(abierta){
-    const inp = document.getElementById('rt-titulo');
-    if(inp) inp.closest('tr').scrollIntoView({ block:'nearest' });
-  }
-}
-function cancelarFilaRecordatorio(){
-  recEdit = null;
-  renderRecordar();
-}
-
 function mensajeAvisoRecordatorio(fecha){
   if(!fecha) return '✅ Guardado como registro';
   const hoy = todayStr();
@@ -2620,53 +2609,917 @@ function mensajeAvisoRecordatorio(fecha){
   return `✅ Guardado. Te aviso el ${fmtFechaFila(fecha)} a las 8 am`;
 }
 
-async function guardarFilaRecordatorio(){
-  if(!recEdit || recGuardando) return;
-  const titulo = recEdit.titulo.trim();
-  if(!titulo){
-    toast('⚠️ Escribe qué quieres recordar','var(--amber)');
-    const inp = document.getElementById('rt-titulo');
-    if(inp) inp.focus();
-    return;
-  }
-  if(!(await sesionLista())){ toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
-  const valor = parseCOP(recEdit.valor);
-  const fecha = recEdit.fecha || null;
-  const campos = {
-    titulo, nota: recEdit.nota.trim() || null, valor: valor > 0 ? valor : null,
-    recordar_fecha: fecha, content: { texto: titulo }
-  };
-  recGuardando = true;
-  let error, data;
-  if(recEdit.id==='nueva'){
-    ({ data, error } = await supa.from('reminders')
-      .insert({ ...campos, user_id: currentUser.id, tipo:'nota', fecha: todayStr() })
-      .select().single());
-  } else {
-    const original = DB.recordatorios.find(x=>String(x.id)===String(recEdit.id));
-    // Con otra fecha vuelve a tocar aviso; sin cambiarla no se repite el ya enviado.
-    if(!original || (original.recordar_fecha||null) !== fecha) campos.notificado = false;
-    ({ data, error } = await supa.from('reminders').update(campos)
-      .eq('id', recEdit.id).eq('user_id', currentUser.id).select().single());
-  }
-  recGuardando = false;
-  if(error || !data){ toast('❌ No se pudo guardar: '+(error?.message||'sin confirmación'),'var(--red)'); return; }
-  recEdit = null;
-  toast(mensajeAvisoRecordatorio(fecha),'var(--green)');
-  await syncDesdeSupabase();
-  renderRecordar();
+// ════════════════════════════════════════
+// HOJAS TIPO EXCEL
+// Recordatorios y las hojas del usuario viven en la tabla reminders: las primeras con
+// tipo nota/definicion y las otras con tipo 'hoja' y su hoja_id. Cada columna se guarda en
+// un campo de reminders (c.campo) o, si no tiene, en reminders.extras[c.id].
+// ════════════════════════════════════════
+const HJ_COLORES = [
+  {id:'',c:'transparent'},{id:'azul',c:'rgba(59,130,246,0.2)'},{id:'verde',c:'rgba(74,222,128,0.17)'},
+  {id:'amarillo',c:'rgba(250,204,21,0.17)'},{id:'naranja',c:'rgba(251,146,60,0.2)'},
+  {id:'morado',c:'rgba(167,139,250,0.22)'},{id:'rosa',c:'rgba(244,114,182,0.2)'}
+];
+const HJ_TIPOS = [
+  {id:'texto',n:'Texto',w:124},{id:'numero',n:'Número',w:84},{id:'pesos',n:'Pesos',w:100},
+  {id:'fecha',n:'Fecha',w:64},{id:'sino',n:'Sí/No',w:66}
+];
+const HJ_BASE = [
+  {id:'fecha',nombre:'Fecha',tipo:'fecha',campo:'recordar_fecha',fija:true},
+  {id:'titulo',nombre:'Título',tipo:'texto',campo:'titulo',fija:true},
+  {id:'valor',nombre:'Valor',tipo:'pesos',campo:'valor',fija:true},
+  {id:'nota',nombre:'Nota',tipo:'texto',campo:'nota',fija:true}
+];
+const HJ_ANCHO_BASE = {fecha:56,titulo:114,valor:92,nota:118};
+const HJ_ANCHO_MENU = 27;
+const HJ_PLANTILLAS = {
+  blanco:{n:'En blanco',d:'Tú eliges las columnas',cols:[['Columna 1','texto'],['Columna 2','texto'],['','texto'],['','texto']]},
+  caja:{n:'🔒 Caja fuerte',d:'Nombre, Usuario, Clave, Nota. Con PIN y cifrada',cols:[['Nombre','texto'],['Usuario','texto'],['Clave','texto'],['Nota','texto']]},
+  contactos:{n:'Contactos',d:'Nombre, Teléfono, Dirección, Nota',cols:[['Nombre','texto'],['Teléfono','texto'],['Dirección','texto'],['Nota','texto']]},
+  inventario:{n:'Inventario',d:'Artículo, Cantidad, Lugar, Nota',cols:[['Artículo','texto'],['Cantidad','numero'],['Lugar','texto'],['Nota','texto']]}
+};
+const hj = { actual:'recordatorios', menu:null, confirmaFila:false, panel:null, colEdit:null, tipoNuevo:'texto', confirmaCol:false, confirmaHoja:false, plantilla:'blanco', renderPendiente:false, iniciada:false };
+const hjBorradores = [];     // filas nuevas que aún no están en la base
+const hjPend = new Map();    // clave de fila → { patch, timer, enCurso, fallos }
+const hjRecientes = new Set(); // creadas en esta visita: siguen al final, no saltan de lugar
+let hjSec = 0;
+const $hj = id => document.getElementById(id);
+const hjMiles = v => { const d = String(v==null?'':v).replace(/\D/g,''); return d ? '$'+d.replace(/\B(?=(\d{3})+(?!\d))/g,'.') : ''; };
+
+function hjHojas(){ return DB.hojas || []; }
+function hjHojaActual(){
+  if(hj.actual==='recordatorios') return hjHojas().find(h=>h.tipo==='recordatorios') || { id:null, tipo:'recordatorios', nombre:'Recordatorios', columnas:[] };
+  return hjHojas().find(h=>String(h.id)===String(hj.actual)) || null;
+}
+function hjColumnas(h){ return h.tipo==='recordatorios' ? [...HJ_BASE, ...(h.columnas||[])] : (h.columnas||[]); }
+function hjTieneFecha(h){ return hjColumnas(h).some(c=>c.campo==='recordar_fecha'); }
+function hjClaveHoja(h){ return h.tipo==='recordatorios' ? 'recordatorios' : String(h.id); }
+function hjK(r){ return r.id!=null ? String(r.id) : r._k; }
+function hjFila(k){ return DB.recordatorios.find(r=>String(r.id)===k) || hjBorradores.find(r=>r._k===k) || null; }
+function hjVal(r,c){ return c.campo ? r[c.campo] : (r.extras||{})[c.id]; }
+
+function hjFilasDe(h){
+  // Lo guardado en este celular antes de esta versión aún no trae estos campos.
+  DB.recordatorios.forEach(r=>{ if(r.avisar===undefined){ r.avisar = true; r.rojo = true; r.prioridad = 'baja'; r.extras = {}; } });
+  const guardadas = h.tipo==='recordatorios' ? DB.recordatorios.filter(ES_NOTA) : DB.recordatorios.filter(r=>r.tipo==='hoja' && String(r.hoja_id)===String(h.id));
+  return [...guardadas, ...hjBorradores.filter(r=>r._hoja===hjClaveHoja(h))];
+}
+// 0 vencida · 1 de hoy · 2 próxima · 3 sin fecha · 4 hecha. También fija el orden.
+function hjGrupo(r){
+  if(r.hecho) return 4;
+  if(!r.recordar_fecha) return 3;
+  const hoy = todayStr();
+  return r.recordar_fecha < hoy ? 0 : r.recordar_fecha === hoy ? 1 : 2;
+}
+function hjClaseFila(r){
+  if(r.hecho) return 'hj-hecha';
+  if(!r.rojo || !r.recordar_fecha) return '';
+  const g = hjGrupo(r);
+  return g===0 ? 'hj-vencida' : g===1 ? 'hj-hoy' : '';
+}
+function hjOrdenar(h, filas){
+  const reciente = r => r.id==null || hjRecientes.has(String(r.id));
+  return filas.sort((a,b)=>{
+    const ra = reciente(a), rb = reciente(b);
+    if(ra !== rb) return ra ? 1 : -1;
+    if(ra) return 0;
+    const ga = hjGrupo(a), gb = hjGrupo(b);
+    if(ga !== gb) return ga - gb;
+    if(ga <= 2 && a.recordar_fecha !== b.recordar_fecha) return a.recordar_fecha.localeCompare(b.recordar_fecha);
+    const orden = new Date(b.created_at||0) - new Date(a.created_at||0);
+    // Recordatorios: lo más nuevo arriba. Las hojas propias se llenan hacia abajo.
+    return h.tipo==='recordatorios' ? orden : -orden;
+  });
+}
+function hjAnchoCol(c, i, h){
+  if(h.tipo==='recordatorios' && c.fija) return HJ_ANCHO_BASE[c.id];
+  const base = (HJ_TIPOS.find(t=>t.id===c.tipo)||HJ_TIPOS[0]).w;
+  const w = Math.max(base, Math.min(150, String(c.nombre||'').length*7+24));
+  if(i===0) return c.tipo==='fecha' ? 56 : Math.min(w, 96);
+  if(i===1) return Math.min(w, 104);
+  return w;
 }
 
-async function borrarFilaRecordatorio(){
-  if(!recEdit || recEdit.id==='nueva') return;
-  const id = recEdit.id;
-  if(!(await uiConfirm(`¿Borrar "${recEdit.titulo}"?`))) return;
-  const { error } = await supa.from('reminders').delete().eq('id', id).eq('user_id', currentUser.id);
-  if(error){ toast('Error: '+error.message,'var(--red)'); return; }
-  recEdit = null;
-  toast('🗑 Borrado','var(--t2)');
-  await syncDesdeSupabase();
-  renderRecordar();
+function hjCelda(c, r, i){
+  const val = hjVal(r,c);
+  const nombre = escAttr(c.nombre);
+  const datos = `data-c="${escAttr(c.id)}" aria-label="${nombre}"`;
+  if(c.tipo==='fecha'){
+    const conAviso = c.campo==='recordar_fecha' && val && r.avisar && !r.hecho;
+    const g = c.campo==='recordar_fecha' && !r.hecho && r.rojo && val ? hjGrupo(r) : -1;
+    return `<td class="hj-fecha-td">${conAviso?'<span class="hj-campana" role="img" aria-label="Aviso por WhatsApp">🔔</span>':''}<span class="hj-fecha-txt${val?'':' vacia'}">${val?escAttr(fmtFechaFila(val)):nombre}</span>${g===0?'<span class="hj-sr">Vencida</span>':g===1?'<span class="hj-sr">Hoy</span>':''}<input class="hj-fecha" type="date" ${datos} value="${escAttr(val||'')}"/></td>`;
+  }
+  if(c.tipo==='pesos') return `<td><input class="hj-celda hj-valor" type="text" inputmode="numeric" enterkeyhint="next" data-nav="1" ${datos} placeholder="$" value="${escAttr(hjMiles(val))}"/></td>`;
+  if(c.tipo==='numero') return `<td><input class="hj-celda hj-num" type="text" inputmode="numeric" enterkeyhint="next" data-nav="1" ${datos} placeholder="—" value="${escAttr(val||'')}"/></td>`;
+  if(c.tipo==='sino') return `<td><button type="button" class="hj-sino${val?' si':''}" data-a="sino" ${datos}>${val?'Sí':'No'}</button></td>`;
+  const marca = c.campo==='titulo' ? (r.hecho?'✓':r.prioridad==='alta'?'!!':r.prioridad==='media'?'!':'') : '';
+  const attrMarca = marca ? ` data-marca="${marca}" data-tipo="${r.hecho?'hecho':escAttr(r.prioridad)}"` : '';
+  const clase = c.campo==='nota' ? 'hj-celda hj-nota' : 'hj-celda';
+  const campo = c.campo==='titulo' ? ' data-campo="titulo"' : '';
+  return `<td><div class="${clase}" contenteditable="true" role="textbox" enterkeyhint="next" data-nav="1"${campo} ${datos} data-vacio="${nombre}"${attrMarca}>${escAttr(val||'')}</div></td>`;
+}
+function hjMenuHtml(r, h, k){
+  const n = hjColumnas(h).length + 1;
+  const fecha = !!r.recordar_fecha;
+  const colores = HJ_COLORES.map(c=>`<button type="button" aria-label="Color ${c.id||'ninguno'}" class="hj-color${(r.color||'')===c.id?' on':''}" style="--c:${c.c}" data-a="color" data-v="${c.id}">${c.id?'':'✕'}</button>`).join('');
+  const prios = ['alta','media','baja'].map(p=>`<button type="button" class="${r.prioridad===p?'on':''}" data-a="prio" data-v="${p}">${p[0].toUpperCase()+p.slice(1)}</button>`).join('');
+  const aviso = hjTieneFecha(h) ? `
+    <div class="hj-m-fila"><span>🔔 Avisar por WhatsApp<span class="hj-sub">${fecha?'Ese día a las 8 am. Apágalo si no lo quieres':'Se enciende solo al ponerle fecha'}</span></span><button type="button" aria-label="Avisar por WhatsApp" class="hj-tg${fecha&&r.avisar?' on':''}" data-a="avisar"${fecha?'':' disabled'}></button></div>
+    <div class="hj-m-fila"><span>🔴 Rojo cuando se acerque<span class="hj-sub">${fecha?'Palpita el día; fija si pasó sin marcar hecho':'Se enciende solo al ponerle fecha'}</span></span><button type="button" aria-label="Rojo cuando se acerque" class="hj-tg${fecha&&r.rojo?' on':''}" data-a="rojo"${fecha?'':' disabled'}></button></div>` : '';
+  const acciones = hj.confirmaFila
+    ? `<button type="button" class="hj-m-btn rojo" data-a="borrar-si">Sí, borrar</button><button type="button" class="hj-m-btn" data-a="borrar-no">No</button>`
+    : `<button type="button" class="hj-m-btn ok" data-a="hecho">${r.hecho?'↩ Desmarcar':'✓ Marcar hecho'}</button><button type="button" class="hj-m-btn rojo" data-a="borrar">🗑 Borrar</button>`;
+  return `<tr class="hj-menu-tr" data-k="${escAttr(k)}"><td class="hj-menu-td" colspan="${n}"><div class="hj-menu-in">
+    <div class="hj-grupo"><span class="hj-etq">Color de la fila</span><div class="hj-colores">${colores}</div></div>
+    <div class="hj-grupo"><span class="hj-etq">Prioridad</span><div class="hj-seg">${prios}</div></div>
+    ${aviso}<div class="hj-acc">${acciones}</div></div></td></tr>`;
+}
+function hjFilaHtml(r, h, cols){
+  const k = hjK(r);
+  const color = r.hecho ? 'transparent' : ((HJ_COLORES.find(c=>c.id===(r.color||''))||HJ_COLORES[0]).c);
+  return `<tr class="${hjClaseFila(r)}" data-k="${escAttr(k)}" style="--fila:${color}">${cols.map((c,i)=>hjCelda(c,r,i)).join('')}<td class="hj-col-m"><button type="button" class="hj-btn-menu" aria-label="Menú de la fila" data-a="menu">☰</button></td></tr>${hj.menu===k?hjMenuHtml(r,h,k):''}`;
+}
+function hjPintarEstructura(h){
+  const cols = hjColumnas(h), wrap = $hj('hj-wrap'), con = cols.length > 4;
+  wrap.classList.toggle('hj-con-extras', con);
+  const anchos = cols.map((c,i)=>hjAnchoCol(c,i,h));
+  wrap.style.setProperty('--hj-ancho-tabla', anchos.reduce((a,b)=>a+b,HJ_ANCHO_MENU)+'px');
+  wrap.style.setProperty('--hj-ancho-1', (anchos[0]||0)+'px');
+  wrap.style.setProperty('--hj-ancho-hoja', wrap.clientWidth+'px');
+  // Al saltar de celda, la de destino no queda escondida detrás de las fijas.
+  wrap.style.scrollPaddingLeft = con ? (anchos[0]+anchos[1]+2)+'px' : '';
+  wrap.style.scrollPaddingRight = con ? HJ_ANCHO_MENU+'px' : '';
+  let colgroup;
+  if(con) colgroup = anchos.map(w=>`<col style="width:${w}px"/>`).join('');
+  else if(h.tipo==='recordatorios') colgroup = '<col class="hj-col-fecha"/><col/><col class="hj-col-valor"/><col class="hj-col-nota"/>';
+  else colgroup = cols.map(c=>c.tipo==='fecha'?'<col class="hj-col-fecha"/>':c.tipo==='pesos'?'<col class="hj-col-valor"/>':c.tipo==='sino'?'<col style="width:52px"/>':'<col/>').join('');
+  $hj('hj-columnas').innerHTML = colgroup + `<col class="hj-col-menu"/>`;
+  $hj('hj-encabezado').innerHTML = cols.map(c=>{
+    if(h.tipo==='recordatorios' && c.fija) return `<th data-base="1"${c.tipo==='pesos'?' class="hj-der"':''}>${escAttr(c.nombre)}</th>`;
+    return `<th class="hj-th-extra"><button type="button" class="hj-th-btn" data-col="${escAttr(c.id)}" aria-label="Editar columna ${escAttr(c.nombre)}">${escAttr(c.nombre||'—')} ▾</button></th>`;
+  }).join('') + '<th class="hj-col-m" aria-label="Menú"></th>';
+}
+function hjPintarFilas(h){
+  const cols = hjColumnas(h);
+  const terminos = recNormalizar($hj('hj-buscar').value).split(/\s+/).filter(Boolean);
+  const textos = cols.filter(c=>c.tipo==='texto');
+  const filas = hjOrdenar(h, hjFilasDe(h)).filter(r=>{
+    if(!terminos.length) return true;
+    const t = recNormalizar(textos.map(c=>hjVal(r,c)||'').join(' '));
+    return terminos.every(x=>t.includes(x));
+  });
+  let html = filas.map(r=>hjFilaHtml(r,h,cols)).join('');
+  if(!html) html = `<tr><td colspan="${cols.length+1}" class="hj-msg">${terminos.length?'Nada coincide con tu búsqueda.':'Hoja vacía. Toca + Fila para empezar.'}</td></tr>`;
+  $hj('hj-filas').innerHTML = html;
+}
+function hjPintarTabs(){
+  const normales = hjHojas().filter(h=>h.tipo==='normal').sort((a,b)=>a.orden-b.orden||a.id-b.id);
+  const caja = hjHojas().find(h=>h.tipo==='caja');
+  const tab = (p,txt,extra='') => `<button class="hj-tab${String(hj.actual)===String(p)?' on':''}${extra}" data-p="${escAttr(p)}" type="button">${escAttr(txt)}</button>`;
+  $hj('hj-tabs').innerHTML = tab('recordatorios','Recordatorios') + normales.map(h=>tab(h.id,h.nombre)).join('') + (caja?tab('caja','🔒 Caja'):'') + tab('nueva','+ Nueva hoja',' hj-nueva-tab');
+}
+function hjMostrarVista(v){
+  ['hoja','caja','nueva'].forEach(x=>$hj('hj-'+x).classList.toggle('on',x===v));
+}
+function hjEditando(){
+  const a = document.activeElement;
+  return !!(a && a.closest && a.closest('#hj-filas') && (a.isContentEditable || a.tagName==='INPUT'));
+}
+function hjRender(forzar){
+  if(!$hj('hj-filas')) return;
+  hjIniciar();
+  if(!forzar && hjEditando()){ hj.renderPendiente = true; return; }
+  hj.renderPendiente = false;
+  hjPintarTabs();
+  if(hj.actual==='nueva'){ hjMostrarVista('nueva'); hjPintarNueva(); return; }
+  if(hj.actual==='caja'){ hjMostrarVista('caja'); if(!cajaS.llave) cajaPintar(); return; }
+  const h = hjHojaActual();
+  if(!h){ hj.actual='recordatorios'; return hjRender(forzar); }
+  hjMostrarVista('hoja');
+  hjPintarEstructura(h);
+  hjPintarFilas(h);
+  hjPintarPanel();
+}
+
+// ─── Guardado: al escribir se guarda solo; una fila vacía no llega a la base ───
+function hjVacia(r){
+  return !String(r.titulo||'').trim() && !String(r.nota||'').trim() && !r.valor && !r.recordar_fecha
+    && !Object.values(r.extras||{}).some(v=>v!=='' && v!=null && v!==false);
+}
+function hjEncolar(k, patch, ya){
+  const e = hjPend.get(k) || { patch:{}, timer:null, enCurso:false, fallos:0 };
+  Object.assign(e.patch, patch);
+  hjPend.set(k, e);
+  clearTimeout(e.timer);
+  e.timer = setTimeout(()=>hjFlush(k), ya ? 0 : 600);
+}
+async function hjFlush(k){
+  const e = hjPend.get(k);
+  if(!e) return;
+  clearTimeout(e.timer);
+  if(e.enCurso){ e.repetir = true; return; }
+  const r = hjFila(k);
+  if(!r){ hjPend.delete(k); return; }
+  if(r.id==null && hjVacia(r)){ hjPend.delete(k); return; }
+  if(!Object.keys(e.patch).length && r.id!=null){ hjPend.delete(k); return; }
+  const patch = e.patch; e.patch = {}; e.enCurso = true; e.repetir = false;
+  let error = null, claveActual = k;
+  try {
+    if(!(await sesionLista())) throw new Error('sesión no lista');
+    if(r.id==null){
+      const titulo = String(r.titulo||'').trim();
+      const res = await supa.from('reminders').insert({
+        user_id: currentUser.id, tipo: r.tipo, hoja_id: r.hoja_id, titulo, content:{ texto:titulo },
+        fecha: todayStr(), recordar_fecha: r.recordar_fecha, valor: r.valor, nota: String(r.nota||'').trim()||null,
+        color: r.color||null, prioridad: r.prioridad, avisar: r.avisar, rojo: r.rojo, hecho: r.hecho, extras: r.extras||{}
+      }).select().single();
+      if(res.error || !res.data) throw new Error(res.error?.message || 'sin confirmación');
+      // Cambios hechos mientras se insertaba siguen en e.patch y salen en la siguiente vuelta.
+      claveActual = hjPromover(r, res.data, k);
+      hjPend.delete(k); hjPend.set(claveActual, e);
+    } else {
+      const res = await supa.from('reminders').update(patch).eq('id', r.id).eq('user_id', currentUser.id).select('id');
+      if(res.error) throw new Error(res.error.message);
+      if(!res.data?.length) throw new Error('la fila ya no existe');
+    }
+    e.fallos = 0;
+  } catch(err){ error = err; }
+  e.enCurso = false;
+  if(error){
+    e.patch = { ...patch, ...e.patch };
+    e.fallos++;
+    console.error('hoja guardar:', error.message);
+    if(e.fallos===1) toast('❌ No se guardó el último cambio. Reintentando…','var(--red)');
+    if(e.fallos<4) e.timer = setTimeout(()=>hjFlush(claveActual), 4000);
+    else toast('❌ No se pudo guardar. Revisa tu conexión','var(--red)');
+    return;
+  }
+  if(Object.keys(e.patch).length || e.repetir) return hjFlush(claveActual);
+  hjPend.delete(claveActual);
+  save();
+}
+// Un borrador ya guardado pasa a ser fila normal, sin repintar lo que se está escribiendo.
+function hjPromover(r, data, kVieja){
+  const i = hjBorradores.indexOf(r);
+  if(i>=0) hjBorradores.splice(i,1);
+  r.id = data.id; r.created_at = data.created_at; r.fecha = data.fecha; r.content = data.content;
+  delete r._k; delete r._hoja;
+  const ya = DB.recordatorios.findIndex(x=>String(x.id)===String(r.id));
+  if(ya>=0) DB.recordatorios[ya] = r; else DB.recordatorios.push(r);
+  const k = String(r.id);
+  hjRecientes.add(k);
+  document.querySelectorAll(`#hj-filas tr[data-k="${kVieja}"]`).forEach(tr=>{ tr.dataset.k = k; });
+  if(hj.menu===kVieja) hj.menu = k;
+  return k;
+}
+async function hjFlushTodo(){ await Promise.all([...hjPend.keys()].map(hjFlush)); }
+// Tras recargar desde la base, lo que aún no se guardó no se pierde de la pantalla.
+function hjReaplicarPendientes(){
+  hjPend.forEach((e,k)=>{ const r = DB.recordatorios.find(x=>String(x.id)===k); if(r) Object.assign(r, e.patch); });
+}
+function hjOcupado(){ return hjPend.size>0 || hjEditando() || !!cajaS.llave; }
+function hjDescartarVacios(){
+  for(let i=hjBorradores.length-1; i>=0; i--) if(hjVacia(hjBorradores[i])) hjBorradores.splice(i,1);
+}
+function hjAsignar(r, c, v, k){
+  if(c.campo==='titulo'){ r.titulo = v; hjEncolar(k,{ titulo:v.trim(), content:{ texto:v.trim() } }); }
+  else if(c.campo==='nota'){ r.nota = v; hjEncolar(k,{ nota:v.trim()||null }); }
+  else if(c.campo==='valor'){ r.valor = v ? Number(v) : null; hjEncolar(k,{ valor:r.valor }); }
+  else { r.extras = { ...(r.extras||{}), [c.id]:v }; hjEncolar(k,{ extras:r.extras }); }
+}
+function hjNuevaFila(){
+  const h = hjHojaActual(); if(!h) return;
+  const k = 'n'+(++hjSec);
+  hjBorradores.push({ id:null, _k:k, _hoja:hjClaveHoja(h), tipo:h.tipo==='recordatorios'?'nota':'hoja', hoja_id:h.id||null,
+    titulo:'', nota:'', valor:null, recordar_fecha:null, color:'', prioridad:'baja', avisar:true, rojo:true, hecho:false, extras:{} });
+  hj.menu = null; hj.confirmaFila = false;
+  $hj('hj-buscar').value = '';
+  hjRender(true);
+  $hj('hj-wrap').scrollLeft = 0;
+  const tr = $hj('hj-filas').querySelector(`tr[data-k="${k}"]`);
+  const celda = tr && tr.querySelector('[data-nav]');
+  if(celda) celda.focus();
+  if(tr) tr.scrollIntoView({ block:'nearest' });
+}
+function hjSiguiente(celda){
+  const tr = celda.closest('tr');
+  const orden = [...tr.querySelectorAll('[data-nav]')], i = orden.indexOf(celda);
+  if(i<orden.length-1){ orden[i+1].focus(); return; }
+  let sig = tr.nextElementSibling;
+  while(sig && sig.classList.contains('hj-menu-tr')) sig = sig.nextElementSibling;
+  const destino = sig && sig.querySelector('[data-nav]');
+  if(destino) destino.focus(); else hjNuevaFila();
+}
+function hjSoltarFoco(){
+  if(hjEditando()) document.activeElement.blur();
+}
+function hjAccionFila(a, b, k){
+  const r = hjFila(k); if(!r) return;
+  const h = hjHojaActual();
+  if(a==='menu'){ hj.menu = hj.menu===k ? null : k; hj.confirmaFila = false; return hjRender(true); }
+  if(a==='sino'){
+    const c = hjColumnas(h).find(x=>x.id===b.dataset.c); if(!c) return;
+    r.extras = { ...(r.extras||{}), [c.id]:!(r.extras||{})[c.id] };
+    b.classList.toggle('si', r.extras[c.id]); b.textContent = r.extras[c.id]?'Sí':'No';
+    return hjEncolar(k,{ extras:r.extras }, true);
+  }
+  if(a==='color'){ r.color = b.dataset.v; hjEncolar(k,{ color:r.color||null }, true); }
+  if(a==='prio'){ r.prioridad = b.dataset.v; hjEncolar(k,{ prioridad:r.prioridad }, true); }
+  if(a==='avisar'){ r.avisar = !r.avisar; hjEncolar(k,{ avisar:r.avisar }, true); }
+  if(a==='rojo'){ r.rojo = !r.rojo; hjEncolar(k,{ rojo:r.rojo }, true); }
+  if(a==='hecho'){ r.hecho = !r.hecho; hjEncolar(k,{ hecho:r.hecho }, true); toast(r.hecho?'✅ Marcado como hecho':'↩ Desmarcado', r.hecho?'var(--green)':'var(--t2)'); }
+  if(a==='borrar') hj.confirmaFila = true;
+  if(a==='borrar-no') hj.confirmaFila = false;
+  if(a==='borrar-si') return hjBorrarFila(r, k);
+  hjRender(true);
+}
+async function hjBorrarFila(r, k){
+  const e = hjPend.get(k);
+  if(e){ clearTimeout(e.timer); hjPend.delete(k); }
+  if(r.id!=null){
+    const { error } = await supa.from('reminders').delete().eq('id', r.id).eq('user_id', currentUser.id);
+    if(error){ toast('❌ No se pudo borrar: '+error.message,'var(--red)'); return; }
+    DB.recordatorios = DB.recordatorios.filter(x=>x!==r);
+    save();
+  } else {
+    const i = hjBorradores.indexOf(r); if(i>=0) hjBorradores.splice(i,1);
+  }
+  hj.menu = null; hj.confirmaFila = false;
+  toast('🗑 Fila borrada','var(--t2)');
+  hjRender(true);
+}
+
+// ─── Eventos de la hoja ───
+function hjIniciar(){
+  if(hj.iniciada) return;
+  hj.iniciada = true;
+  const f = $hj('hj-filas');
+  f.addEventListener('keydown', e=>{ if(e.key==='Enter' && e.target.dataset.nav){ e.preventDefault(); hjSiguiente(e.target); } });
+  // "Siguiente" llega como Enter en unos teclados y como salto de línea en otros.
+  f.addEventListener('beforeinput', e=>{
+    if((e.inputType==='insertParagraph'||e.inputType==='insertLineBreak') && e.target.dataset?.nav){ e.preventDefault(); hjSiguiente(e.target); }
+  });
+  // Pegar solo texto, en una línea.
+  f.addEventListener('paste', e=>{
+    if(!e.target.isContentEditable) return;
+    e.preventDefault();
+    const t = (e.clipboardData||window.clipboardData).getData('text').replace(/\s*[\r\n]+\s*/g,' ');
+    document.execCommand('insertText', false, t);
+  });
+  f.addEventListener('input', e=>{
+    const t = e.target, cid = t.dataset.c, tr = t.closest('tr');
+    if(!cid || !tr || t.type==='date') return;
+    const k = tr.dataset.k, r = hjFila(k), h = hjHojaActual(), c = h && hjColumnas(h).find(x=>x.id===cid);
+    if(!r || !c) return;
+    if(c.tipo==='pesos'){ const d = t.value.replace(/\D/g,'').slice(0,15); t.value = hjMiles(d); hjAsignar(r,c,d,k); }
+    else if(c.tipo==='numero'){ t.value = t.value.replace(/\D/g,'').slice(0,15); hjAsignar(r,c,t.value,k); }
+    else hjAsignar(r,c,t.textContent.slice(0, c.campo==='titulo'?200:500),k);
+  });
+  // La fecha solo acepta fecha; elegirla pasa a la casilla de la derecha.
+  f.addEventListener('change', e=>{
+    const t = e.target; if(t.type!=='date') return;
+    const k = t.closest('tr').dataset.k, r = hjFila(k), h = hjHojaActual(), c = h && hjColumnas(h).find(x=>x.id===t.dataset.c);
+    if(!r || !c) return;
+    if(c.campo==='recordar_fecha'){
+      const tenia = !!r.recordar_fecha, nueva = t.value || null;
+      r.recordar_fecha = nueva;
+      // Poner fecha enciende aviso y rojo; cambiarla respeta lo que el usuario apagó.
+      if(nueva && !tenia){ r.avisar = true; r.rojo = true; }
+      hjEncolar(k,{ recordar_fecha:nueva, notificado:false, avisar:r.avisar, rojo:r.rojo }, true);
+      if(nueva && r.avisar) toast(mensajeAvisoRecordatorio(nueva),'var(--green)');
+    } else {
+      r.extras = { ...(r.extras||{}), [c.id]:t.value||'' };
+      hjEncolar(k,{ extras:r.extras }, true);
+    }
+    hjRender(true);
+    const kNueva = hjK(r);
+    const tr = $hj('hj-filas').querySelector(`tr[data-k="${kNueva}"]`);
+    if(tr && c.campo==='recordar_fecha'){
+      const sig = tr.querySelector('[data-nav]');
+      if(sig) sig.focus();
+      tr.scrollIntoView({ block:'nearest' });
+    }
+  });
+  f.addEventListener('focusout', e=>{
+    const tr = e.target.closest && e.target.closest('tr');
+    if(tr && hjPend.has(tr.dataset.k)) hjFlush(tr.dataset.k);
+    setTimeout(()=>{ if(hj.renderPendiente && !hjEditando()) hjRender(); }, 0);
+  });
+  f.addEventListener('click', e=>{
+    const b = e.target.closest('[data-a]'); if(!b) return;
+    const tr = b.closest('tr'); if(!tr) return;
+    hjAccionFila(b.dataset.a, b, tr.dataset.k);
+  });
+  $hj('hj-buscar').addEventListener('input', ()=>{ const h = hjHojaActual(); if(h) hjPintarFilas(h); });
+  $hj('hj-btn-fila').addEventListener('click', hjNuevaFila);
+  $hj('hj-btn-hoja').addEventListener('click', ()=>{ hj.panel = hj.panel ? null : 'menu'; hj.colEdit = null; hj.confirmaCol = false; hj.confirmaHoja = false; hjPintarPanel(); });
+  $hj('hj-encabezado').addEventListener('click', e=>{
+    const b = e.target.closest('.hj-th-btn');
+    if(b){ hj.panel = 'editar'; hj.colEdit = b.dataset.col; hj.confirmaCol = false; hjPintarPanel(); return; }
+    if(e.target.closest('[data-base]')) toast('Las 4 columnas base son fijas','var(--t2)');
+  });
+  $hj('hj-panel').addEventListener('input', hjPanelInput);
+  $hj('hj-panel').addEventListener('click', hjPanelClick);
+  $hj('hj-tabs').addEventListener('click', e=>{ const b = e.target.closest('.hj-tab'); if(b) hjVer(b.dataset.p); });
+  $hj('hj-nueva').addEventListener('click', hjNuevaClick);
+  $hj('hj-caja').addEventListener('click', cajaClick);
+  $hj('hj-caja').addEventListener('input', cajaInput);
+  $hj('hj-caja').addEventListener('keydown', e=>{ if(e.key==='Enter' && e.target.dataset.cnav){ e.preventDefault(); cajaSiguiente(e.target); } });
+  $hj('hj-caja').addEventListener('beforeinput', e=>{
+    if((e.inputType==='insertParagraph'||e.inputType==='insertLineBreak') && e.target.dataset?.cnav){ e.preventDefault(); cajaSiguiente(e.target); }
+  });
+  $hj('hj-caja').addEventListener('paste', e=>{
+    if(!e.target.isContentEditable) return;
+    e.preventDefault();
+    document.execCommand('insertText', false, (e.clipboardData||window.clipboardData).getData('text').replace(/\s*[\r\n]+\s*/g,' '));
+  });
+  // La clave se ve mientras se toca; al salir de la casilla queda tapada de nuevo.
+  $hj('hj-caja').addEventListener('focusin', e=>{ if(e.target.dataset.clave) e.target.type = 'text'; });
+  $hj('hj-caja').addEventListener('focusout', e=>{ if(e.target.dataset.clave) e.target.type = 'password'; });
+  window.addEventListener('resize', ()=>{ const w = $hj('hj-wrap'); w.style.setProperty('--hj-ancho-hoja', w.clientWidth+'px'); });
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState==='hidden'){ hjFlushTodo(); if(cajaS.llave) cajaCerrar(); }
+  });
+}
+function hjVer(p){
+  hjSoltarFoco();
+  hjFlushTodo();
+  hjDescartarVacios();
+  if(hj.actual==='caja' && p!=='caja') cajaCerrar();
+  hj.actual = p;
+  hj.menu = null; hj.confirmaFila = false; hj.panel = null; hj.colEdit = null; hj.confirmaHoja = false;
+  hjRecientes.clear();
+  $hj('hj-buscar').value = '';
+  $hj('hj-wrap').scrollLeft = 0;
+  if(p==='caja') cajaAlEntrar();
+  if(p==='nueva'){ hj.plantilla = 'blanco'; }
+  hjRender(true);
+}
+// Al salir de la pestaña: se guarda lo pendiente y se cierra la Caja.
+function hjAlSalirDeTab(){
+  hjFlushTodo();
+  hjDescartarVacios();
+  hjRecientes.clear();
+  if(cajaS.llave) cajaCerrar();
+}
+
+// ─── Panel de la hoja y columnas ───
+function hjPintarPanel(){
+  const h = hjHojaActual();
+  const el = $hj('hj-panel');
+  $hj('hj-btn-hoja').classList.toggle('on', !!hj.panel);
+  if(!h || !hj.panel){ el.innerHTML = ''; return hjAnchoHoja(); }
+  const cerrar = '<button type="button" class="hj-p-x" data-p="cerrar" aria-label="Cerrar">✕</button>';
+  if(hj.panel==='menu'){
+    const borrar = h.tipo==='normal'
+      ? (hj.confirmaHoja
+        ? `<div class="hj-p-sub" style="margin-top:8px">Se borra la hoja con todas sus filas.</div><div class="hj-p-acc"><button type="button" class="hj-p-btn rojo" data-p="hoja-si">Sí, borrar</button><button type="button" class="hj-p-btn" data-p="hoja-no">No</button></div>`
+        : `<div class="hj-p-acc" style="margin-top:6px"><button type="button" class="hj-p-btn rojo" data-p="hoja-borrar">🗑 Borrar hoja</button></div>`)
+      : '';
+    el.innerHTML = `<div class="hj-panel"><div class="hj-p-tit"><span>Hoja: ${escAttr(h.nombre)}</span>${cerrar}</div><div class="hj-p-acc"><button type="button" class="hj-p-btn ok" data-p="columna">+ Columna</button></div>${borrar}</div>`;
+  } else if(hj.panel==='columna'){
+    el.innerHTML = `<div class="hj-panel"><div class="hj-p-tit"><span>+ Columna</span>${cerrar}</div>
+      <input id="hj-col-nombre" class="hj-input" type="text" maxlength="30" placeholder="Nombre de la columna" aria-label="Nombre de la columna"/>
+      <div class="hj-tipos">${HJ_TIPOS.map(t=>`<button type="button" class="hj-tipo${t.id===hj.tipoNuevo?' on':''}" data-tipo="${t.id}">${t.n}</button>`).join('')}</div>
+      <div class="hj-p-sub">Se agrega a todas las filas de la hoja.</div>
+      <div class="hj-p-acc"><button type="button" class="hj-p-btn ok" data-p="agregar">Agregar columna</button></div></div>`;
+  } else if(hj.panel==='editar'){
+    const lista = h.columnas||[], i = lista.findIndex(c=>c.id===hj.colEdit), c = lista[i];
+    if(!c){ hj.panel = null; el.innerHTML = ''; return hjAnchoHoja(); }
+    const tipo = (HJ_TIPOS.find(t=>t.id===c.tipo)||HJ_TIPOS[0]).n;
+    const movibles = lista.filter(x=>!x.base);
+    const j = movibles.indexOf(c);
+    let pie = '';
+    if(c.base) pie = '<div class="hj-p-sub">Es una columna con la que se creó la hoja: se puede renombrar.</div>';
+    else if(hj.confirmaCol) pie = `<div class="hj-p-sub">Se borra la columna y sus datos en todas las filas.</div><div class="hj-p-acc"><button type="button" class="hj-p-btn rojo" data-p="borrar-si">Sí, borrar</button><button type="button" class="hj-p-btn" data-p="borrar-no">No</button></div>`;
+    else pie = `<div class="hj-p-acc"><button type="button" class="hj-p-btn" data-p="izq" aria-label="Mover a la izquierda" ${j===0?'disabled':''}>← Mover</button><button type="button" class="hj-p-btn" data-p="der" aria-label="Mover a la derecha" ${j===movibles.length-1?'disabled':''}>Mover →</button><button type="button" class="hj-p-btn rojo" data-p="borrar">🗑 Borrar</button></div>`;
+    el.innerHTML = `<div class="hj-panel"><div class="hj-p-tit"><span>Columna · ${tipo}</span>${cerrar}</div>
+      <input id="hj-col-renombrar" class="hj-input" type="text" maxlength="30" value="${escAttr(c.nombre)}" aria-label="Nombre de la columna"/>${pie}</div>`;
+  }
+  hjAnchoHoja();
+}
+function hjAnchoHoja(){ const w = $hj('hj-wrap'); w.style.setProperty('--hj-ancho-hoja', w.clientWidth+'px'); }
+function hjCerrarPanel(){ hj.panel = null; hj.colEdit = null; hj.confirmaCol = false; hj.confirmaHoja = false; hjPintarPanel(); }
+let hjTimerNombre = null;
+function hjPanelInput(e){
+  if(e.target.id!=='hj-col-renombrar') return;
+  const h = hjHojaActual(), c = h && (h.columnas||[]).find(x=>x.id===hj.colEdit);
+  if(!c) return;
+  c.nombre = e.target.value;
+  hjPintarEstructura(h);
+  clearTimeout(hjTimerNombre);
+  hjTimerNombre = setTimeout(()=>{ if(c.nombre.trim()) hjGuardarColumnas(h); }, 700);
+}
+async function hjGuardarColumnas(h){
+  if(!(await sesionLista())){ toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return false; }
+  if(h.id==null){
+    // La hoja Recordatorios guarda aquí sus columnas extra desde la primera que se agrega.
+    const { data, error } = await supa.from('hojas').insert({ user_id:currentUser.id, tipo:'recordatorios', nombre:'Recordatorios', columnas:h.columnas }).select().single();
+    if(error || !data){ toast('❌ No se guardó la columna: '+(error?.message||''),'var(--red)'); return false; }
+    h.id = data.id;
+    DB.hojas = [...hjHojas(), h];
+  } else {
+    const { error } = await supa.from('hojas').update({ columnas:h.columnas }).eq('id', h.id).eq('user_id', currentUser.id);
+    if(error){ toast('❌ No se guardó la columna: '+error.message,'var(--red)'); return false; }
+  }
+  save();
+  return true;
+}
+async function hjPanelClick(e){
+  const t = e.target.closest('[data-tipo]');
+  if(t){ hj.tipoNuevo = t.dataset.tipo; const v = $hj('hj-col-nombre').value; hjPintarPanel(); $hj('hj-col-nombre').value = v; return; }
+  const b = e.target.closest('[data-p]'); if(!b) return;
+  const a = b.dataset.p, h = hjHojaActual(); if(!h) return;
+  const lista = h.columnas = h.columnas||[];
+  if(a==='cerrar') return hjCerrarPanel();
+  if(a==='columna'){ hj.panel = 'columna'; hj.tipoNuevo = 'texto'; hjPintarPanel(); $hj('hj-col-nombre').focus(); return; }
+  if(a==='agregar'){
+    const nombre = $hj('hj-col-nombre').value.trim();
+    if(!nombre){ toast('Escribe un nombre','var(--amber)'); $hj('hj-col-nombre').focus(); return; }
+    const c = { id:'c'+Date.now().toString(36), nombre, tipo:hj.tipoNuevo };
+    lista.push(c);
+    if(!(await hjGuardarColumnas(h))){ lista.pop(); return; }
+    hjCerrarPanel(); hjRender(true);
+    $hj('hj-wrap').scrollLeft = $hj('hj-wrap').scrollWidth;
+    return;
+  }
+  if(a==='izq'||a==='der'){
+    const i = lista.findIndex(c=>c.id===hj.colEdit);
+    const movibles = lista.filter(x=>!x.base), j = movibles.indexOf(lista[i]);
+    const otro = movibles[a==='izq'?j-1:j+1]; if(!otro) return;
+    const io = lista.indexOf(otro);
+    [lista[i], lista[io]] = [lista[io], lista[i]];
+    hjGuardarColumnas(h);
+    hjRender(true);
+    return;
+  }
+  if(a==='borrar'){ hj.confirmaCol = true; return hjPintarPanel(); }
+  if(a==='borrar-no'){ hj.confirmaCol = false; return hjPintarPanel(); }
+  if(a==='borrar-si'){
+    const i = lista.findIndex(c=>c.id===hj.colEdit); if(i<0) return;
+    const [quitada] = lista.splice(i,1);
+    if(!(await hjGuardarColumnas(h))){ lista.splice(i,0,quitada); return; }
+    hjFilasDe(h).forEach(r=>{
+      if(r.extras && quitada.id in r.extras){
+        const { [quitada.id]:_, ...resto } = r.extras;
+        r.extras = resto;
+        hjEncolar(hjK(r),{ extras:resto }, true);
+      }
+    });
+    hjCerrarPanel(); $hj('hj-wrap').scrollLeft = 0; hjRender(true);
+    toast('🗑 Columna borrada','var(--t2)');
+    return;
+  }
+  if(a==='hoja-borrar'){ hj.confirmaHoja = true; return hjPintarPanel(); }
+  if(a==='hoja-no'){ hj.confirmaHoja = false; return hjPintarPanel(); }
+  if(a==='hoja-si'){
+    const { error } = await supa.from('hojas').delete().eq('id', h.id).eq('user_id', currentUser.id);
+    if(error){ toast('❌ No se pudo borrar: '+error.message,'var(--red)'); return; }
+    DB.hojas = hjHojas().filter(x=>x!==h);
+    DB.recordatorios = DB.recordatorios.filter(r=>String(r.hoja_id)!==String(h.id));
+    for(let i=hjBorradores.length-1;i>=0;i--) if(hjBorradores[i]._hoja===String(h.id)) hjBorradores.splice(i,1);
+    save();
+    toast('🗑 Hoja borrada','var(--t2)');
+    hjVer('recordatorios');
+  }
+}
+
+// ─── Nueva hoja ───
+function hjPintarNueva(){
+  const p = HJ_PLANTILLAS[hj.plantilla], esCaja = hj.plantilla==='caja';
+  const nombre = (document.getElementById('hj-n-nombre')||{}).value || '';
+  const planes = Object.entries(HJ_PLANTILLAS).map(([id,x])=>`<button class="hj-plantilla${id===hj.plantilla?' on':''}" type="button" data-plantilla="${id}"><b>${x.n}</b><span>${x.d}</span></button>`).join('');
+  const cols = p.cols.map(([n,t],i)=>`<div><input class="hj-input" id="hj-n-col${i}" type="text" maxlength="30" value="${escAttr(n)}" placeholder="Columna ${i+1}" aria-label="Columna ${i+1}"${esCaja?' disabled':''}/>${esCaja?'':`<select id="hj-n-tipo${i}" aria-label="Tipo de la columna ${i+1}">${HJ_TIPOS.map(x=>`<option value="${x.id}"${x.id===t?' selected':''}>${x.n}</option>`).join('')}</select>`}</div>`).join('');
+  $hj('hj-nueva').innerHTML = `<div class="hj-nueva">
+    <h2>Nueva hoja</h2>
+    <label><span class="hj-etq">Nombre de la hoja</span><input id="hj-n-nombre" class="hj-input" type="text" maxlength="30" placeholder="Ej: Mercado, Contactos" value="${escAttr(esCaja?'Caja fuerte':nombre)}"${esCaja?' disabled':''}/></label>
+    <span class="hj-etq">Empezar con una plantilla</span>
+    <div class="hj-plantillas">${planes}</div>
+    <span class="hj-etq">Columnas</span>
+    <div class="hj-cols">${cols}</div>
+    ${esCaja?'':'<div class="hj-p-sub">La primera columna de tipo Fecha activa el aviso por WhatsApp y el rojo.</div>'}
+    <button class="hj-crear" id="hj-crear" type="button">${esCaja&&hjHojas().some(h=>h.tipo==='caja')?'Abrir Caja fuerte':'Crear hoja'}</button>
+  </div>`;
+}
+async function hjNuevaClick(e){
+  const pl = e.target.closest('[data-plantilla]');
+  if(pl){ hj.plantilla = pl.dataset.plantilla; return hjPintarNueva(); }
+  if(!e.target.closest('#hj-crear') || hj.creando) return;
+  if(!(await sesionLista())){ toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
+  let fila;
+  if(hj.plantilla==='caja'){
+    if(hjHojas().some(h=>h.tipo==='caja')) return hjVer('caja');
+    fila = { user_id:currentUser.id, tipo:'caja', nombre:'Caja fuerte', columnas:[] };
+  } else {
+    const nombre = $hj('hj-n-nombre').value.trim();
+    if(!nombre){ toast('Escribe el nombre de la hoja','var(--amber)'); $hj('hj-n-nombre').focus(); return; }
+    const columnas = [];
+    const usados = {};
+    [0,1,2,3].forEach(i=>{
+      const n = $hj('hj-n-col'+i).value.trim(); if(!n) return;
+      const c = { id:'b'+i, nombre:n, tipo:$hj('hj-n-tipo'+i).value, base:true };
+      // La primera de cada tipo usa el campo de reminders que ya entienden el cron y la Agenda.
+      const campo = c.tipo==='texto' ? 'titulo' : c.tipo==='fecha' ? 'recordar_fecha' : c.tipo==='pesos' ? 'valor' : null;
+      if(campo && !usados[campo]){ c.campo = campo; usados[campo] = true; }
+      columnas.push(c);
+    });
+    if(!columnas.length){ toast('Ponle nombre al menos a una columna','var(--amber)'); return; }
+    fila = { user_id:currentUser.id, tipo:'normal', nombre, columnas, orden:hjHojas().filter(h=>h.tipo==='normal').length };
+  }
+  hj.creando = true;
+  const { data, error } = await supa.from('hojas').insert(fila).select().single();
+  hj.creando = false;
+  if(error || !data){ toast('❌ No se pudo crear: '+(error?.message||'sin confirmación'),'var(--red)'); return; }
+  DB.hojas = [...hjHojas(), data];
+  save();
+  hjVer(data.tipo==='caja' ? 'caja' : data.id);
+}
+
+// ════════════════════════════════════════
+// CAJA FUERTE
+// Cada fila se cifra aquí con AES-256-GCM antes de salir del celular. La llave y lo
+// descifrado viven solo en cajaS: nunca en DB, localStorage, logs ni mensajes a la IA.
+// ════════════════════════════════════════
+const CAJA_INACTIVA_MS = 5 * 60 * 1000;
+const cajaS = { modo:null, llave:null, filas:[], pin:'', pinUno:'', error:'', ocupado:false, menu:null, confirma:false, timer:null, sec:0 };
+const cajaB64 = { aBytes:s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0)), aTexto:b=>btoa(String.fromCharCode(...new Uint8Array(b))) };
+
+async function cajaApi(accion, datos){
+  const headers = await headersIA();
+  const r = await fetch('/api/caja', { method:'POST', headers, body:JSON.stringify({ accion, ...datos }) });
+  let body = {};
+  try { body = await r.json(); } catch(_) { /* sin cuerpo */ }
+  return { status:r.status, ...body };
+}
+async function cajaCifrar(fila){
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const claro = new TextEncoder().encode(JSON.stringify({ nombre:fila.nombre, usuario:fila.usuario, clave:fila.clave, nota:fila.nota }));
+  const c = await crypto.subtle.encrypt({ name:'AES-GCM', iv, additionalData:new TextEncoder().encode(currentUser.id) }, cajaS.llave, claro);
+  const u = new Uint8Array(iv.length + c.byteLength);
+  u.set(iv); u.set(new Uint8Array(c), iv.length);
+  return cajaB64.aTexto(u);
+}
+async function cajaDescifrar(texto){
+  const u = cajaB64.aBytes(texto);
+  const claro = await crypto.subtle.decrypt({ name:'AES-GCM', iv:u.slice(0,12), additionalData:new TextEncoder().encode(currentUser.id) }, cajaS.llave, u.slice(12));
+  return JSON.parse(new TextDecoder().decode(claro));
+}
+async function cajaAlEntrar(){
+  if(cajaS.llave) return;
+  cajaS.modo = null; cajaS.pin = ''; cajaS.pinUno = ''; cajaS.error = '';
+  cajaPintar();
+  const r = await cajaApi('estado').catch(()=>({ status:0 }));
+  if(hj.actual!=='caja') return;
+  if(r.status===503){ cajaS.modo = 'error'; cajaS.error = 'La Caja fuerte aún no está lista. Intenta más tarde.'; }
+  else if(r.status!==200){ cajaS.modo = 'error'; cajaS.error = 'No se pudo conectar. Revisa tu internet e intenta de nuevo.'; }
+  else cajaS.modo = r.existe ? 'pin' : 'crear';
+  cajaPintar();
+}
+function cajaPuntos(){ return `<div class="hj-puntos">${[0,1,2,3].map(i=>`<span class="hj-punto${i<cajaS.pin.length?' on':''}"></span>`).join('')}</div>`; }
+function cajaTeclado(){
+  return `<div class="hj-teclado">${['1','2','3','4','5','6','7','8','9','','0','⌫'].map(k=>k?`<button class="hj-tecla" type="button" data-k="${k}" aria-label="${k==='⌫'?'Borrar':k}">${k}</button>`:'<span></span>').join('')}</div>`;
+}
+function cajaPintar(){
+  const el = $hj('hj-caja');
+  if(cajaS.llave) return cajaPintarAbierta();
+  const m = cajaS.modo;
+  if(!m){ el.innerHTML = '<div class="hj-pin"><div style="font-size:30px">🔒</div><h2>Caja fuerte</h2><p>Cargando…</p></div>'; return; }
+  if(m==='error'){ el.innerHTML = `<div class="hj-pin"><div style="font-size:30px">🔒</div><h2>Caja fuerte</h2><div class="hj-pin-error">${escAttr(cajaS.error)}</div><button class="hj-link" type="button" data-c-a="reintentar">Reintentar</button></div>`; return; }
+  if(m==='olvido'){
+    el.innerHTML = `<div class="hj-pin"><div style="font-size:30px">🔑</div><h2>Restablecer PIN</h2><p>Entra con tu correo y contraseña de Kontrol y elige un PIN nuevo. Tus claves se conservan.</p>
+      <div class="hj-olvido">
+        <input id="caja-correo" class="hj-input" type="email" autocomplete="username" placeholder="Correo" aria-label="Correo" value="${escAttr(currentUser?.email||'')}"/>
+        <input id="caja-pass" class="hj-input" type="password" autocomplete="current-password" placeholder="Contraseña de Kontrol" aria-label="Contraseña de Kontrol"/>
+        <input id="caja-pin1" class="hj-input" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="PIN nuevo (4 dígitos)" aria-label="PIN nuevo"/>
+        <input id="caja-pin2" class="hj-input" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="Repite el PIN" aria-label="Repite el PIN"/>
+        <div class="hj-pin-error" id="caja-error">${escAttr(cajaS.error)}</div>
+        <button class="hj-crear" type="button" data-c-a="restablecer">Restablecer PIN</button>
+      </div>
+      <button class="hj-link" type="button" data-c-a="volver">Volver</button></div>`;
+    return;
+  }
+  const textos = {
+    pin:['🔒','Caja fuerte','Escribe tu PIN para abrirla.'],
+    crear:['🔒','Crea tu PIN','Elige 4 dígitos. Te los pedimos cada vez que abras la Caja.'],
+    confirmar:['🔒','Repite tu PIN','Escríbelo otra vez para confirmar.']
+  }[m];
+  el.innerHTML = `<div class="hj-pin"><div style="font-size:30px">${textos[0]}</div><h2>${textos[1]}</h2><p>${textos[2]}</p>${cajaPuntos()}${cajaTeclado()}
+    <div class="hj-pin-error" id="caja-error">${escAttr(cajaS.error)}</div>
+    ${m==='pin'?'<button class="hj-link" type="button" data-c-a="olvido">¿Olvidaste tu PIN?</button>':''}</div>`;
+}
+function cajaFilaHtml(f){
+  const celda = (campo,et,clase='hj-celda')=>`<td><div class="${clase}" contenteditable="true" role="textbox" spellcheck="false" autocorrect="off" autocapitalize="off" enterkeyhint="next" data-cnav="1" data-campo-c="${campo}" aria-label="${et}" data-vacio="${et}">${escAttr(f[campo]||'')}</div></td>`;
+  const fila = `<tr data-f="${f.k}">${celda('nombre','Nombre')}${celda('usuario','Usuario')}
+    <td><div class="hj-clave"><input type="password" autocomplete="new-password" spellcheck="false" autocapitalize="off" data-clave="1" data-cnav="1" data-campo-c="clave" enterkeyhint="next" aria-label="Clave" placeholder="Clave" value="${escAttr(f.clave||'')}"/><button type="button" class="hj-copiar" data-c-a="copiar" aria-label="Copiar clave">📋</button></div></td>
+    ${celda('nota','Nota','hj-celda hj-nota')}
+    <td><button type="button" class="hj-btn-menu" aria-label="Menú de la fila" data-c-a="menu">☰</button></td></tr>`;
+  if(cajaS.menu!==f.k) return fila;
+  const acc = cajaS.confirma
+    ? '<button type="button" class="hj-m-btn rojo" data-c-a="borrar-si">Sí, borrar</button><button type="button" class="hj-m-btn" data-c-a="borrar-no">No</button>'
+    : '<button type="button" class="hj-m-btn rojo" data-c-a="borrar">🗑 Borrar fila</button>';
+  return fila + `<tr class="hj-menu-tr" data-f="${f.k}"><td class="hj-menu-td" colspan="5"><div class="hj-menu-in"><div class="hj-acc" style="margin-top:0">${acc}</div></div></td></tr>`;
+}
+function cajaFilasHtml(){
+  const b = (document.getElementById('caja-buscar')||{}).value || '';
+  const terminos = recNormalizar(b).split(/\s+/).filter(Boolean);
+  const filas = cajaS.filas.filter(f=>{
+    const t = recNormalizar(`${f.nombre} ${f.usuario} ${f.nota}`);
+    return terminos.every(x=>t.includes(x));
+  });
+  return filas.map(cajaFilaHtml).join('') || `<tr><td colspan="5" class="hj-msg">${terminos.length?'Nada coincide con tu búsqueda.':'Tu Caja está vacía. Toca + Fila para guardar una clave.'}</td></tr>`;
+}
+function cajaPintarAbierta(){
+  $hj('hj-caja').innerHTML = `<div class="hj-tools">
+      <label class="hj-buscar">🔍<input id="caja-buscar" type="text" autocomplete="off" spellcheck="false" placeholder="Buscar…" aria-label="Buscar en la Caja"/></label>
+      <button class="hj-btn-fila" type="button" data-c-a="fila">+ Fila</button>
+    </div>
+    <div class="hj-aviso-caja"><span>🔓 Abierta. Se cierra sola al salir.</span><button class="hj-cerrar" type="button" data-c-a="cerrar">Cerrar</button></div>
+    <div class="hj-wrap"><table class="hj-tabla hj-caja">
+      <colgroup><col style="width:24%"/><col style="width:24%"/><col/><col style="width:17%"/><col class="hj-col-menu"/></colgroup>
+      <thead><tr><th>Nombre</th><th>Usuario</th><th>Clave</th><th>Nota</th><th aria-label="Menú"></th></tr></thead>
+      <tbody id="caja-filas">${cajaFilasHtml()}</tbody></table></div>`;
+  $hj('caja-buscar') && $hj('caja-buscar').addEventListener('input', ()=>{ $hj('caja-filas').innerHTML = cajaFilasHtml(); });
+}
+function cajaRepintarFilas(){ const t = $hj('caja-filas'); if(t) t.innerHTML = cajaFilasHtml(); }
+function cajaActividad(){
+  clearTimeout(cajaS.timer);
+  if(cajaS.llave) cajaS.timer = setTimeout(cajaCerrar, CAJA_INACTIVA_MS);
+}
+async function cajaAbrirCon(llaveB64){
+  const bytes = cajaB64.aBytes(llaveB64);
+  cajaS.llave = await crypto.subtle.importKey('raw', bytes, 'AES-GCM', false, ['encrypt','decrypt']);
+  bytes.fill(0);
+  const { data, error } = await supa.from('caja_filas').select('id,cifrado').eq('user_id', currentUser.id).order('id');
+  if(error){ cajaS.llave = null; throw new Error(error.message); }
+  const filas = []; let danadas = 0;
+  for(const d of data||[]){
+    try { const x = await cajaDescifrar(d.cifrado); filas.push({ id:d.id, k:'f'+(++cajaS.sec), nombre:x.nombre||'', usuario:x.usuario||'', clave:x.clave||'', nota:x.nota||'' }); }
+    catch(_){ danadas++; }
+  }
+  cajaS.filas = filas; cajaS.modo = 'abierta'; cajaS.pin = ''; cajaS.pinUno = ''; cajaS.error = '';
+  cajaPintarAbierta();
+  cajaActividad();
+  if(danadas) toast(`⚠️ ${danadas} fila(s) no se pudieron leer`,'var(--amber)');
+}
+async function cajaPinCompleto(){
+  const pin = cajaS.pin;
+  if(cajaS.modo==='crear'){
+    cajaS.pinUno = pin; cajaS.pin = ''; cajaS.error = ''; cajaS.modo = 'confirmar';
+    return cajaPintar();
+  }
+  if(cajaS.modo==='confirmar' && pin!==cajaS.pinUno){
+    cajaS.pin = ''; cajaS.pinUno = ''; cajaS.modo = 'crear'; cajaS.error = 'Los PIN no coinciden. Empieza de nuevo.';
+    return cajaPintar();
+  }
+  cajaS.ocupado = true;
+  let r;
+  try { r = await cajaApi(cajaS.modo==='confirmar'?'crear':'abrir', { pin }); }
+  catch(_){ r = { status:0 }; }
+  cajaS.ocupado = false; cajaS.pin = '';
+  if(r.llave){
+    try { await cajaAbrirCon(r.llave); }
+    catch(_){ cajaS.error = 'No se pudo abrir la Caja. Intenta de nuevo.'; cajaPintar(); }
+    return;
+  }
+  if(cajaS.modo==='confirmar' && r.error==='ya_existe') cajaS.modo = 'pin';
+  cajaS.error = r.status===401 ? `PIN incorrecto. Te quedan ${r.restantes} intento${r.restantes===1?'':'s'}.`
+    : r.status===423 ? `Caja bloqueada ${r.minutos} min por demasiados intentos. También puedes restablecer el PIN.`
+    : r.status===409 ? 'Intenta de nuevo.'
+    : 'No se pudo conectar. Intenta de nuevo.';
+  cajaPintar();
+}
+async function cajaRestablecer(){
+  const correo = $hj('caja-correo').value.trim(), pass = $hj('caja-pass');
+  const p1 = $hj('caja-pin1').value, p2 = $hj('caja-pin2').value;
+  const fallo = t=>{ $hj('caja-error').textContent = t; };
+  if(!correo || !pass.value) return fallo('Escribe tu correo y contraseña.');
+  if(!/^\d{4}$/.test(p1)) return fallo('El PIN debe tener 4 dígitos.');
+  if(p1!==p2) return fallo('Los PIN no coinciden.');
+  if(cajaS.ocupado) return;
+  cajaS.ocupado = true;
+  let r;
+  try { r = await cajaApi('restablecer', { correo, password:pass.value, pin:p1 }); }
+  catch(_){ r = { status:0 }; }
+  cajaS.ocupado = false;
+  if(r.llave){
+    toast('✅ PIN restablecido','var(--green)');
+    try { await cajaAbrirCon(r.llave); }
+    catch(_){ cajaS.modo = 'pin'; cajaS.error = 'PIN cambiado. Vuelve a escribirlo para abrir.'; cajaPintar(); }
+    return;
+  }
+  pass.value = '';
+  fallo(r.status===403 ? 'Correo o contraseña incorrectos.' : 'No se pudo restablecer. Intenta de nuevo.');
+}
+function cajaFilaPor(el){ const tr = el.closest('tr[data-f]'); return tr ? cajaS.filas.find(f=>f.k===tr.dataset.f) : null; }
+function cajaNuevaFila(){
+  const f = { id:null, k:'f'+(++cajaS.sec), nombre:'', usuario:'', clave:'', nota:'' };
+  cajaS.filas.push(f); cajaS.menu = null; cajaS.confirma = false;
+  const b = $hj('caja-buscar'); if(b) b.value = '';
+  cajaRepintarFilas();
+  const tr = $hj('caja-filas').querySelector(`tr[data-f="${f.k}"]`);
+  if(tr){ const c = tr.querySelector('[data-cnav]'); if(c) c.focus(); tr.scrollIntoView({ block:'nearest' }); }
+}
+function cajaSiguiente(celda){
+  const tr = celda.closest('tr');
+  const orden = [...tr.querySelectorAll('[data-cnav]')], i = orden.indexOf(celda);
+  if(i<orden.length-1){ orden[i+1].focus(); return; }
+  let sig = tr.nextElementSibling;
+  while(sig && sig.classList.contains('hj-menu-tr')) sig = sig.nextElementSibling;
+  const d = sig && sig.querySelector('[data-cnav]');
+  if(d) d.focus(); else cajaNuevaFila();
+}
+function cajaEncolar(f){
+  f.sucia = true;
+  clearTimeout(f.timer);
+  f.timer = setTimeout(()=>cajaGuardar(f), 500);
+}
+async function cajaGuardar(f){
+  clearTimeout(f.timer);
+  if(f.enCurso){ await f.enCurso; }
+  if(!f.sucia || !cajaS.llave || f.borrada) return;
+  if(f.id==null && !f.nombre.trim() && !f.usuario.trim() && !f.clave && !f.nota.trim()) return;
+  f.sucia = false;
+  f.enCurso = (async()=>{
+    try {
+      const cifrado = await cajaCifrar(f);
+      if(f.id==null){
+        const { data, error } = await supa.from('caja_filas').insert({ user_id:currentUser.id, cifrado }).select('id').single();
+        if(error || !data) throw new Error(error?.message||'sin confirmación');
+        f.id = data.id;
+      } else {
+        const { error } = await supa.from('caja_filas').update({ cifrado, updated_at:new Date().toISOString() }).eq('id', f.id).eq('user_id', currentUser.id);
+        if(error) throw new Error(error.message);
+      }
+    } catch(_){
+      // Sin detalles en consola: aquí nunca deben aparecer datos de la Caja.
+      f.sucia = true;
+      toast('❌ No se guardó el último cambio de la Caja','var(--red)');
+    }
+  })();
+  await f.enCurso;
+  f.enCurso = null;
+  if(f.sucia && !f.reintento){ f.reintento = true; f.timer = setTimeout(()=>{ f.reintento = false; cajaGuardar(f); }, 4000); }
+}
+function cajaInput(e){
+  const t = e.target, campo = t.dataset.campoC;
+  if(!campo) return;
+  const f = cajaFilaPor(t); if(!f) return;
+  f[campo] = (campo==='clave' ? t.value : t.textContent).slice(0,500);
+  cajaEncolar(f);
+  cajaActividad();
+}
+async function cajaBorrarFila(f){
+  clearTimeout(f.timer); f.borrada = true;
+  if(f.enCurso) await f.enCurso;
+  if(f.id!=null){
+    const { error } = await supa.from('caja_filas').delete().eq('id', f.id).eq('user_id', currentUser.id);
+    if(error){ f.borrada = false; toast('❌ No se pudo borrar','var(--red)'); return; }
+  }
+  cajaS.filas = cajaS.filas.filter(x=>x!==f);
+  cajaS.menu = null; cajaS.confirma = false;
+  cajaRepintarFilas();
+  toast('🗑 Fila borrada','var(--t2)');
+}
+async function cajaCerrar(){
+  clearTimeout(cajaS.timer);
+  const filas = cajaS.filas;
+  await Promise.all(filas.filter(f=>f.sucia||f.enCurso).map(cajaGuardar));
+  // Si sigue sucia es que no se pudo guardar: se avisó antes y se descarta con la llave.
+  cajaS.llave = null; cajaS.filas = []; cajaS.pin = ''; cajaS.pinUno = ''; cajaS.error = '';
+  cajaS.menu = null; cajaS.confirma = false; cajaS.modo = 'pin';
+  $hj('hj-caja').innerHTML = '';
+  if(hj.actual==='caja') cajaPintar();
+}
+function cajaClick(e){
+  const tecla = e.target.closest('[data-k]');
+  if(tecla){
+    if(cajaS.ocupado) return;
+    const k = tecla.dataset.k;
+    cajaS.pin = k==='⌫' ? cajaS.pin.slice(0,-1) : (cajaS.pin+k).slice(0,4);
+    document.querySelectorAll('#hj-caja .hj-punto').forEach((p,i)=>p.classList.toggle('on', i<cajaS.pin.length));
+    if(cajaS.pin.length===4) cajaPinCompleto();
+    return;
+  }
+  const b = e.target.closest('[data-c-a]'); if(!b) return;
+  const a = b.dataset.cA;
+  cajaActividad();
+  if(a==='reintentar') return cajaAlEntrar();
+  if(a==='olvido'){ cajaS.modo = 'olvido'; cajaS.error = ''; cajaS.pin = ''; return cajaPintar(); }
+  if(a==='volver'){ cajaS.modo = 'pin'; cajaS.error = ''; return cajaPintar(); }
+  if(a==='restablecer') return cajaRestablecer();
+  if(a==='cerrar') return cajaCerrar();
+  if(a==='fila') return cajaNuevaFila();
+  const f = cajaFilaPor(b); if(!f) return;
+  if(a==='menu'){ cajaS.menu = cajaS.menu===f.k ? null : f.k; cajaS.confirma = false; return cajaRepintarFilas(); }
+  if(a==='borrar'){ cajaS.confirma = true; return cajaRepintarFilas(); }
+  if(a==='borrar-no'){ cajaS.confirma = false; return cajaRepintarFilas(); }
+  if(a==='borrar-si') return cajaBorrarFila(f);
+  if(a==='copiar'){
+    if(!f.clave) return toast('Esa fila no tiene clave','var(--t2)');
+    const no = ()=>toast('No se pudo copiar','var(--amber)');
+    if(navigator.clipboard?.writeText) navigator.clipboard.writeText(f.clave).then(()=>toast('✅ Clave copiada','var(--green)'), no);
+    else no();
+  }
 }
 
 // DEPURAR: borra los ítems marcados (done) de un listado y persiste el resto.
@@ -3959,6 +4812,8 @@ async function onLogin(user) {
 }
 
 async function doLogout() {
+  hjAlSalirDeTab();
+  if(cajaS.llave) await cajaCerrar();
   await supa.auth.signOut();
   currentUser = null;
   currentProfile = null;
@@ -4018,7 +4873,7 @@ function refrescarAlVolver(){
   if(Date.now() - _ultimoRefrescoAuto < 5000) return;
   const activo = document.activeElement;
   if(activo && /^(INPUT|TEXTAREA|SELECT)$/.test(activo.tagName)) return;
-  if(document.querySelector('.modal-overlay:not(.hidden)') || recEdit) return;
+  if(document.querySelector('.modal-overlay:not(.hidden)') || hjOcupado()) return;
   _ultimoRefrescoAuto = Date.now();
   syncDesdeSupabase();
 }
@@ -4072,7 +4927,7 @@ function usuarioOcupado(){
   const activo = document.activeElement;
   if(activo && (/^(INPUT|TEXTAREA|SELECT)$/.test(activo.tagName) || activo.isContentEditable)) return true;
   if(document.querySelector('.modal-overlay:not(.hidden)')) return true;
-  if(recEdit || recGuardando || isRecording || ttsSpeaking || pagoSoporteId !== null) return true;
+  if(hjOcupado() || isRecording || ttsSpeaking || pagoSoporteId !== null) return true;
   if(document.getElementById('ia-typing')) return true;
   // Texto a medio escribir aunque el campo ya no tenga el foco.
   const auth = document.getElementById('auth-screen');
