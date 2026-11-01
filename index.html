@@ -360,6 +360,11 @@ html,body{width:100%;height:100%;background:var(--bg);font-family:'DM Sans',sans
 .modal-ttl{font-family:'Syne',sans-serif;font-size:17px;font-weight:800;}
 .modal-close{background:transparent;border:none;color:var(--t3);font-size:20px;cursor:pointer;line-height:1;}
 /* Banner WhatsApp de Kontrol (Resumen) */
+.wa-renovar{display:flex;align-items:center;gap:10px;margin:0 14px 8px;padding:10px 12px;border-radius:14px;border:1px solid rgba(245,158,11,0.55);background:rgba(245,158,11,0.13);flex-shrink:0;z-index:10;}
+.wa-renovar.vencido{border-color:rgba(248,113,113,0.65);background:rgba(248,113,113,0.16);}
+.wa-renovar-txt{flex:1;min-width:0;font-size:14px;line-height:1.3;font-weight:600;color:var(--t1);}
+.wa-renovar-btn{flex-shrink:0;padding:10px 12px;border-radius:11px;background:#25d366;color:#06240f;text-decoration:none;font-size:14px;font-weight:800;white-space:nowrap;}
+.wa-renovar-btn:active{opacity:0.85;}
 .wa-banner{display:flex;align-items:center;gap:10px;padding:10px 12px;margin:0 0 12px 0;border-radius:14px;background:linear-gradient(135deg,rgba(37,211,102,0.12),rgba(37,211,102,0.04));border:1px solid rgba(37,211,102,0.25);}
 .wa-banner-info{flex:1;min-width:0;}
 .wa-banner-ttl{font-size:10.5px;color:var(--t3);margin-bottom:2px;}
@@ -847,6 +852,12 @@ select.form-inp option{background:#0c1228;}
     <button class="ntab" id="tab-admin" onclick="goTab('admin')" style="display:none">⚙️ Admin</button>
   </div>
 
+  <!-- Aviso del sandbox de WhatsApp: visible en todas las pestañas -->
+  <div class="wa-renovar" id="wa-renovar" style="display:none" role="status">
+    <div class="wa-renovar-txt" id="wa-renovar-txt"></div>
+    <a class="wa-renovar-btn" href="https://wa.me/14155238886?text=join%20biggest-establish" target="_blank" rel="noopener" onclick="renovarWhatsApp()">🔄 Renovar</a>
+  </div>
+
   <!-- SCREENS -->
   <div class="screens">
 
@@ -878,7 +889,7 @@ select.form-inp option{background:#0c1228;}
             <div class="wa-banner-num">+1 415 523 8886</div>
             <div class="wa-banner-hint">Primera vez: envía <b>join biggest-establish</b></div>
           </div>
-          <a class="wa-banner-btn" href="https://wa.me/14155238886?text=join%20biggest-establish" target="_blank" rel="noopener">Abrir</a>
+          <a class="wa-banner-btn" href="https://wa.me/14155238886?text=join%20biggest-establish" target="_blank" rel="noopener" onclick="renovarWhatsApp()">Abrir</a>
           <button class="wa-banner-x" onclick="dismissWaBanner()" aria-label="Ocultar">✕</button>
         </div>
         <div class="sc">
@@ -977,10 +988,11 @@ select.form-inp option{background:#0c1228;}
           <div style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:0.5px;font-weight:700;margin-bottom:4px">🔑 Para activar (solo la primera vez)</div>
           <div style="font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;color:var(--t1);margin-bottom:12px;text-align:center;padding:10px;background:var(--card2);border:1px dashed var(--bd);border-radius:10px;">envía: <code style="color:var(--green)">join biggest-establish</code></div>
           <div style="font-size:11.5px;color:var(--t3);margin-bottom:14px;line-height:1.5">
-            ⏳ La sesión dura <b>3 días</b> sin actividad. Si pasas 3 días sin
-            escribir, vuelve a enviar <code>join biggest-establish</code> para reactivar.
+            ⏳ La conexión dura <b>3 días</b> desde que la renuevas, aunque sigas escribiendo. Te avisamos a los 2 días.
           </div>
-          <a class="btn-primary" href="https://wa.me/14155238886?text=join%20biggest-establish" target="_blank" rel="noopener" style="text-decoration:none;display:block;text-align:center">💬 Activar y abrir Kontrol</a>
+          <div id="wa-renovado-info" style="font-size:13px;color:var(--t2);margin-bottom:12px;line-height:1.4"></div>
+          <a class="btn-primary" href="https://wa.me/14155238886?text=join%20biggest-establish" target="_blank" rel="noopener" onclick="renovarWhatsApp()" style="text-decoration:none;display:block;text-align:center">🔄 Renovar WhatsApp</a>
+          <div style="font-size:11.5px;color:var(--t3);margin-top:8px;line-height:1.4">Se abre WhatsApp con el mensaje listo: solo toca enviar.</div>
         </div>
 
         <!-- IA -->
@@ -3341,6 +3353,8 @@ function renderConfig(){
   if(inpNombre) inpNombre.value = currentProfile?.nombre || '';
   if(inpTel) inpTel.value = currentProfile?.telefono || '';
 
+  actualizarAvisoWhatsApp();
+
   // Voz seleccionada (radio del id guardado en profiles.voz_id; default Sofia)
   const vozId = currentProfile?.voz_id || 'scn1gPWkdVd8FhODJoei';
   const radio = document.querySelector(`input[name="voz"][value="${vozId}"]`);
@@ -3528,6 +3542,7 @@ async function guardarPerfil(){
   // Refrescar currentProfile y DB.ia.usuarioNombre
   currentProfile = { ...(currentProfile||{}), id: currentUser.id, nombre: nombre || null, telefono };
   document.getElementById('profile-telefono').value = telefono || '';
+  actualizarAvisoWhatsApp();
   if(nombre) DB.ia.usuarioNombre = nombre;
   toast('✅ Perfil guardado','var(--green)');
 }
@@ -3679,9 +3694,82 @@ async function recargarApp() {
   }
 }
 
+// ─── Sandbox de Twilio: la conexión vence 3 días después del join, aunque se siga
+// escribiendo. Twilio atiende el join y no avisa al webhook: lo que se guarda es cuándo
+// el usuario tocó el botón, no la confirmación de que envió el mensaje.
+const WA_AVISAR_HORAS = 48;
+const WA_VENCE_HORAS = 72;
+
+function fechaHoraCorta(iso){
+  return new Date(iso).toLocaleString('es-CO',{ timeZone:'America/Bogota', day:'numeric', month:'short', hour:'numeric', minute:'2-digit' }).replace('.','');
+}
+
+function actualizarAvisoWhatsApp(){
+  const aviso = document.getElementById('wa-renovar');
+  if(!aviso) return;
+  const renovado = currentProfile?.whatsapp_renovado_at || null;
+  const horas = renovado ? (Date.now() - new Date(renovado).getTime()) / 3600000 : null;
+  let texto = '', vencido = false;
+  // Sin teléfono no usa el bot: no hay nada que renovar.
+  if(currentProfile?.telefono){
+    if(horas === null){
+      texto = 'Renueva tu WhatsApp para recibir avisos';
+      vencido = true;
+    } else if(horas >= WA_VENCE_HORAS){
+      texto = 'Tu WhatsApp venció: renuévalo para seguir recibiendo avisos';
+      vencido = true;
+    } else if(horas >= WA_AVISAR_HORAS){
+      const faltan = Math.ceil(WA_VENCE_HORAS - horas);
+      texto = `Tu WhatsApp vence en ${faltan} ${faltan === 1 ? 'hora' : 'horas'}: renuévalo`;
+    }
+  }
+  document.getElementById('wa-renovar-txt').textContent = texto;
+  aviso.classList.toggle('vencido', vencido);
+  aviso.style.display = texto ? '' : 'none';
+  // Evita dos avisos de WhatsApp a la vez.
+  const banner = document.getElementById('wa-banner');
+  if(banner && texto) banner.style.display = 'none';
+
+  const info = document.getElementById('wa-renovado-info');
+  if(info){
+    if(!renovado) info.textContent = 'Aún no has renovado desde la app.';
+    else {
+      const vence = new Date(new Date(renovado).getTime() + WA_VENCE_HORAS*3600000).toISOString();
+      info.textContent = `Última renovación: ${fechaHoraCorta(renovado)}. Vence: ${fechaHoraCorta(vence)}.`;
+    }
+  }
+}
+
+// Sin preventDefault: el enlace abre WhatsApp y esto guarda la fecha mientras tanto.
+async function renovarWhatsApp(){
+  if(!currentUser) return;
+  const antes = currentProfile?.whatsapp_renovado_at || null;
+  const ahora = new Date().toISOString();
+  currentProfile = { ...(currentProfile||{}), whatsapp_renovado_at: ahora };
+  actualizarAvisoWhatsApp();
+  const { error } = await supa.from('profiles').update({ whatsapp_renovado_at: ahora }).eq('id', currentUser.id);
+  if(error){
+    currentProfile.whatsapp_renovado_at = antes;
+    actualizarAvisoWhatsApp();
+    toast('❌ No se pudo guardar la renovación','var(--red)');
+  }
+}
+
+// Al volver a la app trae la fecha (pudo renovar en otro aparato) y recalcula el aviso.
+async function revisarRenovacionWhatsApp(){
+  if(document.visibilityState !== 'visible' || !currentUser) return;
+  const { data, error } = await supa.from('profiles').select('whatsapp_renovado_at, telefono').eq('id', currentUser.id).single();
+  if(!error && data) currentProfile = { ...(currentProfile||{}), ...data };
+  actualizarAvisoWhatsApp();
+}
+document.addEventListener('visibilitychange', revisarRenovacionWhatsApp);
+setInterval(actualizarAvisoWhatsApp, 60 * 1000);
+
 // Banner del número WhatsApp en Agenda. Se muestra hasta que el usuario lo
 // cierre — el flag wa_banner_dismissed queda en localStorage.
 function maybeShowWaBanner(){
+  actualizarAvisoWhatsApp();
+  if (document.getElementById('wa-renovar').style.display !== 'none') return;
   if (localStorage.getItem('wa_banner_dismissed') === '1') return;
   const el = document.getElementById('wa-banner');
   if (el) el.style.display = '';
