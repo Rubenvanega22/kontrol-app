@@ -113,7 +113,6 @@ module.exports = async function handler(req, res) {
     // 4. Llamar al LLM — siempre Claude Haiku (fiabilidad sobre velocidad)
     //    Groq llama-3.1-8b no seguía consistentemente el formato [ACCION:...]
     const respuesta = await llamarClaude(systemPrompt, history, message, imagen_base64, voz ? 200 : 600);
-    console.log('[ai-chat] RAW LLM response:', JSON.stringify(respuesta));
     const respuestaLimpia = respuesta
       .replace(/\[ACCION:[^\]]+\]/g, '')
       .replace(/\n{3,}/g, '\n\n')
@@ -855,7 +854,6 @@ async function leerCajaMovimientoFresh(movId, userId) {
 
 // ═══ EJECUTAR ACCIONES — todo queda visible en la app ═══
 async function ejecutarAcciones(respuesta, contexto, userId) {
-  console.log('[ejecutarAcciones] respuesta cruda (longitud=' + respuesta.length + '):', JSON.stringify(respuesta));
   const matches = [...respuesta.matchAll(/\[ACCION:([^\]]+)\]/g)];
   console.log('[ejecutarAcciones] matches encontrados:', matches.length, matches.map(m => m[0]));
   const ejecutadas = [];
