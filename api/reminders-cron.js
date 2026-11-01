@@ -122,7 +122,8 @@ async function modoRecordatorios() {
   const { data: recs, error } = await supabase
     .from('reminders').select('*')
     .eq('recordar_fecha', hoy)
-    .eq('notificado', false);
+    .eq('notificado', false)
+    .eq('hecho', false); // lo ya hecho no necesita aviso
   if (error) { console.error('[reminders-cron recordar] query error:', error.message); return { error: error.message, hoy }; }
   if (!recs || !recs.length) return { alertas: 0, hoy };
 

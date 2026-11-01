@@ -194,6 +194,12 @@ module.exports = async function handler(req, res) {
         partesEvento.push(`✅ Anoté "${a.detalle}"${valor}. ${aviso}`);
       } else if (a.accion === 'buscar_recordatorio') {
         partesEvento.push(textoBusquedaRecordatorios(a));
+      } else if (a.accion === 'marcar_recordatorio_hecho') {
+        if (a.ok) partesEvento.push(`✅ Marqué "${a.titulo}" como hecho.`);
+        else if (a.error === 'ya_hecho') partesEvento.push(`"${a.titulo}" ya estaba marcado como hecho.`);
+        else if (a.error === 'varios') partesEvento.push(`Encontré varios pendientes:\n${a.titulos.map(t => `• ${t}`).join('\n')}\n\n¿Cuál hiciste? Dime una palabra que lo distinga.`);
+        else if (a.error === 'no_encontrado') partesEvento.push(`No encontré ningún recordatorio sobre "${a.consulta}".`);
+        else partesEvento.push('❌ No pude marcarlo. Intenta de nuevo.');
       // Listados — respuesta determinística (✅ solo si la operación se confirmó).
       } else if (a.accion === 'lista' && a.op === 'creada') {
         const n = (a.items || []).length;
@@ -329,7 +335,7 @@ Eventos próximos:
 ${ctx.eventos.map(e => `• ${e.titulo} — ${e.fecha} ${e.hora||''} [ID:${e.id}]`).join('\n') || 'ninguno'}
 
 Recordatorios (notas sin ítems):
-${ctx.recordatorios.filter(r => r.tipo === 'nota' || r.tipo === 'definicion').map(r => `• ${r.titulo}${r.recordar_fecha ? ` (aviso ${r.recordar_fecha})` : ''} [ID:${r.id}]`).join('\n') || 'ninguno'}
+${ctx.recordatorios.filter(r => r.tipo === 'nota' || r.tipo === 'definicion').map(r => `• ${r.titulo}${r.recordar_fecha ? ` (aviso ${r.recordar_fecha})` : ''}${r.hecho ? ' (hecho)' : ''} [ID:${r.id}]`).join('\n') || 'ninguno'}
 
 Listados (listas con ítems marcables — usa el título EXACTO):
 ${ctx.recordatorios.filter(r => r.tipo === 'listado' || r.tipo === 'lista').map(l => {
@@ -374,6 +380,8 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
   Con fecha, ese día le llega aviso por WhatsApp a las 8 am. Sin fecha queda como registro.
 [ACCION:buscar_recordatorio|palabra clave]
   Busca en todos sus recordatorios por texto y nota. Usa solo las palabras clave.
+[ACCION:marcar_recordatorio_hecho|palabra clave]
+  Marca como hecho el recordatorio que coincida. Usa solo las palabras clave.
 [ACCION:borrar_evento|ID]
 [ACCION:borrar_recordatorio|ID]
   Usa el ID del listado "Recordatorios" de arriba.
@@ -659,6 +667,11 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
       Déjame buscar.
       [ACCION:buscar_recordatorio|SOAT]
 
+19. ⚠️ "YA HICE X". Si el usuario dice que ya hizo, terminó o resolvió algo ("ya hice lo del
+    contador", "listo lo del banco"), emite [ACCION:marcar_recordatorio_hecho|contador] con
+    las palabras clave, sin "lo del". El sistema responde con el resultado. Si es un pago que
+    aparece en "Pagos pendientes" ("ya pagué la luz"), usa [ACCION:marcar_pago_pagado|ID].
+
 17. ⚠️ ACLARAR UN PAGO NO ES AGENDAR. Si el usuario habla de la fecha de un pago que ya
     existe ("el pago es para el 5"), NO crees un evento. Dile la fecha que tiene según
     "Pagos pendientes"; si quiere cambiarla, no puedes hacerlo desde aquí: dile que no
@@ -749,7 +762,7 @@ const normalizarTexto = s => String(s || '').normalize('NFD').replace(/[\u0300-\
 async function buscarRecordatorios(consulta, userId) {
   const terminos = normalizarTexto(consulta).split(/[^a-z0-9ñ]+/).filter(t => t && !PALABRAS_VACIAS.has(t));
   const { data, error } = await supabase.from('reminders')
-    .select('titulo, nota, valor, recordar_fecha, created_at')
+    .select('id, titulo, nota, valor, recordar_fecha, created_at, hecho')
     .eq('user_id', userId).in('tipo', ['nota', 'definicion'])
     .order('created_at', { ascending: false }).limit(1000);
   if (error) return { error: error.message };
@@ -770,6 +783,7 @@ function textoBusquedaRecordatorios(a) {
     if (Number(r.valor) > 0) t += `\n  💰 ${fmtValorExacto(r.valor)}`;
     if (r.recordar_fecha) t += `\n  🔔 Aviso el ${fechaCorta(r.recordar_fecha)}`;
     if (r.nota) t += `\n  📝 ${r.nota}`;
+    if (r.hecho) t += '\n  ✅ Hecho';
     return t;
   });
   const extra = a.total > a.filas.length ? `\n\nHay ${a.total} en total; te muestro los ${a.filas.length} más recientes.` : '';
@@ -1119,6 +1133,34 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
           ejecutadas.push({ accion: 'recordatorio', error: 'db', detalle: titulo });
         } else {
           ejecutadas.push({ accion: 'recordatorio', ok: true, detalle: titulo, recordar_fecha, valor });
+        }
+
+      } else if (accion === 'marcar_recordatorio_hecho') {
+        // ok:false evita que la app salte de pestaña cuando no se marcó nada.
+        const consulta = (parts[1] || '').trim();
+        const { filas, error } = await buscarRecordatorios(consulta, userId);
+        if (error) {
+          console.error('[marcar_recordatorio_hecho] error:', error);
+          ejecutadas.push({ accion, ok: false, error: 'db' });
+          continue;
+        }
+        const pendientes = filas.filter(r => !r.hecho);
+        if (!filas.length) {
+          ejecutadas.push({ accion, ok: false, error: 'no_encontrado', consulta });
+        } else if (!pendientes.length) {
+          ejecutadas.push({ accion, ok: false, error: 'ya_hecho', titulo: filas[0].titulo });
+        } else if (pendientes.length > 1) {
+          // Nunca adivina cuál: se marcaría algo que no se ha hecho.
+          ejecutadas.push({ accion, ok: false, error: 'varios', titulos: pendientes.slice(0, 5).map(r => r.titulo) });
+        } else {
+          const { error: errUp } = await supabase.from('reminders').update({ hecho: true })
+            .eq('id', pendientes[0].id).eq('user_id', userId);
+          if (errUp) {
+            console.error('[marcar_recordatorio_hecho] update falló:', errUp.message);
+            ejecutadas.push({ accion, ok: false, error: 'db' });
+          } else {
+            ejecutadas.push({ accion, ok: true, id: pendientes[0].id, titulo: pendientes[0].titulo });
+          }
         }
 
       } else if (accion === 'buscar_recordatorio') {

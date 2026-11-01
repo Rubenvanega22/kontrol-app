@@ -611,10 +611,8 @@ async function despacharRespuestaPago(userId, phone, text, estado) {
     return `OK, ¿para cuándo lo pospones? Dime la fecha (ej: "25 de mayo" o "el viernes").`;
   }
 
-  // No matchea pero hay pago en espera. Si el mensaje es corto, ofrecer ayuda;
-  // si es largo, asumir que es un comando independiente y dejar pasar a IA.
-  if (lower.length <= 30) {
-    return 'No entendí. Responde *1* (sí, pagué) o *2* (no, aplazar).';
-  }
+  // Cualquier otra cosa no es respuesta al pago: "ya hice lo del contador" o "agéndame
+  // X" son pedidos normales, por cortos que sean. La IA los atiende, y el aviso del
+  // pago vuelve a preguntar al día siguiente.
   return null;
 }
