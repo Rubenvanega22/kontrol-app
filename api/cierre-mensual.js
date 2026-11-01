@@ -1,6 +1,7 @@
 // /api/cierre-mensual.js
-// Archiva a historial_mensual los MOVIMIENTOS y PAGOS de un mes y los borra de
-// sus tablas. NO toca accounts/cajas/events/reminders/metas: los saldos son
+// Archiva a historial_mensual los MOVIMIENTOS de un mes y los PAGOS YA PAGADOS con
+// fecha límite hasta ese mes, y los borra de sus tablas. Los pagos pendientes y
+// vencidos NUNCA se archivan: se quedan en Pagos y siguen avisando hasta pagarse. NO toca accounts/cajas/events/reminders/metas: los saldos son
 // valores ALMACENADOS (no derivados de movimientos), así que archivar no los altera.
 //
 // Modos:
@@ -54,9 +55,11 @@ async function archivarMes(userId, mes) {
     out.movimientos = movs.length;
   }
 
-  // ── Pagos (por fecha_limite) ──
+  // ── Pagos pagados (fecha_limite hasta el fin del mes) ──
+  // Sin límite inferior: un pago vencido de meses atrás que se pagó tarde también
+  // debe llegar al historial, y ya no había otro cierre que lo recogiera.
   const { data: pagos, error: ePag } = await supabase.from('payments')
-    .select('*').eq('user_id', userId).gte('fecha_limite', inicio).lt('fecha_limite', fin);
+    .select('*').eq('user_id', userId).eq('status', 'pagado').lt('fecha_limite', fin);
   if (ePag) throw new Error('select payments: ' + ePag.message);
   if (pagos && pagos.length) {
     const filas = pagos.map(p => ({ user_id: userId, mes_cerrado: mes, tipo: 'payment', data: p }));
@@ -98,7 +101,7 @@ module.exports = async function handler(req, res) {
     const { inicio, fin } = rangoMes(mes);
     const [{ data: mu }, { data: pu }] = await Promise.all([
       supabase.from('movements').select('user_id').gte('fecha', inicio).lt('fecha', fin),
-      supabase.from('payments').select('user_id').gte('fecha_limite', inicio).lt('fecha_limite', fin)
+      supabase.from('payments').select('user_id').eq('status', 'pagado').lt('fecha_limite', fin)
     ]);
     const userIds = [...new Set([...(mu || []), ...(pu || [])].map(r => r.user_id).filter(Boolean))];
     const resultados = [];
