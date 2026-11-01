@@ -4239,7 +4239,7 @@ async function sendIA(opts){
     // Llamar al backend /api/ai-chat — API key segura en el servidor
     const res = await fetch('/api/ai-chat', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: await headersIA(),
       body: JSON.stringify({
         message: msg,
         history: iaHistory.slice(-10),
@@ -4507,7 +4507,7 @@ async function procesarTextoRecordar(texto){
   try {
     const res = await fetch('/api/ai-chat', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: await headersIA(),
       body: JSON.stringify({ message: texto, history: [], user_id: currentUser?.id || null })
     });
     const data = await res.json();
@@ -4530,7 +4530,7 @@ async function analizarFotoListado(b64){
   try {
     const res = await fetch('/api/ai-chat', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: await headersIA(),
       body: JSON.stringify({ message: prompt, imagen_base64: b64, history: [], user_id: currentUser?.id || null })
     });
     const data = await res.json();
@@ -5299,7 +5299,7 @@ Criterio:
   try{
     const res = await fetch('/api/ai-chat', {
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers: await headersIA(),
       body: JSON.stringify({ message: prompt, imagen_base64: scanImageBase64, history: [], user_id: currentUser?.id || null })
     });
     const data = await res.json();
@@ -5395,7 +5395,7 @@ Responde SOLO en JSON válido sin ningún texto adicional ni markdown:
     // Usar el backend con Claude — no necesita config del usuario
     const res = await fetch('/api/ai-chat', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: await headersIA(),
       body: JSON.stringify({
         message: prompt,
         imagen_base64: scanImageBase64,
@@ -5701,6 +5701,14 @@ async function doRegistro() {
 // currentUser antes de permitir ESCRITURAS. Cierra el race del registro: signUp
 // entrega el `user` antes de que la sesión esté 100% lista en el cliente, y los
 // inserts disparados en esa ventana eran rechazados por RLS y se "perdían".
+// Headers para /api/ai-chat: el backend identifica al usuario por este token.
+async function headersIA() {
+  const { data: { session } } = await supa.auth.getSession();
+  const headers = { 'Content-Type': 'application/json' };
+  if (session) headers.Authorization = `Bearer ${session.access_token}`;
+  return headers;
+}
+
 async function sesionLista() {
   const { data: { session } } = await supa.auth.getSession();
   return !!(session && currentUser?.id && session.user.id === currentUser.id);

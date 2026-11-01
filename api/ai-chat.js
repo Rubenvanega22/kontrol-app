@@ -69,13 +69,26 @@ async function mem0TraerTodo(userId) {
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { message, history = [], imagen_base64, user_id, voz = false } = req.body;
+  const { message, history = [], imagen_base64, voz = false } = req.body;
+
+  // Este endpoint usa la service key, así que el usuario nunca se toma de lo que
+  // diga el cliente: sale de su token. Solo /api/whatsapp (autenticado con
+  // CRON_SECRET) puede indicar el user_id, que ya resolvió por el teléfono.
+  const token = (req.headers.authorization || '').replace('Bearer ', '').trim();
+  let user_id = null;
+  if (token && process.env.CRON_SECRET && token === process.env.CRON_SECRET) {
+    user_id = req.body.user_id || null;
+  } else if (token) {
+    const { data, error } = await supabase.auth.getUser(token);
+    if (!error) user_id = data?.user?.id || null;
+  }
+  if (!user_id) return res.status(401).json({ error: 'Sesión no válida. Recarga la página.' });
+
   if (!message && !imagen_base64) return res.status(400).json({ error: 'Mensaje requerido' });
-  if (!user_id) return res.status(400).json({ error: 'user_id requerido' });
 
   try {
     // 1. Contexto financiero en tiempo real

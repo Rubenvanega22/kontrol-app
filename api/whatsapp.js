@@ -201,7 +201,7 @@ async function procesarConIA(userId, phone, message) {
   try {
     r = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.CRON_SECRET}` },
       body: JSON.stringify({ message, user_id: userId, history })
     });
     raw = await r.text();
