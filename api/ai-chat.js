@@ -217,7 +217,7 @@ module.exports = async function handler(req, res) {
       } else if (!voz) {
         // En modo voz no hacemos segunda llamada para mantener latencia baja
         try {
-          const verifSys = `Eres Ana, agente financiero. Recibes el resultado REAL de acciones ejecutadas en la base de datos. Confirma al usuario en MÁXIMO 2 LÍNEAS exactamente lo que se hizo, basándote SOLO en los datos del array. No inventes. Si el array está vacío o algún campo dice error, di "No se pudo ejecutar el cambio". Sin emojis salvo ✅. Español colombiano cálido.`;
+          const verifSys = `Eres Ana, asistente personal. Recibes el resultado REAL de acciones ejecutadas en la base de datos. Confirma al usuario en MÁXIMO 2 LÍNEAS exactamente lo que se hizo, basándote SOLO en los datos del array. No inventes. Si el array está vacío o algún campo dice error, di "No se pudo ejecutar el cambio". Sin emojis salvo ✅. Español colombiano cálido.`;
           const verifUser = `Mi respuesta intencional fue: "${respuestaLimpia}"\n\nAcciones REALMENTE ejecutadas (JSON): ${JSON.stringify(acciones)}\n\nConfirma al usuario.`;
           const verif = await llamarClaude(verifSys, [], verifUser, null, 200);
           const verifLimpia = (verif || '').replace(/\[ACCION:[^\]]+\]/g, '').trim();
@@ -241,56 +241,25 @@ module.exports = async function handler(req, res) {
   }
 };
 
-// ═══ CONTEXTO FINANCIERO COMPLETO ═══
+// ═══ CONTEXTO: pagos, agenda, listados, recordatorios y lugares ═══
 async function buildContexto(userId) {
-  // inicioMes debe ser el día 1 del mes ACTUAL en Colombia, no UTC.
-  // Después de 7pm Col del último día del mes, el UTC ya avanzó al mes siguiente.
-  const { anio: aMes, mes: mMes } = colombiaDateParts();
-  const inicioMes = `${aMes}-${String(mMes + 1).padStart(2, '0')}-01`;
   const [
-    { data: cuentas },
-    { data: movsMes },
-    { data: movsRecientes },
     { data: pagos },
     { data: eventos },
-    { data: cajas },
-    { data: cajaMovsMes, error: cajaMovsErr },
-    { data: metas },
     { data: recordatorios },
     { data: ubicaciones }
   ] = await Promise.all([
-    supabase.from('accounts').select('*').eq('user_id', userId),
-    supabase.from('movements').select('*').eq('user_id', userId)
-      .gte('fecha', inicioMes)
-      .order('fecha', { ascending: false }).limit(50),
-    supabase.from('movements').select('*').eq('user_id', userId)
-      .order('created_at', { ascending: false }).limit(5),
     supabase.from('payments').select('*').eq('user_id', userId).neq('status', 'pagado'),
     supabase.from('events').select('*').eq('user_id', userId)
       .gte('fecha', colombiaDateString()).order('fecha').limit(10),
-    supabase.from('cajas').select('*').eq('user_id', userId),
-    supabase.from('caja_movimientos').select('*').eq('user_id', userId)
-      .gte('fecha', inicioMes)
-      .order('created_at', { ascending: false }).limit(50),
-    supabase.from('metas').select('*, micrometas(*)').eq('user_id', userId).eq('estado', 'activa'),
     supabase.from('reminders').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(20),
     supabase.from('ubicaciones').select('id, nombre, latitud, longitud').eq('user_id', userId).order('nombre')
   ]);
-  if (cajaMovsErr) console.warn('[buildContexto] caja_movimientos error:', cajaMovsErr.message);
-
-  const totalSaldo = (cuentas || []).reduce((a, c) => a + parseFloat(c.saldo || 0), 0);
-  const totalCajas = (cajas || []).reduce((a, c) => a + parseFloat(c.saldo || 0), 0);
-  const esReal = m => m.categoria !== 'caja' && m.categoria !== 'transferencia';
-  const ingresosMes = (movsMes || []).filter(m => m.tipo === 'ingreso' && esReal(m)).reduce((a, m) => a + parseFloat(m.monto), 0);
-  const gastosMes = (movsMes || []).filter(m => m.tipo === 'gasto' && esReal(m)).reduce((a, m) => a + parseFloat(m.monto), 0);
 
   return {
-    totalSaldo, totalCajas, ingresosMes, gastosMes,
-    cuentas: cuentas || [], movimientos: movsMes || [],
-    movsRecientes: movsRecientes || [], pagos: pagos || [],
-    eventos: eventos || [], cajas: cajas || [],
-    cajaMovimientos: cajaMovsMes || [],
-    metas: metas || [], recordatorios: recordatorios || [],
+    pagos: pagos || [],
+    eventos: eventos || [],
+    recordatorios: recordatorios || [],
     ubicaciones: ubicaciones || []
   };
 }
@@ -303,9 +272,9 @@ function buildSystemPrompt(ctx, memoria) {
   const hoy = colombiaDateLongEs();
   const hora = colombiaTimeString();
 
-  return `⚠️ REGLA DE ORO (PRIORIDAD MÁXIMA): Cuando el usuario mencione un gasto, SIEMPRE pregunta primero de qué cuenta o caja sale el dinero, listando las cuentas disponibles con sus saldos. NUNCA ejecutes [ACCION:gasto] sin que el usuario haya confirmado la fuente. Excepción: si el usuario ya mencionó explícitamente la cuenta en el mismo mensaje.
+  return `Eres Ana, la asistente personal de Kontrol. Kontrol tiene 4 módulos: Agenda, Listado, Pagos y Recordatorios.
 
-Eres Ana, agente financiero personal. Tienes MEMORIA COMPLETA del usuario y acceso TOTAL a sus finanzas.
+⚠️ Kontrol YA NO lleva finanzas: no hay movimientos, gastos, ingresos, cuentas, cajas, saldos, transferencias ni metas. Si el usuario pide algo de eso, dile en una línea que Kontrol ya no maneja saldos ni movimientos y ofrécele lo que sí puedes hacer. No des cifras de saldos ni de gastos, aunque aparezcan en la memoria, y no ejecutes ninguna acción por ello. Si quiere recordar que debe pagar algo, eso sí es un pago.
 
 HOY: ${hoy}
 HORA actual (Colombia): ${hora}
@@ -313,38 +282,12 @@ HORA actual (Colombia): ${hora}
 ═══ LO QUE SABES DEL USUARIO (memoria persistente) ═══
 ${memoria || 'Primera vez que hablas con este usuario — aprende todo lo posible.'}
 
-═══ ESTADO FINANCIERO EN TIEMPO REAL ═══
-Total bancos: ${fmt(ctx.totalSaldo)}
-Total efectivo: ${fmt(ctx.totalCajas)}
-TOTAL DISPONIBLE: ${fmt(ctx.totalSaldo + ctx.totalCajas)}
-
-Cuentas: ${ctx.cuentas.map(c => `${c.nombre}(${fmt(c.saldo)})[ID:${c.id}]`).join(' | ') || 'ninguna'}
-Cajas: ${ctx.cajas.map(c => `${c.nombre}(${fmt(c.saldo)})[ID:${c.id}]`).join(' | ') || 'ninguna'}
-Mes: Ingresos ${fmt(ctx.ingresosMes)} | Gastos ${fmt(ctx.gastosMes)} | Balance ${fmt(ctx.ingresosMes - ctx.gastosMes)}
-
-Movimientos de cajas este mes (usa el ID exacto cuando el usuario pida borrarlos):
-${(ctx.cajaMovimientos || []).map(cm => {
-  const cajaNom = (ctx.cajas.find(c => String(c.id) === String(cm.caja_id)) || {}).nombre || '?';
-  return `• ${cm.tipo==='ingreso'?'+':'-'}${fmt(cm.monto)} ${cm.descripcion||'(sin nota)'} en ${cajaNom} (${cm.fecha}) [ID:${cm.id}]`;
-}).join('\n') || 'ninguno'}
-
-Últimos movimientos:
-${ctx.movsRecientes.map(m => `• ${m.tipo==='ingreso'?'↑':'↓'} ${fmt(m.monto)} — ${m.descripcion} (${m.fecha}) [ID:${m.id}]`).join('\n') || 'ninguno'}
-
-Todos del mes:
-${ctx.movimientos.map(m => `• ${m.tipo==='ingreso'?'+':'-'}${fmt(m.monto)} ${m.descripcion} ${m.fecha} [ID:${m.id}]`).join('\n') || 'ninguno'}
-
+═══ DATOS DEL USUARIO EN TIEMPO REAL ═══
 Pagos pendientes:
 ${ctx.pagos.map(p => `• ${p.nombre}: ${fmt(p.monto)} vence ${p.fecha_limite} [ID:${p.id}]`).join('\n') || 'ninguno'}
 
 Eventos próximos:
 ${ctx.eventos.map(e => `• ${e.titulo} — ${e.fecha} ${e.hora||''} [ID:${e.id}]`).join('\n') || 'ninguno'}
-
-Metas activas:
-${ctx.metas.map(m => {
-  const mms = (m.micrometas || []).map(mm => `   ${mm.completada ? '✓' : '○'} ${mm.titulo || mm.descripcion || ''} [ID:${mm.id}]`).join('\n');
-  return `• ${m.titulo} — ${m.progreso||0}% [ID:${m.id}]${mms ? '\n' + mms : ''}`;
-}).join('\n') || 'ninguna'}
 
 Recordatorios (notas sin ítems):
 ${ctx.recordatorios.filter(r => r.tipo === 'nota' || r.tipo === 'definicion').map(r => `• ${r.titulo} [ID:${r.id}]`).join('\n') || 'ninguno'}
@@ -370,51 +313,16 @@ ${(ctx.ubicaciones || []).map(u => `• ${u.nombre}: https://maps.google.com/?q=
 
 EJEMPLOS CORRECTOS (copia exactamente este formato):
 
-Usuario: "gasté 25000 en mercado de Bancolombia"
+Usuario: "agéndame pago luz $80.000 el 15 de junio"
 Tu respuesta:
-  ✅ Listo, registré $25.000 en mercado desde Bancolombia.
-  [ACCION:gasto|25000|mercado|alimentacion|abc-123-id-bancolombia]
-
-Usuario: "anota un ingreso de 500000 de freelance en Nequi"
-Tu respuesta:
-  ✅ Ingreso de $500.000 registrado en Nequi.
-  [ACCION:ingreso|500000|freelance|freelance|xyz-456-id-nequi]
-
-Usuario: "saca 30000 de mi caja diaria para gasolina"
-Tu respuesta:
-  ✅ Saqué $30.000 de Caja diaria para gasolina.
-  [ACCION:caja_salida|caja-789-id|30000|gasolina]
+  ✅ Pago de luz por $80.000 agendado para el 15 de junio.
+  [ACCION:pago|Luz|80000|2026-06-15]
 
 EJEMPLOS INCORRECTOS (NO hagas esto):
-  ❌ [ACCION: gasto, 25000, mercado]            (usa pipe, no comas; sin espacios sobrantes)
-  ❌ [ACCION:gasto|$25.000|mercado]              (monto sin símbolos ni puntos)
-  ❌ ACCION:gasto|25000|mercado                  (faltan los corchetes)
-  ❌ [ACCION:gasto|25000|mercado|alimentacion|Bancolombia]  (usa el ID, no el nombre)
+  ❌ [ACCION: pago, Luz, 80000]            (usa pipe, no comas; sin espacios sobrantes)
+  ❌ [ACCION:pago|Luz|$80.000|2026-06-15]  (monto sin símbolos ni puntos)
+  ❌ ACCION:pago|Luz|80000|2026-06-15      (faltan los corchetes)
 
-🚨 REGLA CRÍTICA: CUENTA vs CAJA — NUNCA LAS CONFUNDAS 🚨
-
-Mira el listado de "Cuentas: …" y "Cajas: …" más arriba. Cada uno está separado.
-- Si la fuente del dinero está en el listado de CUENTAS (banco/billetera/efectivo):
-    → [ACCION:gasto|monto|desc|cat|<cuenta_id>]
-    → [ACCION:ingreso|monto|desc|cat|<cuenta_id>]
-- Si la fuente del dinero está en el listado de CAJAS:
-    → [ACCION:caja_salida|<caja_id>|monto|desc]   (NUNCA gasto)
-    → [ACCION:caja_entrada|<caja_id>|monto|desc]  (NUNCA ingreso)
-
-❌ NUNCA hagas esto: [ACCION:gasto|230000|odontologia|salud|4]  cuando "4" es una CAJA.
-   El sistema lo va a registrar como gasto normal sin descontar de la caja.
-✅ Hazlo así:        [ACCION:caja_salida|4|230000|odontologia]  ← descuenta de la caja correctamente.
-
-Cómo distinguirlas: revisa los IDs listados arriba. Si el ID que mencionó el usuario
-aparece en la línea "Cajas:", usa caja_salida/caja_entrada. Si aparece en "Cuentas:",
-usa gasto/ingreso. Nunca metas un caja_id en el campo cuenta_id_opcional de gasto/ingreso.
-
-— Movimientos
-[ACCION:gasto|monto|descripcion|categoria|cuenta_id_opcional]
-[ACCION:ingreso|monto|descripcion|categoria|cuenta_id_opcional]
-[ACCION:editar_movimiento|ID|nuevo_monto|nueva_descripcion|nueva_fecha]
-  Deja vacíos los campos que NO quieras cambiar. Ej: [ACCION:editar_movimiento|abc123||Almuerzo|]
-[ACCION:borrar_movimiento|ID]
 — Pagos
 [ACCION:pago|nombre|monto|YYYY-MM-DD]
 [ACCION:marcar_pago_pagado|ID]
@@ -440,35 +348,6 @@ usa gasto/ingreso. Nunca metas un caja_id en el campo cuenta_id_opcional de gast
 [ACCION:borrar_recordatorios|preguntar]
   El sistema cuenta y pide confirmación. Solo cuando el usuario confirma, repite
   la MISMA acción con "confirmar" (ej. [ACCION:borrar_todo|confirmar]).
-— Cuentas (no se crean desde aquí — el usuario las crea en Config)
-[ACCION:editar_cuenta|cuenta_id|nuevo_saldo|nuevo_nombre]
-  Deja vacíos los campos que NO quieras cambiar. Ej: [ACCION:editar_cuenta|abc||Nuevo nombre]
-[ACCION:borrar_cuenta|cuenta_id]
-  ⚠️ REQUIERE confirmación del usuario en pantalla — solo emite la acción, el frontend pregunta.
-
-— Cajas (efectivo)
-[ACCION:caja_entrada|caja_id|monto|descripcion]
-[ACCION:caja_salida|caja_id|monto|descripcion]
-[ACCION:editar_caja|caja_id|nuevo_saldo|nuevo_nombre]
-  Deja vacíos los campos que NO quieras cambiar.
-[ACCION:borrar_caja|caja_id]
-  ⚠️ REQUIERE confirmación del usuario en pantalla — solo emite la acción.
-[ACCION:borrar_caja_movimiento|caja_movimiento_id]
-  Borra un movimiento individual de una caja (no la caja entera). El sistema
-  revierte automáticamente el efecto sobre el saldo (si era gasto, suma de
-  vuelta; si era ingreso, resta). El ID es el del LISTADO "Movimientos de
-  cajas este mes" de arriba — NO confundas con el id de la caja.
-  Ejemplo: usuario dice "borra el gasto de odontología de la caja" →
-  buscas la fila de odontología en el listado → [ACCION:borrar_caja_movimiento|<id>]
-
-— Transferencias (entre cuentas o cajas)
-[ACCION:transferir|origen_tipo|origen_id|destino_tipo|destino_id|monto]
-  origen_tipo y destino_tipo deben ser "cuenta" o "caja". Usa los IDs de arriba.
-— Metas
-[ACCION:meta|titulo|tipo|monto_objetivo|YYYY-MM-DD]
-[ACCION:borrar_meta|ID]
-[ACCION:completar_micrometa|ID]
-
 — Ubicaciones (lugares guardados del usuario)
 [ACCION:guardar_ubicacion|nombre|lat|lng]
   Solo si el usuario te DA coordenadas explícitas en texto (raro). El
@@ -489,25 +368,20 @@ usa gasto/ingreso. Nunca metas un caja_id en el campo cuenta_id_opcional de gast
 
 — Navegación (cambiar la pantalla activa de la app)
 [ACCION:navegar|seccion]
-  Secciones válidas: resumen, movimientos, cajas, pagos, agenda, recordar, metas, ia
+  Secciones válidas: agenda, listado, pagos, recordatorios, ia
   Úsala cuando el usuario diga "llévame a X", "abre Y", "muéstrame Z", "ve a W".
   Ejemplos:
     "llévame a pagos"        → [ACCION:navegar|pagos]
     "abre la agenda"         → [ACCION:navegar|agenda]
-    "muéstrame mis metas"    → [ACCION:navegar|metas]
-    "ve a movimientos"       → [ACCION:navegar|movimientos]
-    "abre cajas"             → [ACCION:navegar|cajas]
-    "vuelve al resumen"      → [ACCION:navegar|resumen]
-    "ve a recordatorios"     → [ACCION:navegar|recordar]
-
-IMPORTANTE: si el usuario menciona una cuenta o caja específica por nombre, busca su ID en el listado de arriba y úsalo en la acción.
+    "muéstrame mis listas"   → [ACCION:navegar|listado]
+    "ve a recordatorios"     → [ACCION:navegar|recordatorios]
 
 ═══ REGLAS ═══
 1. NUNCA muestres [ACCION:...] — son invisibles
-2. Registra gastos/ingresos INMEDIATAMENTE cuando los mencionen
-3. Confirma: "✅ Registré $X en Y"
+2. Crea pagos, eventos, listados y recordatorios INMEDIATAMENTE cuando los pidan con los datos completos
+3. Confirma: "✅ Listo" con lo que hiciste
 4. TODO lo que registres aparece visible en la app
-5. Respuestas CORTAS — máx 3 líneas salvo análisis
+5. Respuestas CORTAS — máx 3 líneas
 6. Español colombiano, tono cálido y cercano
 7. RECUERDAS TODO — úsalo naturalmente
 8. Si te preguntan qué recuerdas → cuéntale todo
@@ -651,11 +525,12 @@ IMPORTANTE: si el usuario menciona una cuenta o caja específica por nombre, bus
        "qué hay", "qué eventos") → CONSULTAR, NO crear. Navega a la sección:
          "muéstrame la agenda" / "dime qué tengo en agenda" → [ACCION:navegar|agenda]
          "qué hay en agenda mañana"                          → [ACCION:navegar|agenda]
-         "muéstrame mis listados" / "ver mis recordatorios"  → [ACCION:navegar|recordar]
+         "muéstrame mis listados"                            → [ACCION:navegar|listado]
+         "ver mis recordatorios"                             → [ACCION:navegar|recordatorios]
 
     C) CASOS ESPECIALES (mandan sobre A). Mira QUÉ viene justo después de "agenda":
        • NADA → consultar:  "agenda" → [ACCION:navegar|agenda]
-         (y "listados"/"recordatorios" solos → [ACCION:navegar|recordar])
+         (y "listados" solo → [ACCION:navegar|listado]; "recordatorios" solo → [ACCION:navegar|recordatorios])
        • SOLO una palabra de TIEMPO y nada más (hoy/mañana/lunes/una fecha) → consultar:
          "agenda hoy" / "agenda mañana" / "agenda el lunes" → [ACCION:navegar|agenda]
        • CUALQUIER OTRA palabra (para, algo, una, un, el…) aunque incluya un día,
@@ -852,6 +727,14 @@ async function leerCajaMovimientoFresh(movId, userId) {
   return data;
 }
 
+// Módulos retirados de Kontrol: estas acciones ya no se ejecutan aunque el modelo las
+// emita (por ejemplo, por una memoria vieja de Mem0). Sus tablas siguen intactas.
+const ACCIONES_RETIRADAS = new Set([
+  'gasto', 'ingreso', 'editar_movimiento', 'borrar_movimiento', 'transferir',
+  'caja_entrada', 'caja_salida', 'borrar_caja_movimiento', 'editar_caja', 'borrar_caja',
+  'editar_cuenta', 'borrar_cuenta', 'meta', 'borrar_meta', 'completar_micrometa'
+]);
+
 // ═══ EJECUTAR ACCIONES — todo queda visible en la app ═══
 async function ejecutarAcciones(respuesta, contexto, userId) {
   const matches = [...respuesta.matchAll(/\[ACCION:([^\]]+)\]/g)];
@@ -862,6 +745,7 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
   for (const match of matches) {
     const parts = match[1].split('|');
     const accion = parts[0].trim();
+    if (ACCIONES_RETIRADAS.has(accion)) continue;
 
     try {
       if (accion === 'gasto' || accion === 'ingreso') {
@@ -1236,7 +1120,7 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
       } else if (accion === 'navegar') {
         // No muta DB — solo devuelve la sección para que el frontend cambie de tab
         const seccion = (parts[1] || '').trim();
-        const validas = ['resumen','movimientos','cajas','pagos','agenda','recordar','metas','ia'];
+        const validas = ['agenda','listado','pagos','recordatorios','ia'];
         if (seccion && validas.includes(seccion)) {
           ejecutadas.push({ accion, seccion });
         }
