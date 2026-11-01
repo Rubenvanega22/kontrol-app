@@ -1988,12 +1988,12 @@ function renderAgenda(){
     .filter(e=>e.fecha===agendaDiaSel)
     .sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
 
+  const fut = DB.eventos
+    .filter(e=>e.fecha>agendaDiaSel)
+    .sort((a,b)=>a.fecha.localeCompare(b.fecha))[0];
+  const extra = fut ? `<div class="agenda-next">Próximo evento: <b>${escAttr(fut.titulo)}</b> · ${fmtDate(fut.fecha)}</div>` : '';
+
   if(!eventos.length){
-    let extra='';
-    const fut = DB.eventos
-      .filter(e=>e.fecha>agendaDiaSel)
-      .sort((a,b)=>a.fecha.localeCompare(b.fecha))[0];
-    if(fut) extra=`<div class="agenda-next">Próximo evento: <b>${fut.titulo}</b> · ${fmtDate(fut.fecha)}</div>`;
     el.innerHTML=`<div class="empty"><div class="empty-ico">🎉</div><div class="empty-txt">Sin eventos. ¡Día libre!</div></div>${extra}`;
     return;
   }
@@ -2001,7 +2001,7 @@ function renderAgenda(){
     <div class="ae-time">${e.hora||'—'}</div>
     <div class="ae-info"><div class="ae-title">${e.titulo}</div><div class="ae-sub">${fmtDate(e.fecha)}${e.nota?' · '+e.nota:''}</div></div>
     <button onclick="borrarEvento('${e.id}')" style="background:rgba(248,113,113,0.15);border:none;border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:12px;flex-shrink:0;align-self:center" title="Eliminar evento">🗑️</button>
-  </div>`).join('');
+  </div>`).join('') + extra;
 }
 
 // Header de fecha + título de la lista + visibilidad del botón "Volver a hoy".
@@ -2481,6 +2481,9 @@ async function sendIA(opts){
           if(navegarAction && navegarAction.seccion){
             goTab(navegarAction.seccion);
           } else {
+            // Muestra el día del evento creado: la Agenda solo lista el día seleccionado.
+            const evento = data.acciones.find(a => a.accion === 'evento' && a.ok);
+            if(evento) agendaDiaSel = evento.fecha;
             const autoTab = inferTabDestinoIA(data.acciones);
             if(autoTab) goTab(autoTab);
             else renderCurrentScreen();
@@ -3582,6 +3585,21 @@ function addLogoutBtn() {
     }
   }
 })();
+
+// Lo creado por WhatsApp o el cron no llega solo al navegador: se trae al volver a la
+// app. No interrumpe si el usuario está escribiendo o tiene un modal abierto.
+let _ultimoRefrescoAuto = 0;
+function refrescarAlVolver(){
+  if(document.visibilityState !== 'visible' || !currentUser) return;
+  if(Date.now() - _ultimoRefrescoAuto < 5000) return;
+  const activo = document.activeElement;
+  if(activo && /^(INPUT|TEXTAREA|SELECT)$/.test(activo.tagName)) return;
+  if(document.querySelector('.modal-overlay:not(.hidden)')) return;
+  _ultimoRefrescoAuto = Date.now();
+  syncDesdeSupabase();
+}
+document.addEventListener('visibilitychange', refrescarAlVolver);
+window.addEventListener('focus', refrescarAlVolver);
 
 function init(){
   addLogoutBtn();
