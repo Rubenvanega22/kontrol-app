@@ -184,6 +184,16 @@ module.exports = async function handler(req, res) {
         partesEvento.push('❌ Hubo un error guardando. Por favor intenta de nuevo.');
       } else if (a.accion === 'recordatorio' && a.error === 'db') {
         partesEvento.push('❌ Hubo un error guardando. Por favor intenta de nuevo.');
+      } else if (a.accion === 'recordatorio' && a.error === 'sin_titulo') {
+        partesEvento.push('❌ No anoté nada porque me faltó el qué. ¿Qué quieres que anote?');
+      } else if (a.accion === 'recordatorio' && a.ok) {
+        const valor = a.valor ? ` por ${fmtValorExacto(a.valor)}` : '';
+        const aviso = a.recordar_fecha
+          ? `Te aviso ${formatearDia(a.recordar_fecha)}${a.recordar_fecha === colombiaDateString() ? '' : ' a las 8 am'} por WhatsApp.`
+          : 'Queda guardado como registro, sin aviso.';
+        partesEvento.push(`✅ Anoté "${a.detalle}"${valor}. ${aviso}`);
+      } else if (a.accion === 'buscar_recordatorio') {
+        partesEvento.push(textoBusquedaRecordatorios(a));
       // Listados — respuesta determinística (✅ solo si la operación se confirmó).
       } else if (a.accion === 'lista' && a.op === 'creada') {
         const n = (a.items || []).length;
@@ -319,7 +329,7 @@ Eventos próximos:
 ${ctx.eventos.map(e => `• ${e.titulo} — ${e.fecha} ${e.hora||''} [ID:${e.id}]`).join('\n') || 'ninguno'}
 
 Recordatorios (notas sin ítems):
-${ctx.recordatorios.filter(r => r.tipo === 'nota' || r.tipo === 'definicion').map(r => `• ${r.titulo} [ID:${r.id}]`).join('\n') || 'ninguno'}
+${ctx.recordatorios.filter(r => r.tipo === 'nota' || r.tipo === 'definicion').map(r => `• ${r.titulo}${r.recordar_fecha ? ` (aviso ${r.recordar_fecha})` : ''} [ID:${r.id}]`).join('\n') || 'ninguno'}
 
 Listados (listas con ítems marcables — usa el título EXACTO):
 ${ctx.recordatorios.filter(r => r.tipo === 'listado' || r.tipo === 'lista').map(l => {
@@ -359,7 +369,11 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
 — Eventos y recordatorios
 [ACCION:evento|titulo|YYYY-MM-DD|HH:MM]
   Sin hora, deja el último campo vacío: [ACCION:evento|titulo|YYYY-MM-DD|]
-[ACCION:recordatorio|texto]
+[ACCION:recordatorio|qué recordar|YYYY-MM-DD|valor|nota]
+  Solo "qué recordar" es obligatorio; deja vacíos los demás campos que no dijo.
+  Con fecha, ese día le llega aviso por WhatsApp a las 8 am. Sin fecha queda como registro.
+[ACCION:buscar_recordatorio|palabra clave]
+  Busca en todos sus recordatorios por texto y nota. Usa solo las palabras clave.
 [ACCION:borrar_evento|ID]
 [ACCION:borrar_recordatorio|ID]
   Usa el ID del listado "Recordatorios" de arriba.
@@ -445,9 +459,8 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
     C) "Agéndame pago de X para el día Y" SIN hora → [ACCION:pago|...].
        El batch matutino de las 8am Col le avisará ese día.
 
-    D) "Anota X" / "Guarda lista de Y" / "memo: Z" / definición →
-       [ACCION:recordatorio|texto]. Nota persistente, NO se notifica
-       individualmente. Solo para info pasiva sin tiempo.
+    D) "Anota X" / "Apunta X" / "Guarda X" / "memo: Z" / definición, sin hora →
+       [ACCION:recordatorio|X||valor|nota]. Ver regla 18.
 
     EJEMPLOS DETERMINANTES:
 
@@ -623,6 +636,29 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
     la memoria. Un día sin mes ("el 5") es su próxima ocurrencia desde HOY. Nunca generes
     una fecha pasada.
 
+18. ⚠️ ANOTAR Y BUSCAR RECORDATORIOS.
+    - La fecha del recordatorio es el día del AVISO FUTURO. Algo que ya pasó ("hoy pagué")
+      es un registro: va SIN fecha. El sistema guarda solo el día en que se anotó.
+    - El valor va en números puros. La nota es el detalle adicional, si lo dio.
+    - Para "qué día anoté X", "cuánto pagué de X", "dónde anoté X" o "busca X", emite SIEMPRE
+      [ACCION:buscar_recordatorio|X]. No respondas de memoria ni inventes la fecha: el
+      sistema arma la respuesta con lo que encuentre.
+
+    Usuario: "anota que hoy pagué el SOAT, 386.500"
+    Tu respuesta:
+      ✅ Listo.
+      [ACCION:recordatorio|Pagué el SOAT||386500|]
+
+    Usuario: "anota renovar el SOAT el 5 de diciembre, 386.500, es con Sura"
+    Tu respuesta:
+      ✅ Listo.
+      [ACCION:recordatorio|Renovar el SOAT|2026-12-05|386500|Es con Sura]
+
+    Usuario: "qué día anoté lo del SOAT"
+    Tu respuesta:
+      Déjame buscar.
+      [ACCION:buscar_recordatorio|SOAT]
+
 17. ⚠️ ACLARAR UN PAGO NO ES AGENDAR. Si el usuario habla de la fecha de un pago que ya
     existe ("el pago es para el 5"), NO crees un evento. Dile la fecha que tiene según
     "Pagos pendientes"; si quiere cambiarla, no puedes hacerlo desde aquí: dile que no
@@ -692,6 +728,52 @@ function parseMontoSeguro(s) {
   if (s === null || s === undefined) return 0;
   const limpio = String(s).replace(/[^\d]/g, '');
   return limpio ? parseFloat(limpio) : 0;
+}
+
+// $386.500, exacto y con puntos de miles.
+function fmtValorExacto(n) {
+  return `$${Math.round(Number(n)).toLocaleString('es-CO')}`;
+}
+
+// "1 nov 2026" en hora Colombia.
+function fechaCorta(fecha) {
+  const f = new Date(`${fecha}T12:00:00-05:00`);
+  return f.toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'America/Bogota' })
+    .replace(/\s+de\s+/g, ' ').replace('.', '');
+}
+
+// Busca en todos los recordatorios del usuario por texto y nota, sin distinguir
+// mayúsculas ni tildes. Se filtra aquí para no armar la consulta con lo que escribió.
+const PALABRAS_VACIAS = new Set(['lo', 'la', 'el', 'los', 'las', 'de', 'del', 'que', 'un', 'una', 'y', 'a', 'en', 'mi', 'mis']);
+const normalizarTexto = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+async function buscarRecordatorios(consulta, userId) {
+  const terminos = normalizarTexto(consulta).split(/[^a-z0-9ñ]+/).filter(t => t && !PALABRAS_VACIAS.has(t));
+  const { data, error } = await supabase.from('reminders')
+    .select('titulo, nota, valor, recordar_fecha, created_at')
+    .eq('user_id', userId).in('tipo', ['nota', 'definicion'])
+    .order('created_at', { ascending: false }).limit(1000);
+  if (error) return { error: error.message };
+  const filas = (data || []).filter(r => {
+    const texto = normalizarTexto(`${r.titulo} ${r.nota || ''}`);
+    return terminos.length > 0 && terminos.every(t => texto.includes(t));
+  });
+  return { filas };
+}
+
+function textoBusquedaRecordatorios(a) {
+  if (a.error) return '❌ No pude buscar en este momento. Intenta de nuevo.';
+  if (!a.total) return `No encontré nada anotado sobre "${a.consulta}".`;
+  const lineas = a.filas.map(r => {
+    const anotado = r.created_at ? colombiaDateString(new Date(r.created_at)) : null;
+    let t = `• *${r.titulo}*`;
+    if (anotado) t += `\n  Anotado el ${fechaCorta(anotado)}`;
+    if (Number(r.valor) > 0) t += `\n  💰 ${fmtValorExacto(r.valor)}`;
+    if (r.recordar_fecha) t += `\n  🔔 Aviso el ${fechaCorta(r.recordar_fecha)}`;
+    if (r.nota) t += `\n  📝 ${r.nota}`;
+    return t;
+  });
+  const extra = a.total > a.filas.length ? `\n\nHay ${a.total} en total; te muestro los ${a.filas.length} más recientes.` : '';
+  return `🔎 Esto encontré:\n${lineas.join('\n')}${extra}`;
 }
 
 // ═══ Formatea "YYYY-MM-DD" + "HH:MM" a texto humano en hora Colombia:
@@ -1017,15 +1099,36 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
         }
 
       } else if (accion === 'recordatorio') {
+        const titulo = (parts[1] || '').trim();
+        if (!titulo) {
+          ejecutadas.push({ accion: 'recordatorio', error: 'sin_titulo' });
+          continue;
+        }
+        // Solo una fecha válida de hoy en adelante programa aviso; lo pasado queda como registro.
+        const fechaTxt = (parts[2] || '').trim();
+        const fechaOk = /^\d{4}-\d{2}-\d{2}$/.test(fechaTxt) && !isNaN(new Date(`${fechaTxt}T12:00:00-05:00`).getTime()) && fechaTxt >= colombiaDateString();
+        const recordar_fecha = fechaOk ? fechaTxt : null;
+        const valor = parseMontoSeguro(parts[3]) || null;
+        const nota = (parts[4] || '').trim() || null;
         const { error } = await supabase.from('reminders').insert({
-          user_id: userId, tipo: 'nota', titulo: parts[1],
-          content: { texto: parts[1] }, fecha: colombiaDateString()
+          user_id: userId, tipo: 'nota', titulo, content: { texto: titulo },
+          fecha: colombiaDateString(), recordar_fecha, valor, nota
         });
         if (error) {
           console.error('[recordatorio] insert reminders falló:', error.message);
-          ejecutadas.push({ accion: 'recordatorio', error: 'db', detalle: parts[1] });
+          ejecutadas.push({ accion: 'recordatorio', error: 'db', detalle: titulo });
         } else {
-          ejecutadas.push({ accion: 'recordatorio', ok: true, detalle: parts[1] });
+          ejecutadas.push({ accion: 'recordatorio', ok: true, detalle: titulo, recordar_fecha, valor });
+        }
+
+      } else if (accion === 'buscar_recordatorio') {
+        const consulta = (parts[1] || '').trim();
+        const { filas, error } = await buscarRecordatorios(consulta, userId);
+        if (error) {
+          console.error('[buscar_recordatorio] error:', error);
+          ejecutadas.push({ accion, consulta, error: 'db' });
+        } else {
+          ejecutadas.push({ accion, consulta, total: filas.length, filas: filas.slice(0, 5) });
         }
 
       } else if (accion === 'crear_lista') {

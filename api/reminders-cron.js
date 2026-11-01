@@ -165,10 +165,13 @@ async function modoRecordatorios() {
         const its = subitems.map(it => `   ${it.done ? '✓' : '○'} ${it.text}`).join('\n');
         return `📋 *${r.titulo}*\n${its}`;
       }
-      return `• ${r.titulo}`;
-    }).join('\n');
+      let linea = `🔔 *${r.titulo}*`;
+      if (Number(r.valor) > 0) linea += `\n💰 $${Math.round(Number(r.valor)).toLocaleString('es-CO')}`;
+      if (r.nota) linea += `\n📝 ${r.nota}`;
+      return linea;
+    }).join('\n\n');
     const saludo = info.nombre ? `Hola ${info.nombre}, ` : '';
-    const mensaje = `${saludo}recordatorio para hoy:\n\n🔔 ${lista}`;
+    const mensaje = `${saludo}recordatorio para hoy:\n\n${lista}`;
     const { error: insErr } = await supabase.from('whatsapp_alerts').insert({
       tipo: 'recordatorio_nota', mensaje, telefono: info.telefono, enviado: false
     });
@@ -408,9 +411,13 @@ module.exports = async function handler(req, res) {
       // Rolling cada tick (cron-job.org cada 15 min): 15-min + 1h
       results.q15 = await modoQuinceMinAntes();
       results.h1  = await modoUnaHoraAntes();
-      // Resumen de agenda + recordatorios con fecha: una vez al día a las 8am Col.
+      // Resumen de agenda: una vez al día a las 8am Col.
       if (utcHour === DAILY_UTC_HOUR) {
-        results.diario        = await modoResumenDiario();
+        results.diario = await modoResumenDiario();
+      }
+      // Recordatorios con fecha de hoy: salen a las 8am Col. La ventana hasta las 6pm
+      // cubre los creados más tarde para ese mismo día; el flag notificado evita repetir.
+      if (utcHour >= DAILY_UTC_HOUR && utcHour <= EVENING_UTC_HOUR) {
         results.recordatorios = await modoRecordatorios();
       }
       // Pagos: ventana 8am-6pm Col. El dedup por notificado_fecha garantiza
