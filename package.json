@@ -4,7 +4,7 @@
   "description": "Kontrol - Agenda, listados, pagos y recordatorios con IA",
   "engines": { "node": "24.x" },
   "scripts": {
-    "build": "echo 'static site'"
+    "build": "node scripts/build-version.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",

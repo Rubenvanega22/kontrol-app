@@ -3927,6 +3927,90 @@ function refrescarAlVolver(){
 document.addEventListener('visibilitychange', refrescarAlVolver);
 window.addEventListener('focus', refrescarAlVolver);
 
+// ════════════════════════════════════════
+// ACTUALIZACIÓN AUTOMÁTICA
+// ════════════════════════════════════════
+// El deploy escribe aquí la versión de esta página y publica la vigente en /version.json
+// (scripts/build-version.js). Si difieren, recarga apenas el usuario no esté haciendo nada.
+const APP_VERSION = '__KONTROL_VERSION__';
+const ACT_CADA_MS = 5 * 60 * 1000;     // revisión mientras la app está abierta
+const ACT_MIN_ENTRE_MS = 60 * 1000;    // al volver a la app, como mucho una por minuto
+const ACT_SIN_TOCAR_MS = 3000;         // tiempo sin interacción antes de recargar
+const ACT_AVISO_MS = 1800;             // tiempo para leer el aviso
+let actUltimaRevision = 0;
+let actPendiente = null;
+let actAplicando = false;
+let actUltimoToque = 0;
+
+['input','keydown','pointerdown','touchstart'].forEach(ev =>
+  document.addEventListener(ev, () => { actUltimoToque = Date.now(); }, { capture:true, passive:true })
+);
+
+async function revisarVersion(forzar){
+  if(APP_VERSION.startsWith('__') || document.visibilityState !== 'visible') return;
+  if(!forzar && Date.now() - actUltimaRevision < ACT_MIN_ENTRE_MS) return;
+  actUltimaRevision = Date.now();
+  try{
+    const res = await fetch('/version.json?t='+Date.now(), { cache:'no-store' });
+    if(!res.ok) return;
+    const { version } = await res.json();
+    if(!version) return;
+    if(version === APP_VERSION){
+      actPendiente = null;
+      sessionStorage.removeItem('kontrol_act_intento');
+      return;
+    }
+    // Ya se intentó con esta versión y la página sigue vieja: no reintenta en ciclo.
+    if(sessionStorage.getItem('kontrol_act_intento') === version) return;
+    actPendiente = version;
+    intentarActualizar();
+  }catch(e){ /* sin red: se revisa en la próxima */ }
+}
+
+// ¿Recargar ahora le haría perder algo al usuario?
+function usuarioOcupado(){
+  if(document.visibilityState !== 'visible') return true;
+  if(Date.now() - actUltimoToque < ACT_SIN_TOCAR_MS) return true;
+  const activo = document.activeElement;
+  if(activo && (/^(INPUT|TEXTAREA|SELECT)$/.test(activo.tagName) || activo.isContentEditable)) return true;
+  if(document.querySelector('.modal-overlay:not(.hidden)')) return true;
+  if(recEdit || recGuardando || isRecording || ttsSpeaking || pagoSoporteId !== null) return true;
+  if(document.getElementById('ia-typing')) return true;
+  // Texto a medio escribir aunque el campo ya no tenga el foco.
+  const auth = document.getElementById('auth-screen');
+  const campos = ['#ia-input','[id^="additem-"]'];
+  if(auth && auth.style.display !== 'none') campos.push('#auth-screen input');
+  return campos.some(sel => [...document.querySelectorAll(sel)].some(i => i.value && i.value.trim()));
+}
+
+async function intentarActualizar(){
+  if(!actPendiente || actAplicando || usuarioOcupado()) return;
+  actAplicando = true;
+  toast('Kontrol se actualizó','var(--green)');
+  await new Promise(r => setTimeout(r, ACT_AVISO_MS));
+  if(usuarioOcupado()){ actAplicando = false; return; }
+  try{
+    sessionStorage.setItem('kontrol_act_intento', actPendiente);
+    const pantalla = document.querySelector('.scr.on');
+    if(pantalla) sessionStorage.setItem('kontrol_act_pestana', pantalla.id.replace('scr-',''));
+    // Sin el HTML en caché, la recarga lo pide al servidor.
+    if('caches' in window){
+      for(const k of await caches.keys()){
+        const c = await caches.open(k);
+        await c.delete('/', { ignoreSearch:true });
+        await c.delete('/index.html', { ignoreSearch:true });
+      }
+    }
+  }catch(e){ console.warn('[actualizar]', e.message); }
+  location.reload();
+}
+
+document.addEventListener('visibilitychange', () => revisarVersion());
+window.addEventListener('focus', () => revisarVersion());
+setInterval(() => revisarVersion(true), ACT_CADA_MS);
+setInterval(intentarActualizar, 2000);
+setTimeout(() => revisarVersion(true), 2500);
+
 function init(){
   addLogoutBtn();
   setTimeout(() => {
@@ -3942,6 +4026,12 @@ function init(){
   renderAgenda();
   renderConfig();
   maybeShowWaBanner();
+  // Tras una actualización automática, vuelve a la pestaña donde estaba.
+  const pestana = sessionStorage.getItem('kontrol_act_pestana');
+  if(pestana){
+    sessionStorage.removeItem('kontrol_act_pestana');
+    goTab(pestana);
+  }
 }
 
 

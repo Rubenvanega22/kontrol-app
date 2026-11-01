@@ -1,13 +1,16 @@
 // /sw.js — Service Worker para Kontrol
 // Estrategia: stale-while-revalidate para HTML y assets estáticos.
-//   - Visita 1: cache miss → fetch del network → guarda en cache → sirve
-//   - Visita 2+: sirve del cache INSTANTÁNEO → revalida en background → updates aplican en visita 3
-// API calls (/api/*) y Supabase auth/REST (*.supabase.co) SIEMPRE pasan al network.
+//   - Con caché: sirve al instante y revalida en background.
+//   - Sin caché: va a la red y guarda.
+// /api/*, Supabase y /version.json SIEMPRE pasan al network.
+//
+// Las actualizaciones las detecta la página comparando su versión con /version.json.
+// Antes de recargar borra el HTML de esta caché, así la recarga trae el nuevo.
 //
 // El nombre del cache lleva versión: bump CACHE_VERSION cuando cambie la estructura
 // del SW o se quiera invalidar todo lo cacheado.
 
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const CACHE_NAME = `kontrol-${CACHE_VERSION}`;
 
 // Recursos a pre-cachear en install. Estos son los que bloquean el primer paint.
@@ -20,11 +23,11 @@ const PRECACHE_URLS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(PRECACHE_URLS).catch((e) => {
-        // Si algún recurso del precache falla, no abortamos la instalación.
-        // El SW se activa igual y caché irá llenándose en runtime.
-        console.warn('[sw] precache parcial:', e.message);
-      }))
+      // cache:'reload' evita guardar una copia vieja de la caché HTTP. Uno por uno: si
+      // alguno falla, los demás quedan y la caché se sigue llenando en runtime.
+      .then((cache) => Promise.allSettled(
+        PRECACHE_URLS.map((u) => cache.add(new Request(u, { cache: 'reload' })))
+      ))
       .then(() => self.skipWaiting())
   );
 });
@@ -54,17 +57,21 @@ self.addEventListener('fetch', (event) => {
   // No cachear llamadas a Supabase (REST, auth, realtime). Cambian cada request.
   if (url.hostname.endsWith('supabase.co')) return;
 
-  // No cachear el propio sw.js — Vercel también pone Cache-Control: no-cache (commit E).
-  if (url.pathname === '/sw.js') return;
+  // No cachear el propio sw.js ni la versión publicada.
+  if (url.pathname === '/sw.js' || url.pathname === '/version.json') return;
+
+  // El HTML revalida contra el servidor, sin confiar en la caché HTTP del navegador.
+  const esHtml = req.mode === 'navigate' || (url.origin === self.location.origin && (url.pathname === '/' || url.pathname === '/index.html'));
+  const aRed = esHtml ? new Request(url.href, { cache: 'no-cache', credentials: 'same-origin' }) : req;
 
   // Stale-while-revalidate para todo lo demás (HTML, JS, CSS, fonts, imagenes inline).
   event.respondWith(
     caches.open(CACHE_NAME).then((cache) =>
-      cache.match(req).then((cached) => {
-        const networkFetch = fetch(req).then((resp) => {
+      cache.match(req, { ignoreSearch: esHtml }).then((cached) => {
+        const networkFetch = fetch(aRed).then((resp) => {
           // Solo cacheamos respuestas exitosas. Opaque (cross-origin no-cors) también pasan.
           if (resp && (resp.ok || resp.type === 'opaque')) {
-            cache.put(req, resp.clone()).catch(() => {});
+            cache.put(esHtml ? url.origin + url.pathname : req, resp.clone()).catch(() => {});
           }
           return resp;
         }).catch(() => cached); // si red falla, devolvemos lo cacheado (si hay)
