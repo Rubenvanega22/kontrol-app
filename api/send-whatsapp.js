@@ -4,15 +4,31 @@
 
 const supabase = require('../lib/supabase');
 const { esSistema } = require('../lib/auth');
+const { STATUS_URL, MAX_INTENTOS } = require('../lib/whatsapp-estado');
+
+const UNA_HORA = 3600 * 1000;
+
+// Un aviso que espera desde hace rato dice de cuándo es: su "hoy" ya no es hoy.
+function textoAviso(alerta) {
+  const creado = new Date(alerta.created_at);
+  if (alerta.tipo === 'renovacion_prueba' || isNaN(creado) || Date.now() - creado.getTime() < UNA_HORA) return alerta.mensaje;
+  const dia = creado.toLocaleDateString('es-CO', { day: 'numeric', month: 'short', timeZone: 'America/Bogota' }).replace(/\s+de\s+/, ' ').replace('.', '');
+  return `⏰ Aviso pendiente del ${dia}:\n\n${alerta.mensaje}`;
+}
 
 module.exports = async function handler(req, res) {
   if (!esSistema(req)) return res.status(401).json({ error: 'No autorizado' });
   try {
+    // Un envío que murió a medias vuelve a la cola.
+    await supabase.from('whatsapp_alerts').update({ estado: 'pendiente' })
+      .eq('estado', 'enviando').lt('ultimo_intento_at', new Date(Date.now() - 10 * 60 * 1000).toISOString());
+
     // Obtener alertas pendientes
     const { data: alertas } = await supabase
       .from('whatsapp_alerts')
       .select('*')
       .eq('enviado', false)
+      .eq('estado', 'pendiente')
       .order('id', { ascending: true })
       .limit(10);
 
@@ -22,29 +38,55 @@ module.exports = async function handler(req, res) {
       .from('config').select('value').eq('key', 'notificaciones').single();
     const cfg = cfgRow?.value || {};
 
-    let enviadas = 0;
+    // Con el sandbox vencido, enviar solo gastaría cupo: el aviso espera a que renueve.
+    const telefonos = [...new Set(alertas.map(a => a.telefono).filter(Boolean))];
+    const { data: perfiles } = telefonos.length
+      ? await supabase.from('profiles').select('telefono, whatsapp_vencido_at').in('telefono', telefonos)
+      : { data: [] };
+    const vencidos = new Set((perfiles || []).filter(p => p.whatsapp_vencido_at).map(p => p.telefono));
+
+    let enviadas = 0, enEspera = 0;
 
     for (const alerta of alertas) {
       const telefono = alerta.telefono || cfg.whatsapp_numero;
       if (!telefono) continue;
 
-      let exito = false;
-
-      if (process.env.TWILIO_ACCOUNT_SID) {
-        exito = await enviarTwilio(alerta.mensaje, telefono);
-      } else if (process.env.MANYCHAT_API_KEY) {
-        exito = await enviarManyChat(alerta.mensaje, telefono, cfg);
+      if (vencidos.has(telefono) && alerta.tipo !== 'renovacion_prueba') {
+        await supabase.from('whatsapp_alerts').update({ estado: 'en_espera' }).eq('id', alerta.id).eq('estado', 'pendiente');
+        enEspera++;
+        continue;
       }
 
+      // Reclamo: dos ejecuciones a la vez no envían el mismo aviso.
+      const intentos = (alerta.intentos || 0) + 1;
+      const { data: reclamado } = await supabase.from('whatsapp_alerts')
+        .update({ estado: 'enviando', intentos, ultimo_intento_at: new Date().toISOString() })
+        .eq('id', alerta.id).eq('estado', 'pendiente').select('id');
+      if (!reclamado?.length) continue;
+
+      let sid = null, exito = false;
+      if (process.env.TWILIO_ACCOUNT_SID) {
+        sid = await enviarTwilio(textoAviso(alerta), telefono);
+        exito = !!sid;
+      } else if (process.env.MANYCHAT_API_KEY) {
+        exito = await enviarManyChat(textoAviso(alerta), telefono, cfg);
+      }
+
+      // "Aceptado" no es "entregado": el resultado final llega a /api/twilio-status, que
+      // lo devuelve a no enviado si falla. El filtro no pisa un callback que ya llegó.
       if (exito) {
         await supabase.from('whatsapp_alerts')
-          .update({ enviado: true })
-          .eq('id', alerta.id);
+          .update({ enviado: true, estado: 'aceptado', twilio_sid: sid })
+          .eq('id', alerta.id).eq('estado', 'enviando');
         enviadas++;
+      } else {
+        await supabase.from('whatsapp_alerts')
+          .update({ estado: intentos >= MAX_INTENTOS ? 'fallido' : 'pendiente' })
+          .eq('id', alerta.id).eq('estado', 'enviando');
       }
     }
 
-    return res.json({ ok: true, enviadas });
+    return res.json({ ok: true, enviadas, en_espera: enEspera });
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
@@ -64,15 +106,17 @@ async function enviarTwilio(mensaje, telefono) {
         body: new URLSearchParams({
           From: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
           To: `whatsapp:${telefono}`,
-          Body: mensaje
+          Body: mensaje,
+          StatusCallback: STATUS_URL
         })
       }
     );
     const data = await r.json();
-    return !!data.sid;
+    if (!data.sid) console.error('Twilio rechazó el envío, código', data.code);
+    return data.sid || null;
   } catch (e) {
     console.error('Twilio error:', e.message);
-    return false;
+    return null;
   }
 }
 

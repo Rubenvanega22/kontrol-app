@@ -3709,10 +3709,18 @@ function actualizarAvisoWhatsApp(){
   if(!aviso) return;
   const renovado = currentProfile?.whatsapp_renovado_at || null;
   const horas = renovado ? (Date.now() - new Date(renovado).getTime()) / 3600000 : null;
+  const vencidoAt = currentProfile?.whatsapp_vencido_at || null;
+  const confirmando = !!(vencidoAt && renovado && new Date(renovado) > new Date(vencidoAt));
   let texto = '', vencido = false;
   // Sin teléfono no usa el bot: no hay nada que renovar.
   if(currentProfile?.telefono){
-    if(horas === null){
+    if(confirmando){
+      texto = 'Toca enviar en WhatsApp. Estamos confirmando tu renovación…';
+    } else if(vencidoAt){
+      // Lo confirmó Twilio: un aviso no se pudo entregar. Se quita cuando llegue un mensaje.
+      texto = 'Tu WhatsApp venció y tienes avisos sin entregar: renuévalo';
+      vencido = true;
+    } else if(horas === null){
       texto = 'Renueva tu WhatsApp para recibir avisos';
       vencido = true;
     } else if(horas >= WA_VENCE_HORAS){
@@ -3758,12 +3766,14 @@ async function renovarWhatsApp(){
 // Al volver a la app trae la fecha (pudo renovar en otro aparato) y recalcula el aviso.
 async function revisarRenovacionWhatsApp(){
   if(document.visibilityState !== 'visible' || !currentUser) return;
-  const { data, error } = await supa.from('profiles').select('whatsapp_renovado_at, telefono').eq('id', currentUser.id).single();
+  const { data, error } = await supa.from('profiles').select('whatsapp_renovado_at, whatsapp_vencido_at, telefono').eq('id', currentUser.id).single();
   if(!error && data) currentProfile = { ...(currentProfile||{}), ...data };
   actualizarAvisoWhatsApp();
 }
 document.addEventListener('visibilitychange', revisarRenovacionWhatsApp);
 setInterval(actualizarAvisoWhatsApp, 60 * 1000);
+// Con un vencimiento activo el resultado llega del servidor: se consulta más seguido.
+setInterval(() => { if(currentProfile?.whatsapp_vencido_at) revisarRenovacionWhatsApp(); }, 30 * 1000);
 
 // Banner del número WhatsApp en Agenda. Se muestra hasta que el usuario lo
 // cierre — el flag wa_banner_dismissed queda en localStorage.

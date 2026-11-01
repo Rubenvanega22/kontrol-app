@@ -404,6 +404,38 @@ async function modoPagos() {
   return { alertas, hoy };
 }
 
+// ─── Confirmar una renovación de WhatsApp ───────────────────────────
+// Twilio atiende el join sin avisar, así que tocar "Renovar" no prueba que se haya enviado.
+// Un solo mensaje lo confirma: si se entrega, /api/twilio-status quita el aviso rojo y
+// libera los pendientes; si vuelve a dar 63015, sigue vencido hasta que renueve de nuevo.
+const ESPERA_RENOVACION_MS = 90 * 1000; // tiempo para que alcance a tocar enviar
+
+async function modoRenovaciones() {
+  const { data, error } = await supabase.from('profiles')
+    .select('id, telefono, whatsapp_vencido_at, whatsapp_renovado_at, whatsapp_prueba_at')
+    .not('whatsapp_vencido_at', 'is', null);
+  if (error) { console.error('[reminders-cron renovaciones] query error:', error.message); return { error: error.message }; }
+  let alertas = 0;
+  for (const p of data || []) {
+    const renovado = p.whatsapp_renovado_at ? new Date(p.whatsapp_renovado_at).getTime() : 0;
+    const yaProbado = p.whatsapp_prueba_at && new Date(p.whatsapp_prueba_at).getTime() >= renovado;
+    if (!p.telefono || !renovado || renovado <= new Date(p.whatsapp_vencido_at).getTime()) continue;
+    if (yaProbado || Date.now() - renovado < ESPERA_RENOVACION_MS) continue;
+    // Reclamo optimista: dos ticks a la vez no envían dos confirmaciones.
+    let reclamo = supabase.from('profiles').update({ whatsapp_prueba_at: new Date().toISOString() }).eq('id', p.id);
+    reclamo = p.whatsapp_prueba_at ? reclamo.eq('whatsapp_prueba_at', p.whatsapp_prueba_at) : reclamo.is('whatsapp_prueba_at', null);
+    const { data: ok, error: e2 } = await reclamo.select('id');
+    if (e2 || !ok?.length) continue;
+    const { error: e3 } = await supabase.from('whatsapp_alerts').insert({
+      tipo: 'renovacion_prueba', telefono: p.telefono, enviado: false,
+      mensaje: '✅ Tu WhatsApp quedó conectado con Kontrol. Ya te llegarán tus avisos.'
+    });
+    if (e3) console.error('[reminders-cron renovaciones] insert error:', e3.message);
+    else alertas++;
+  }
+  return { alertas };
+}
+
 // ─── Handler: cada tick corre rolling + time-specific ──────────────
 module.exports = async function handler(req, res) {
   const authHeader = req.headers.authorization || '';
@@ -428,10 +460,12 @@ module.exports = async function handler(req, res) {
       if (force === '15min')         results.q15           = await modoQuinceMinAntes();
       if (force === 'pagos')         results.pagos         = await modoPagos();
       if (force === 'recordatorios') results.recordatorios = await modoRecordatorios();
+      if (force === 'renovaciones')  results.renovaciones  = await modoRenovaciones();
     } else {
       // Rolling cada tick (cron-job.org cada 15 min): 15-min + 1h
       results.q15 = await modoQuinceMinAntes();
       results.h1  = await modoUnaHoraAntes();
+      results.renovaciones = await modoRenovaciones();
       // Resumen de agenda: una vez al día a las 8am Col.
       if (utcHour === DAILY_UTC_HOUR) {
         results.diario = await modoResumenDiario();

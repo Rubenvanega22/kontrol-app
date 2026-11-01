@@ -18,6 +18,7 @@
 const supabase = require('../lib/supabase');
 const { colombiaDateString } = require('../lib/datetime');
 const { firmaValida, urlDelWebhook } = require('../lib/twilio-signature');
+const { STATUS_URL } = require('../lib/whatsapp-estado');
 
 const TWILIO_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_TOKEN = process.env.TWILIO_AUTH_TOKEN;
@@ -61,7 +62,8 @@ async function sendTwilio(to, body) {
         From: `whatsapp:${TWILIO_NUM}`,
         To: to.startsWith('whatsapp:') ? to : `whatsapp:${to}`,
         // Twilio limita a 1600 chars por mensaje WhatsApp.
-        Body: String(body).slice(0, 1500)
+        Body: String(body).slice(0, 1500),
+        StatusCallback: STATUS_URL
       })
     }
   );
