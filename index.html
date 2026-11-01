@@ -3747,6 +3747,19 @@ async function doLogin() {
   }
 }
 
+// Supabase responde en inglés. Lo desconocido no se muestra crudo.
+function errorRegistroEs(error){
+  const m = String(error?.message || '');
+  if(error?.code === 'weak_password' || /weak|easy to guess|pwned|leaked|compromised/i.test(m)){
+    return 'Esa contraseña es débil o apareció en filtraciones de datos. Elige otra más segura.';
+  }
+  if(/at least \d+ characters/i.test(m)) return 'La contraseña debe tener al menos 6 caracteres';
+  if(/already registered|already exists/i.test(m)) return 'Ese correo ya está registrado. Intenta entrar.';
+  if(/invalid.*email|email.*invalid/i.test(m)) return 'Ese correo no es válido.';
+  if(/rate limit|too many/i.test(m)) return 'Demasiados intentos. Espera unos minutos e intenta de nuevo.';
+  return 'No se pudo crear la cuenta. Intenta de nuevo.';
+}
+
 async function doRegistro() {
   const nombre = document.getElementById('reg-nombre').value.trim();
   const email = document.getElementById('reg-email').value.trim();
@@ -3780,7 +3793,7 @@ async function doRegistro() {
       password: pass, 
       options: { data: { nombre } } 
     });
-    if (error) return authMsg(error.message);
+    if (error) return authMsg(errorRegistroEs(error));
     if (data?.session) {
       // Auto-confirm ON: signUp ya devolvió sesión → entrar directo, sin race.
       authMsg('¡Cuenta creada! Entrando...', '#4ade80');
