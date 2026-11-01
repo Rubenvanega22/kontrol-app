@@ -197,6 +197,15 @@ html,body{width:100%;height:100%;background:var(--bg);font-family:'DM Sans',sans
 .rt-tabla td.rt-valor{font-size:15px;font-weight:700;text-align:right;overflow-wrap:anywhere;}
 .rt-vacio{color:rgba(232,238,248,0.52);font-weight:400;}
 .rt-tabla td.rt-msg{padding:28px 12px;text-align:center;font-size:15px;color:var(--t2);}
+.rt-estado{display:block;margin-top:3px;font-size:12px;font-weight:700;color:#fca5a5;}
+.rt-fila.rt-vencida td{background:rgba(248,113,113,0.2);}
+.rt-fila.rt-hoy td{animation:rt-palpita 1.8s ease-in-out infinite;}
+@keyframes rt-palpita{0%,100%{background:rgba(248,113,113,0.05);}50%{background:rgba(248,113,113,0.28);}}
+@media (prefers-reduced-motion:reduce){.rt-fila.rt-hoy td{animation:none;background:rgba(248,113,113,0.16);}}
+.rt-fila.rt-hecha .rt-que,.rt-fila.rt-hecha .rt-nota,.rt-fila.rt-hecha td.rt-fecha,.rt-fila.rt-hecha td.rt-valor{color:rgba(232,238,248,0.5);}
+.rt-chulito{color:var(--green);font-weight:800;margin-right:4px;}
+.rt-marcar{display:inline-block;margin-top:8px;min-height:36px;padding:4px 8px;border-radius:10px;border:1px solid rgba(74,222,128,0.5);background:rgba(74,222,128,0.1);color:var(--green);font:700 14px 'DM Sans',sans-serif;cursor:pointer;max-width:100%;overflow-wrap:anywhere;}
+.rt-marcar.desmarcar{border-color:var(--bd);background:transparent;color:var(--t2);}
 .rt-tabla tr.rt-edit td{background:rgba(59,130,246,0.1);padding:10px 8px;border-bottom:1px solid rgba(59,130,246,0.45);}
 .rt-campos{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:8px;}
 .rt-ancho{grid-column:1 / -1;}
@@ -1426,6 +1435,7 @@ async function syncDesdeSupabase() {
       recordar_fecha: r.recordar_fecha || null,
       valor: r.valor != null ? parseFloat(r.valor) : null,
       nota: r.nota || '',
+      hecho: r.hecho === true,
       content: r.content || {}, status: r.status || 'open',
       created_at: r.created_at
     }));
@@ -1511,13 +1521,14 @@ const AI_ACTION_TAB = {
   borrar_evento: 'agenda',
   recordatorio: 'recordatorios',
   borrar_recordatorio: 'recordatorios',
+  marcar_recordatorio_hecho: 'recordatorios',
   lista: 'listado'
 };
 
 function inferTabDestinoIA(acciones){
   if(!Array.isArray(acciones)) return null;
   for(const a of acciones){
-    if(!a || a.accion === 'navegar' || a.confirmacion_requerida) continue;
+    if(!a || a.accion === 'navegar' || a.confirmacion_requerida || a.ok === false) continue;
     const tab = AI_ACTION_TAB[a.accion];
     if(tab) return tab;
   }
@@ -1843,6 +1854,18 @@ function abrirPagoDetalle(id){
       <div style="font-size:11px;color:var(--t3);margin-top:3px">${p.fechaLimite?`Vence: ${fmtDiaMes(p.fechaLimite)}`:'Sin fecha'} ${avisoVence}</div>
       ${esPagado?`<div style="font-size:12px;font-weight:700;color:var(--green);margin-top:8px">✅ Pagado${p.fechaPago?` el ${fmtDiaMes(p.fechaPago)}`:''}</div>`:''}
     </div>
+    ${esPagado ? '' : `<div class="form-group">
+      <label class="form-label">Nombre</label>
+      <input class="form-inp" id="pago-edit-nombre" value="${escAttr(p.nombre)}"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Monto (COP)</label>
+      <input class="form-inp" id="pago-edit-monto" type="text" inputmode="numeric" value="${p.monto>0 ? Math.round(p.monto).toLocaleString('es-CO') : ''}" oninput="formatMonto(this)"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Fecha límite</label>
+      <input class="form-inp" id="pago-edit-fecha" type="date" value="${escAttr(p.fechaLimite||'')}" style="color-scheme:dark;min-width:0;width:100%"/>
+    </div>`}
     <div style="display:flex;align-items:center;justify-content:space-between;margin:4px 0 14px">
       <span style="font-size:13px;color:var(--t2)">${PAGO_FIJO_TXT(p.fijo)}</span>
       <div class="toggle${p.fijo?' on':''}" onclick="toggleRecurrenciaPago(${p.id}, this)"><div class="toggle-thumb"></div></div>
@@ -1851,10 +1874,37 @@ function abrirPagoDetalle(id){
       <label class="form-label">Nota (opcional)</label>
       <textarea class="form-inp" id="pago-detalle-nota" rows="2" maxlength="200" placeholder="Ej: Referencia de pago, a nombre de…">${escAttr(p.nota)}</textarea>
     </div>
-    <button class="btn-secondary" onclick="guardarNotaPago(${p.id})">Guardar nota</button>
+    ${esPagado
+      ? `<button class="btn-secondary" onclick="guardarNotaPago(${p.id})">Guardar nota</button>`
+      : `<button class="btn-secondary" onclick="guardarCambiosPago(${p.id})">Guardar cambios</button>`}
     ${fotoBtn}`;
   document.getElementById('pago-detalle-pay').style.display = esPagado ? 'none' : '';
   showModal('modal-pago-detalle');
+}
+
+// Edita un pago pendiente. El filtro neq evita tocar uno que ya se pagó por otra vía.
+async function guardarCambiosPago(id){
+  const p = DB.pagos.find(x=>String(x.id)===String(id));
+  if(!p) return;
+  const nombre = document.getElementById('pago-edit-nombre').value.trim();
+  const monto = parseCOP(document.getElementById('pago-edit-monto').value);
+  const fecha = document.getElementById('pago-edit-fecha').value;
+  const nota = document.getElementById('pago-detalle-nota').value.trim();
+  if(!nombre){ toast('⚠️ Escribe un nombre','var(--amber)'); return; }
+  if(!monto){ toast('⚠️ Ingresa un monto','var(--amber)'); return; }
+  if(!fecha){ toast('⚠️ Selecciona fecha','var(--amber)'); return; }
+  if(!(await sesionLista())){ toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
+  const cambios = { nombre, monto, fecha_limite: fecha, nota: nota || null };
+  // Con otra fecha el pago vuelve a avisar y deja de esperar respuesta por WhatsApp.
+  if(fecha !== p.fechaLimite) Object.assign(cambios, { notificado_pago:false, notificado_6pm:false, notificado_fecha:null });
+  const { data, error } = await supa.from('payments').update(cambios)
+    .eq('id', id).eq('user_id', currentUser.id).neq('status','pagado').select('id');
+  if(error){ toast('❌ No se pudo guardar: '+error.message,'var(--red)'); return; }
+  hideModal('modal-pago-detalle');
+  await syncDesdeSupabase();
+  renderPagos();
+  if(!data || !data.length){ toast('Este pago ya no está pendiente','var(--amber)'); return; }
+  toast('✅ Pago actualizado','var(--green)');
 }
 
 async function guardarNotaPago(id){
@@ -2219,7 +2269,7 @@ function abrirModalDiario(fechaISO){
     html += `<div class="day-sec">
       <div class="day-sec-ttl">🔔 RECORDATORIOS</div>
       ${recs.map(r=>`<div class="day-item">
-        <span class="day-item-main">${r.titulo}</span>
+        <span class="day-item-main">${r.hecho?'✅ ':''}${r.titulo}</span>
       </div>`).join('')}
     </div>`;
   }
@@ -2367,18 +2417,34 @@ function filaEdicionRecordatorio(r){
   </td></tr>`;
 }
 
+// 0 vencida sin hacer · 1 de hoy · 2 próxima · 3 sin fecha · 4 hecha. También fija el orden.
+function grupoRecordatorio(r){
+  if(r.hecho) return 4;
+  if(!r.recordar_fecha) return 3;
+  const hoy = todayStr();
+  return r.recordar_fecha < hoy ? 0 : r.recordar_fecha === hoy ? 1 : 2;
+}
+
 function filaRecordatorio(r){
+  const grupo = grupoRecordatorio(r);
+  const clase = ['rt-vencida','rt-hoy','','','rt-hecha'][grupo];
+  const estado = grupo===0 ? '<span class="rt-estado">Vencida</span>' : grupo===1 ? '<span class="rt-estado">Hoy</span>' : '';
+  // Una fila hecha ya no genera aviso: conserva la fecha, sin campana.
+  const campana = r.hecho ? '' : ' <span class="rt-campana" role="img" aria-label="Aviso por WhatsApp">🔔</span>';
   const fecha = r.recordar_fecha
-    ? `<td class="rt-fecha">${fmtFechaFila(r.recordar_fecha)} <span class="rt-campana" role="img" aria-label="Aviso por WhatsApp">🔔</span></td>`
+    ? `<td class="rt-fecha">${fmtFechaFila(r.recordar_fecha)}${campana}${estado}</td>`
     : '<td class="rt-fecha rt-vacio">—</td>';
   const valor = r.valor > 0 ? `<td class="rt-valor">${fmtCOP(r.valor)}</td>` : '<td class="rt-valor rt-vacio">—</td>';
-  return `<tr class="rt-fila" onclick="abrirFilaRecordatorio(${r.id})">
-    <td><span class="rt-que">${escAttr(r.titulo)}</span>${r.nota ? `<span class="rt-nota">${escAttr(r.nota)}</span>` : ''}<span class="rt-creada">${escAttr(creadaFila(r))}</span></td>
+  const boton = r.hecho
+    ? `<button type="button" class="rt-marcar desmarcar" onclick="event.stopPropagation();marcarRecordatorioHecho(${r.id},false)">↩ Desmarcar</button>`
+    : `<button type="button" class="rt-marcar" onclick="event.stopPropagation();marcarRecordatorioHecho(${r.id},true)">✓ Hecho</button>`;
+  return `<tr class="rt-fila ${clase}" onclick="abrirFilaRecordatorio(${r.id})">
+    <td><span class="rt-que">${r.hecho ? '<span class="rt-chulito" role="img" aria-label="Hecho">✓</span>' : ''}${escAttr(r.titulo)}</span>${r.nota ? `<span class="rt-nota">${escAttr(r.nota)}</span>` : ''}<span class="rt-creada">${escAttr(creadaFila(r))}</span>${boton}</td>
     ${fecha}${valor}
   </tr>`;
 }
 
-// Por fecha de aviso, las que no tienen al final. El buscador mira qué recordar y nota.
+// Vencidas, de hoy, próximas, sin fecha y hechas. El buscador mira qué recordar y nota.
 function renderRecordatorios(notas){
   const el = document.getElementById('recordatorios-list');
   if(!el) return;
@@ -2388,8 +2454,9 @@ function renderRecordatorios(notas){
     const texto = recNormalizar(r.titulo+' '+r.nota);
     return terminos.every(t=>texto.includes(t));
   }).sort((a,b)=>{
-    if(a.recordar_fecha && b.recordar_fecha && a.recordar_fecha!==b.recordar_fecha) return a.recordar_fecha.localeCompare(b.recordar_fecha);
-    if(!!a.recordar_fecha !== !!b.recordar_fecha) return a.recordar_fecha ? -1 : 1;
+    const ga = grupoRecordatorio(a), gb = grupoRecordatorio(b);
+    if(ga !== gb) return ga - gb;
+    if(ga <= 2 && a.recordar_fecha !== b.recordar_fecha) return a.recordar_fecha.localeCompare(b.recordar_fecha);
     return new Date(b.created_at||0) - new Date(a.created_at||0);
   });
   let html = recEdit && recEdit.id==='nueva' ? filaEdicionRecordatorio(null) : '';
@@ -2398,6 +2465,20 @@ function renderRecordatorios(notas){
     html = `<tr><td colspan="3" class="rt-msg">${terminos.length ? 'Nada coincide con tu búsqueda.' : 'No hay recordatorios. Toca + Nueva fila para crear uno.'}</td></tr>`;
   }
   el.innerHTML = html;
+}
+
+const recMarcando = new Set(); // evita repetir el cambio con un doble toque
+async function marcarRecordatorioHecho(id, hecho){
+  if(recMarcando.has(id)) return;
+  recMarcando.add(id);
+  const { error } = await supa.from('reminders').update({ hecho }).eq('id', id).eq('user_id', currentUser.id);
+  recMarcando.delete(id);
+  if(error){ toast('❌ No se pudo cambiar: '+error.message,'var(--red)'); return; }
+  const r = DB.recordatorios.find(x=>String(x.id)===String(id));
+  if(r) r.hecho = hecho;
+  save();
+  renderRecordar();
+  toast(hecho ? '✅ Marcado como hecho' : '↩ Desmarcado', hecho ? 'var(--green)' : 'var(--t2)');
 }
 
 function recTieneCambios(){
@@ -2658,7 +2739,7 @@ async function sendIA(opts){
 // Con hora, fechas largas o cualquier otra frase devuelve null y responde la IA.
 async function intentLocal(msg){
   var m = msg.toLowerCase();
-  if(/^(anota|ap[uú]nta|guarda|busca|qu[eé] d[ií]a|cu[aá]ndo)/i.test(m)) return null;
+  if(/^(anota|ap[uú]nta|guarda|busca|qu[eé] d[ií]a|cu[aá]ndo|ya\s|marca)/i.test(m)) return null;
 
   var agendaM = msg.match(/^ag[e\u00e9]nda(?:me)?\s+(.+?)\s+(?:para\s+el|el|para)\s+(\d{1,2})\s*\.?$/i);
   if(agendaM){
