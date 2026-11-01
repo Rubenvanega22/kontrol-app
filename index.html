@@ -152,6 +152,26 @@ html,body{width:100%;height:100%;background:var(--bg);font-family:'DM Sans',sans
 .pago-date{font-size:10px;color:var(--t3);margin-top:1px;}
 .pago-right{text-align:right;}
 .pago-amt{font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:var(--t1);}
+/* ── Rediseño Pagos: tarjeta del mes, secciones y pill de estado ── */
+.pm-card{padding:14px;background:var(--card);border:1px solid var(--bd2);border-radius:16px;margin-bottom:14px;}
+.pm-lbl{font-size:11px;color:var(--t3);}
+.pm-total{font-family:'Syne',sans-serif;font-size:26px;font-weight:900;color:var(--t1);margin-top:2px;}
+.pm-bar{height:8px;background:var(--bd2);border-radius:20px;overflow:hidden;margin:10px 0;}
+.pm-bar-fill{height:100%;background:var(--green);border-radius:20px;transition:width .3s;}
+.pm-foot{display:flex;justify-content:space-between;gap:12px;}
+.pm-foot-r{text-align:right;}
+.pm-val{font-family:'Syne',sans-serif;font-size:14px;font-weight:800;margin-top:1px;}
+.pm-sec{font-size:10.5px;font-weight:700;letter-spacing:.06em;color:var(--t3);margin:14px 2px 8px;}
+.pm-prox-btn{display:flex;justify-content:space-between;width:calc(100% - 4px);padding:0;background:none;border:none;cursor:pointer;font-family:inherit;}
+.pago-card.is-paid{background:rgba(74,222,128,0.05);border-color:rgba(74,222,128,0.14);}
+.pago-card.is-paid .pago-name,.pago-card.is-paid .pago-amt{color:var(--t3);}
+.pago-pill{display:inline-block;margin-top:4px;padding:4px 10px;border-radius:99px;border:none;font-family:inherit;font-size:10.5px;font-weight:700;white-space:nowrap;}
+.pago-pill.pend{background:rgba(245,158,11,0.15);color:var(--amber);cursor:pointer;}
+.pago-pill.pend:active{background:rgba(245,158,11,0.28);}
+.pago-pill.paid{background:rgba(74,222,128,0.13);color:var(--green);}
+.pago-foto{display:inline-block;margin-top:3px;padding:0;background:none;border:none;font-family:inherit;font-size:10.5px;font-weight:600;color:var(--green);cursor:pointer;}
+.txt-amber{color:var(--amber);}
+.txt-red{color:var(--red);}
 /* ── Fase 5: progreso de abono + modal de pago ── */
 .pago-prog{height:6px;background:var(--bd2);border-radius:20px;overflow:hidden;margin-top:6px;}
 .pago-prog-fill{height:100%;background:var(--amber);border-radius:20px;transition:width .3s;}
@@ -264,6 +284,7 @@ html,body{width:100%;height:100%;background:var(--bg);font-family:'DM Sans',sans
 /* MODALS */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px);}
 .modal-overlay.hidden{display:none;}
+#modal-confirm{z-index:110;} /* siempre encima del modal que lo abrió */
 .modal{background:var(--card);border:1px solid var(--bd);border-radius:24px 24px 0 0;padding:20px 18px 32px;width:100%;max-width:480px;max-height:85vh;overflow-y:auto;}
 .modal::-webkit-scrollbar{display:none;}
 .modal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
@@ -874,12 +895,7 @@ select.form-inp option{background:#0c1228;}
         <div style="display:flex;justify-content:flex-end;margin-bottom:6px">
           <button class="fbtn" onclick="abrirHistorial('payment')">📁 Ver Historial</button>
         </div>
-        <div class="filter-row">
-          <button class="fbtn on" onclick="setPagoFiltro(this,'todo')">Todos</button>
-          <button class="fbtn" onclick="setPagoFiltro(this,'pendiente')">Pendientes</button>
-          <button class="fbtn" onclick="setPagoFiltro(this,'pagado')">Pagados</button>
-          <button class="fbtn" onclick="setPagoFiltro(this,'vencido')">Vencidos</button>
-        </div>
+        <div id="pagos-resumen"></div>
         <div id="pagos-list"></div>
         <div style="height:80px"></div>
       </div>
@@ -1597,9 +1613,13 @@ select.form-inp option{background:#0c1228;}
       <label class="form-label">Cuenta a debitar</label>
       <select class="form-inp" id="pago-cuenta"></select>
     </div>
+    <div class="form-group">
+      <label class="form-label">Nota (opcional)</label>
+      <textarea class="form-inp" id="pago-nota" rows="2" maxlength="200" placeholder="Ej: Referencia de pago, a nombre de…"></textarea>
+    </div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-      <span style="font-size:13px;color:var(--t2)">🔁 Se repite cada mes</span>
-      <div class="toggle" id="pago-fijo-toggle" onclick="this.classList.toggle('on')"><div class="toggle-thumb"></div></div>
+      <span id="pago-fijo-label" style="font-size:13px;color:var(--t2)">Una sola vez</span>
+      <div class="toggle" id="pago-fijo-toggle" onclick="onPagoFijoToggle(this)"><div class="toggle-thumb"></div></div>
     </div>
     <button class="btn-primary" onclick="guardarPago()">Crear pago</button>
     <button class="btn-secondary" onclick="hideModal('modal-nuevo-pago')">Cancelar</button>
@@ -1614,8 +1634,33 @@ select.form-inp option{background:#0c1228;}
       <button class="modal-close" onclick="hideModal('modal-pago-detalle')">✕</button>
     </div>
     <div id="pago-detalle-body"></div>
-    <button class="btn-primary" id="pago-detalle-pay" onclick="abrirModalPagar(pagoDetalleId)">💳 Pagar</button>
+    <button class="btn-primary" id="pago-detalle-pay" onclick="marcarPagoPagado(pagoDetalleId)">✓ Marcar como pagado</button>
     <button class="btn-danger" onclick="eliminarPago()">🗑 Eliminar pago</button>
+  </div>
+</div>
+
+<!-- Selector único de foto: en el celular ofrece cámara o galería -->
+<input type="file" id="pago-soporte-file" accept="image/*" style="display:none" onchange="onSoporteSeleccionado(event)"/>
+
+<!-- Pregunta de la foto tras marcar pagado. Usa <label for> y no input.click()
+     porque el navegador del celular solo abre la cámara con un toque directo. -->
+<div class="modal-overlay hidden" id="modal-pago-foto" onclick="closeModalOutside(event,'modal-pago-foto')">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-ttl">✅ Pago marcado</span></div>
+    <div style="font-size:14px;color:var(--t2);line-height:1.5;margin:4px 0 18px">¿Quieres guardar foto de la factura como soporte?</div>
+    <label class="btn-primary" for="pago-soporte-file" style="display:block;text-align:center;box-sizing:border-box;cursor:pointer" onclick="hideModal('modal-pago-foto')">📷 Sí, guardar foto</label>
+    <button class="btn-secondary" onclick="hideModal('modal-pago-foto')">Ahora no</button>
+  </div>
+</div>
+
+<!-- Ver la foto de la factura -->
+<div class="modal-overlay hidden" id="modal-pago-ver-foto" onclick="closeModalOutside(event,'modal-pago-ver-foto')">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-ttl">📷 Factura</span>
+      <button class="modal-close" onclick="hideModal('modal-pago-ver-foto')">✕</button>
+    </div>
+    <img id="pago-ver-foto-img" alt="Factura" style="display:block;width:100%;border-radius:10px"/>
   </div>
 </div>
 
@@ -1881,7 +1926,9 @@ async function syncDesdeSupabase() {
       fijo: p.fijo === true,
       montoAbonado: parseFloat(p.monto_abonado || 0),
       montoPendiente: parseFloat(p.monto_pendiente != null ? p.monto_pendiente : p.monto),
-      status: p.status
+      status: p.status,
+      nota: p.nota || '',
+      soporteUrl: p.soporte_url || null
     }));
 
     if (cajas) DB.cajas = cajas.map(c => ({
@@ -2091,7 +2138,9 @@ function uiConfirm(msg, opts){
     _uiConfirmCb = resolve;
     document.getElementById('confirm-ttl').textContent = opts.titulo || '¿Estás seguro?';
     document.getElementById('confirm-msg').textContent = msg || '';
-    document.getElementById('confirm-ok').textContent = opts.okText || 'Sí, eliminar';
+    const okBtn = document.getElementById('confirm-ok');
+    okBtn.textContent = opts.okText || 'Sí, eliminar';
+    okBtn.style.background = okBtn.style.borderColor = opts.okColor || 'var(--red)';
     showModal('modal-confirm');
   });
 }
@@ -2818,14 +2867,15 @@ function renderMiniChart(){
 // ════════════════════════════════════════
 // PAGOS
 // ════════════════════════════════════════
-let pagoFiltro = 'todo';
 let pagoDetalleId = null;
+let pagosProximosAbierto = false;
+let pagoSoporteId = null; // pago al que se le adjunta la foto seleccionada
 
-function setPagoFiltro(btn, f){
-  pagoFiltro = f;
-  document.querySelectorAll('#scr-pagos .filter-row .fbtn').forEach(b=>b.classList.remove('on'));
-  btn.classList.add('on');
-  renderPagos();
+const PAGO_FIJO_TXT = on => on ? '🔁 Fijo (se repite cada mes)' : 'Una sola vez';
+
+function onPagoFijoToggle(el){
+  const on = el.classList.toggle('on');
+  document.getElementById('pago-fijo-label').textContent = PAGO_FIJO_TXT(on);
 }
 
 async function guardarPago(){
@@ -2836,6 +2886,7 @@ async function guardarPago(){
   const categoria = document.getElementById('pago-categoria').value;
   const cuentaSel = document.getElementById('pago-cuenta').value;
   const fijo = document.getElementById('pago-fijo-toggle').classList.contains('on');
+  const nota = document.getElementById('pago-nota').value.trim();
 
   if(!nombre){ toast('⚠️ Escribe un nombre','var(--amber)'); return; }
   if(!monto){ toast('⚠️ Ingresa un monto','var(--amber)'); return; }
@@ -2844,82 +2895,121 @@ async function guardarPago(){
   const { error } = await supa.from('payments').insert({
     user_id: currentUser.id, nombre, monto,
     fecha_limite: fechaLimite, categoria, fijo,
-    account_id: cuentaSel || null, status: 'pendiente'
+    account_id: cuentaSel || null, status: 'pendiente',
+    nota: nota || null
   });
   if(error){ toast('❌ Error: '+error.message,'var(--red)'); return; }
 
   hideModal('modal-nuevo-pago');
   document.getElementById('pago-nombre').value='';
   document.getElementById('pago-monto').value='';
+  document.getElementById('pago-nota').value='';
   document.getElementById('pago-fijo-toggle').classList.remove('on');
+  document.getElementById('pago-fijo-label').textContent = PAGO_FIJO_TXT(false);
   toast('✅ Pago creado','var(--green)');
   await syncDesdeSupabase();
 }
 
-const catPagoIco = {servicios:'💡',arriendo:'🏠',transporte:'🚗',educacion:'📚',salud:'🏥',entretenimiento:'🎮',otro:'📦'};
-
 function renderPagos(){
   const hoyStr = todayStr();
-  let pagos = DB.pagos.map(p=>{
-    const diff = Math.floor((new Date(p.fechaLimite+'T12:00:00')-new Date(hoyStr+'T12:00:00'))/(1000*60*60*24));
-    let status;
-    if(p.status==='pagado') status='pagado';
-    else if(p.status==='abonado') status='abonado';
-    else status = (diff<0?'vencido':diff<=3?'proximo':'pendiente');
-    return {...p, status, diff};
-  });
+  const mes = mesActualColombia();
+  const pagos = DB.pagos.map(p=>({
+    ...p,
+    pagado: p.status==='pagado',
+    mesLimite: (p.fechaLimite||'').slice(0,7),
+    diff: p.fechaLimite ? diasEntre(hoyStr, p.fechaLimite) : null
+  }));
 
-  if(pagoFiltro==='pendiente') pagos=pagos.filter(p=>['pendiente','proximo','vencido','abonado'].includes(p.status));
-  if(pagoFiltro==='pagado') pagos=pagos.filter(p=>p.status==='pagado');
-  if(pagoFiltro==='vencido') pagos=pagos.filter(p=>p.status==='vencido');
+  // Tarjeta: solo pagos con fecha_limite en el mes en curso. Los abonos cuentan
+  // como pendientes: la vista nueva no maneja pagos parciales.
+  const delMes = pagos.filter(p=>p.mesLimite===mes);
+  const total = delMes.reduce((s,p)=>s+p.monto,0);
+  const pagado = delMes.filter(p=>p.pagado).reduce((s,p)=>s+p.monto,0);
+  const pct = total>0 ? Math.floor(pagado/total*100) : 0;
+  document.getElementById('pagos-resumen').innerHTML = `<div class="pm-card">
+    <div class="pm-lbl">Total del mes</div>
+    <div class="pm-total">${fmtCOP(total)}</div>
+    <div class="pm-bar"><div class="pm-bar-fill" style="width:${pct}%"></div></div>
+    <div class="pm-foot">
+      <div><div class="pm-lbl">Pagado</div><div class="pm-val" style="color:var(--green)">${fmtCOP(pagado)}</div></div>
+      <div class="pm-foot-r"><div class="pm-lbl">Falta por pagar</div><div class="pm-val" style="color:var(--amber)">${fmtCOP(total-pagado)}</div></div>
+    </div>
+  </div>`;
+
+  const porFecha = (a,b)=>(a.fechaLimite||'9999').localeCompare(b.fechaLimite||'9999');
+  const noPagados = pagos.filter(p=>!p.pagado).sort(porFecha);
+  const pendientes = noPagados.filter(p=>p.mesLimite<=mes);
+  const proximos = noPagados.filter(p=>p.mesLimite>mes);
+  // Un vencido de otro mes pagado hoy sigue visible aquí, aunque no sume a la
+  // tarjeta: si no, desaparecería de la lista justo al marcarlo.
+  const pagados = pagos
+    .filter(p=>p.pagado && (p.mesLimite===mes || (p.fechaPago||'').slice(0,7)===mes))
+    .sort((a,b)=>porFecha(b,a));
 
   const el = document.getElementById('pagos-list');
-  if(!pagos.length){
-    el.innerHTML=`<div class="empty"><div class="empty-ico">🗓</div><div class="empty-txt">No hay pagos en este filtro</div></div>`;
+  if(!pendientes.length && !proximos.length && !pagados.length){
+    el.innerHTML=`<div class="empty"><div class="empty-ico">🗓</div><div class="empty-txt">No hay pagos este mes</div></div>`;
     return;
   }
 
-  el.innerHTML = pagos.map(p=>{
-    const abonado = p.montoAbonado || 0;
-    const pendiente = p.montoPendiente != null ? p.montoPendiente : (p.monto - abonado);
+  let html = '';
+  if(pendientes.length) html += `<div class="pm-sec">PENDIENTES · ${pendientes.length}</div>` + pendientes.map(filaPago).join('');
+  if(proximos.length){
+    html += `<button class="pm-sec pm-prox-btn" onclick="togglePagosProximos()"><span>PRÓXIMOS MESES · ${proximos.length}</span><span>${pagosProximosAbierto?'▲':'▼'}</span></button>`;
+    if(pagosProximosAbierto) html += proximos.map(filaPago).join('');
+  }
+  if(pagados.length) html += `<div class="pm-sec">PAGADOS · ${pagados.length}</div>` + pagados.map(filaPago).join('');
+  el.innerHTML = html;
+}
 
-    // 🟡 ABONADO — barra de progreso + continuar pagando
-    if(p.status==='abonado'){
-      const pct = p.monto>0 ? Math.min(100, Math.round(abonado/p.monto*100)) : 0;
-      return `<div class="pago-card" style="flex-direction:column;align-items:stretch;gap:0" onclick="abrirPagoDetalle(${p.id})">
-        <div style="display:flex;align-items:center;gap:9px">
-          <div class="pago-ico" style="background:rgba(245,158,11,0.12)">${catPagoIco[p.categoria]||'📦'}</div>
-          <div class="pago-info">
-            <div class="pago-name">${p.nombre}${p.fijo?' 🔁':''}</div>
-            <div class="pago-date">${fmtCOP(p.monto)} total</div>
-          </div>
-          <div class="ar-tag tag-soon" style="align-self:flex-start">🟡 Abonado</div>
-        </div>
-        <div class="pago-prog"><div class="pago-prog-fill" style="width:${pct}%"></div></div>
-        <div class="pago-prog-txt">Pagado: ${fmtCOP(abonado)} · Falta: ${fmtCOP(pendiente)} (${pct}%)</div>
-        <button class="pago-continue" onclick="event.stopPropagation();abrirModalPagar(${p.id})">Continuar pagando</button>
-      </div>`;
+function togglePagosProximos(){
+  pagosProximosAbierto = !pagosProximosAbierto;
+  renderPagos();
+}
+
+function diasEntre(desde, hasta){
+  return Math.round((new Date(hasta+'T12:00:00')-new Date(desde+'T12:00:00'))/(1000*60*60*24));
+}
+
+// "5 nov". Meses fijos porque Intl con es-CO da "5 de nov" y varía por navegador.
+// Lee 'YYYY-MM-DD' directo, sin pasar por Date ni zona horaria.
+function fmtDiaMes(d){
+  const [, m, dia] = d.split('-').map(Number);
+  return `${dia} ${['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][m-1]}`;
+}
+
+function filaPago(p){
+  let linea;
+  if(p.pagado){
+    linea = p.fechaPago ? `Pagado el ${fmtDiaMes(p.fechaPago)}` : 'Pagado';
+  } else {
+    const partes = p.fechaLimite ? [`Vence ${fmtDiaMes(p.fechaLimite)}`] : [];
+    if(p.diff!==null){
+      const dias = n => `${n} día${n===1?'':'s'}`;
+      if(p.diff<0) partes.push(`<span class="txt-red">Vencido hace ${dias(-p.diff)}</span>`);
+      else if(p.diff===0) partes.push(`<span class="txt-amber">vence hoy</span>`);
+      else if(p.diff<=7) partes.push(`<span class="txt-amber">en ${dias(p.diff)}</span>`);
     }
-
-    // 🔴 PENDIENTE/PRÓXIMO/VENCIDO  ·  🟢 PAGADO
-    const tagCls = p.status==='pagado'?'tag-paid':p.status==='vencido'?'tag-pend':'tag-soon';
-    const tagTxt = p.status==='pagado'?'Pagado ✓':p.status==='vencido'?'Vencido':p.diff===0?'Hoy':'En '+p.diff+'d';
-    const dot = p.status==='pagado'?'':'🔴 ';
-    const fechaLine = p.status==='pagado' && p.fechaPago
-      ? `Pagado el ${fmtDate(p.fechaPago)}`
-      : `Vence ${fmtDate(p.fechaLimite)}`;
-    return `<div class="pago-card" onclick="abrirPagoDetalle(${p.id})">
-      <div class="pago-ico" style="background:rgba(59,130,246,0.1)">${catPagoIco[p.categoria]||'📦'}</div>
-      <div class="pago-info">
-        <div class="pago-name">${dot}${p.nombre}${p.fijo?' 🔁':''}</div>
-        <div class="pago-date">${fechaLine}</div>
-      </div>
-      <div class="pago-right">
-        <div class="pago-amt">${fmtCOP(p.monto)}</div>
-        <div class="ar-tag ${tagCls}" style="margin-top:3px">${tagTxt}</div>
-      </div>
-    </div>`;
-  }).join('');
+    if(!p.fijo) partes.push('una sola vez');
+    linea = partes.join(' · ');
+  }
+  const foto = p.pagado && p.soporteUrl
+    ? `<div><button class="pago-foto" onclick="event.stopPropagation();verSoportePago(${p.id})">📷 factura</button></div>`
+    : '';
+  const pill = p.pagado
+    ? `<span class="pago-pill paid">✓ Pagado</span>`
+    : `<button class="pago-pill pend" onclick="event.stopPropagation();marcarPagoPagado(${p.id})">Pendiente</button>`;
+  return `<div class="pago-card${p.pagado?' is-paid':''}" onclick="abrirPagoDetalle(${p.id})">
+    <div class="pago-info">
+      <div class="pago-name">${escAttr(p.nombre)}${p.fijo?' 🔁':''}</div>
+      <div class="pago-date">${linea}</div>
+      ${foto}
+    </div>
+    <div class="pago-right">
+      <div class="pago-amt">${fmtCOP(p.monto)}</div>
+      ${pill}
+    </div>
+  </div>`;
 }
 
 function abrirPagoDetalle(id){
@@ -2927,37 +3017,124 @@ function abrirPagoDetalle(id){
   const p = DB.pagos.find(x=>String(x.id)===String(id));
   if(!p) return;
   document.getElementById('pago-detalle-nombre').textContent = p.nombre;
-  const hoyStr = todayStr();
-  const diff = Math.floor((new Date(p.fechaLimite+'T12:00:00')-new Date(hoyStr+'T12:00:00'))/(1000*60*60*24));
   const esPagado = p.status==='pagado';
-  const esAbonado = p.status==='abonado';
-  const abonado = p.montoAbonado || 0;
-  const pendiente = p.montoPendiente != null ? p.montoPendiente : (p.monto - abonado);
-  let progHtml = '';
-  if(esAbonado){
-    const pct = p.monto>0 ? Math.min(100, Math.round(abonado/p.monto*100)) : 0;
-    progHtml = `<div class="pago-prog" style="margin-top:10px"><div class="pago-prog-fill" style="width:${pct}%"></div></div>
-      <div class="pago-prog-txt">Pagado: ${fmtCOP(abonado)} · Falta: ${fmtCOP(pendiente)} (${pct}%)</div>`;
+  const diff = p.fechaLimite ? diasEntre(todayStr(), p.fechaLimite) : null;
+  const avisoVence = esPagado || diff===null ? ''
+    : diff<0 ? '· <span class="txt-red">Vencido</span>'
+    : diff===0 ? '· <span class="txt-amber">Hoy</span>' : '';
+  let fotoBtn = '';
+  if(esPagado){
+    fotoBtn = p.soporteUrl
+      ? `<button class="btn-secondary" onclick="verSoportePago(${p.id})">📷 Ver factura</button>`
+      : `<label class="btn-secondary" for="pago-soporte-file" style="display:block;text-align:center;box-sizing:border-box;cursor:pointer" onclick="pagoSoporteId=${p.id}">📷 Agregar foto de la factura</label>`;
   }
   document.getElementById('pago-detalle-body').innerHTML = `
     <div style="margin-bottom:12px">
       <div style="font-size:26px;font-family:'Syne',sans-serif;font-weight:900;color:var(--t1)">${fmtCOP(p.monto)}</div>
-      <div style="font-size:11px;color:var(--t3);margin-top:3px">Vence: ${fmtDate(p.fechaLimite)} ${diff<0&&!esPagado?'· <span style="color:var(--red)">Vencido</span>':diff===0&&!esPagado?'· <span style="color:var(--amber)">Hoy</span>':''}</div>
-      ${esPagado?`<div style="font-size:12px;font-weight:700;color:var(--green);margin-top:8px">✅ Pagado${p.fechaPago?` el ${fmtDate(p.fechaPago)}`:''}</div>`:''}
-      ${progHtml}
+      <div style="font-size:11px;color:var(--t3);margin-top:3px">${p.fechaLimite?`Vence: ${fmtDiaMes(p.fechaLimite)}`:'Sin fecha'} ${avisoVence}</div>
+      ${esPagado?`<div style="font-size:12px;font-weight:700;color:var(--green);margin-top:8px">✅ Pagado${p.fechaPago?` el ${fmtDiaMes(p.fechaPago)}`:''}</div>`:''}
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin:4px 0 14px">
-      <span style="font-size:13px;color:var(--t2)">🔁 Se repite cada mes</span>
+      <span style="font-size:13px;color:var(--t2)">${PAGO_FIJO_TXT(p.fijo)}</span>
       <div class="toggle${p.fijo?' on':''}" onclick="toggleRecurrenciaPago(${p.id}, this)"><div class="toggle-thumb"></div></div>
-    </div>`;
-  const payBtn = document.getElementById('pago-detalle-pay');
-  if(esPagado){
-    payBtn.style.display = 'none';
-  } else {
-    payBtn.style.display = '';
-    payBtn.textContent = esAbonado ? '💳 Continuar pagando' : '💳 Pagar';
-  }
+    </div>
+    <div class="form-group">
+      <label class="form-label">Nota (opcional)</label>
+      <textarea class="form-inp" id="pago-detalle-nota" rows="2" maxlength="200" placeholder="Ej: Referencia de pago, a nombre de…">${escAttr(p.nota)}</textarea>
+    </div>
+    <button class="btn-secondary" onclick="guardarNotaPago(${p.id})">Guardar nota</button>
+    ${fotoBtn}`;
+  document.getElementById('pago-detalle-pay').style.display = esPagado ? 'none' : '';
   showModal('modal-pago-detalle');
+}
+
+async function guardarNotaPago(id){
+  const nota = document.getElementById('pago-detalle-nota').value.trim();
+  const { error } = await supa.from('payments').update({ nota: nota || null }).eq('id', id).eq('user_id', currentUser.id);
+  if(error){ toast('❌ Error: '+error.message,'var(--red)'); return; }
+  const p = DB.pagos.find(x=>String(x.id)===String(id));
+  if(p) p.nota = nota;
+  toast('✅ Nota guardada','var(--green)');
+}
+
+// Marca pagado sin tocar saldos: Kontrol deja de manejarlos, así que no pasa por
+// registrar_pago ni pide cuenta/caja. Si el pago es fijo, el trigger de BD crea
+// el del mes siguiente. El filtro neq evita repetir el cambio si ya estaba pagado.
+async function marcarPagoPagado(id){
+  const p = DB.pagos.find(x=>String(x.id)===String(id));
+  if(!p){ toast('Pago no encontrado','var(--red)'); return; }
+  const ok = await uiConfirm(`¿Marcar "${p.nombre}" como pagado?`, { titulo:'Confirmar pago', okText:'Sí, ya lo pagué', okColor:'var(--green)' });
+  if(!ok) return;
+  if(!(await sesionLista())){ toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
+  const { data, error } = await supa.from('payments')
+    .update({ status:'pagado', fecha_pago: todayStr() })
+    .eq('id', p.id).eq('user_id', currentUser.id).neq('status','pagado')
+    .select('id');
+  if(error){ toast('❌ No se pudo marcar: '+error.message,'var(--red)'); return; }
+  hideModal('modal-pago-detalle');
+  await syncDesdeSupabase();
+  renderPagos();
+  if(!data || !data.length){ toast('Este pago ya estaba pagado','var(--amber)'); return; }
+  pagoSoporteId = p.id;
+  showModal('modal-pago-foto');
+}
+
+function dataUrlABlob(dataUrl){
+  const [cabecera, b64] = dataUrl.split(',');
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: cabecera.match(/:(.*?);/)[1] });
+}
+
+function leerArchivoComoDataUrl(file){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = e=>resolve(e.target.result);
+    reader.onerror = ()=>reject(new Error('No se pudo leer la foto'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function onSoporteSeleccionado(event){
+  const file = event.target.files[0];
+  event.target.value = '';
+  const id = pagoSoporteId;
+  if(!file || id==null) return;
+  hideModal('modal-pago-detalle');
+  toast('📤 Subiendo factura…','var(--t2)');
+  // soporte_url guarda la ruta, no una URL: el bucket es privado.
+  const ruta = `${currentUser.id}/${id}-${Date.now()}.jpg`;
+  try{
+    const comprimida = await comprimirImagen(await leerArchivoComoDataUrl(file), 1600, 0.8);
+    // comprimirImagen devuelve el original si no pudo decodificarlo (p. ej. HEIC):
+    // se manda su tipo real para que el bucket lo rechace en vez de guardarlo mal.
+    const blob = dataUrlABlob(comprimida);
+    const { error: errSubida } = await supa.storage.from('facturas')
+      .upload(ruta, blob, { contentType: blob.type });
+    if(errSubida) throw errSubida;
+    const { error: errPago } = await supa.from('payments').update({ soporte_url: ruta }).eq('id', id).eq('user_id', currentUser.id);
+    if(errPago){
+      await supa.storage.from('facturas').remove([ruta]);
+      throw errPago;
+    }
+    toast('✅ Factura guardada','var(--green)');
+    await syncDesdeSupabase();
+    renderPagos();
+  }catch(e){
+    toast('❌ No se pudo guardar la foto. Reintenta desde el detalle del pago.','var(--red)');
+  }finally{
+    pagoSoporteId = null;
+  }
+}
+
+async function verSoportePago(id){
+  const p = DB.pagos.find(x=>String(x.id)===String(id));
+  if(!p || !p.soporteUrl) return;
+  const { data, error } = await supa.storage.from('facturas').createSignedUrl(p.soporteUrl, 300);
+  if(error || !data){ toast('❌ No se pudo abrir la factura','var(--red)'); return; }
+  document.getElementById('pago-ver-foto-img').src = data.signedUrl;
+  showModal('modal-pago-ver-foto');
 }
 
 // ════════════════════════════════════════
@@ -3180,6 +3357,10 @@ async function eliminarPago(){
   if(!(await uiConfirm(`¿Eliminar el pago "${p.nombre}"?`))) return;
   const { error } = await supa.from('payments').delete().eq('id', p.id).eq('user_id', currentUser.id);
   if(error){ toast('Error: '+error.message,'var(--red)'); return; }
+  if(p.soporteUrl){
+    const { error: errFoto } = await supa.storage.from('facturas').remove([p.soporteUrl]);
+    if(errFoto) console.warn('[pagos] no se pudo borrar la factura:', errFoto.message);
+  }
   hideModal('modal-pago-detalle');
   toast('🗑 Pago eliminado','var(--t2)');
   await syncDesdeSupabase();
@@ -3194,9 +3375,12 @@ async function toggleRecurrenciaPago(id, el){
   const nuevo = !p.fijo;
   const { error } = await supa.from('payments').update({ fijo: nuevo }).eq('id', id).eq('user_id', currentUser.id);
   if(error){ toast('Error: '+error.message,'var(--red)'); return; }
-  if(el) el.classList.toggle('on', nuevo);
+  if(el){
+    el.classList.toggle('on', nuevo);
+    el.previousElementSibling.textContent = PAGO_FIJO_TXT(nuevo);
+  }
   p.fijo = nuevo;
-  toast(nuevo ? '🔁 Se repetirá cada mes' : 'Recurrencia desactivada','var(--green)');
+  toast(nuevo ? '🔁 Se repetirá cada mes' : 'Una sola vez','var(--green)');
   await syncDesdeSupabase();
 }
 

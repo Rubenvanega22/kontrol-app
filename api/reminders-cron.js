@@ -366,7 +366,8 @@ async function modoPagos() {
   for (const pago of claimed) {
     const tel = tels[pago.user_id];
     const cuando = pago.fecha_limite === hoy ? 'vence hoy' : `venció el ${pago.fecha_limite} y sigue pendiente`;
-    const msg = `🔔 *${pago.nombre}* por ${fmt(pago.monto)} ${cuando}.\n\n¿Lo pagaste?\n\n1️⃣ Sí, ya está pagado\n2️⃣ No, lo aplazaré`;
+    const nota = pago.nota && pago.nota.trim() ? `\n📝 Nota: ${pago.nota.trim()}` : '';
+    const msg = `🔔 *${pago.nombre}* por ${fmt(pago.monto)} ${cuando}.${nota}\n\n¿Lo pagaste?\n\n1️⃣ Sí, ya está pagado\n2️⃣ No, lo aplazaré`;
     const { error: insErr } = await supabase.from('whatsapp_alerts').insert({
       tipo: 'pago_recordatorio', mensaje: msg, telefono: tel, enviado: false
     });
