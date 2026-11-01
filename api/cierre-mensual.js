@@ -85,6 +85,7 @@ module.exports = async function handler(req, res) {
     // ── MODO AUTOMÁTICO (cron de Vercel): solo el día 1 en Colombia ──
     // Vercel envía Authorization: Bearer <CRON_SECRET> en sus crons. También se
     // exige en GET: sin esto, cualquiera podía archivar y borrar datos de todos.
+    console.log('[cierre-mensual] modo auto', req.method, 'secreto válido=', !!process.env.CRON_SECRET && token === process.env.CRON_SECRET);
     if (!process.env.CRON_SECRET || token !== process.env.CRON_SECRET) {
       return res.status(401).json({ error: 'No autorizado' });
     }
