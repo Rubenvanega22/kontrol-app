@@ -16,9 +16,14 @@ const { colombiaDateString } = require('../lib/datetime');
 const DAILY_UTC_HOUR = 13;   // 13:00 UTC = 8:00 am Colombia
 const EVENING_UTC_HOUR = 23; // 23:00 UTC = 6:00 pm Colombia
 
+function lineaNotaEvento(e) {
+  const nota = (e.nota || '').trim();
+  return nota ? `\n📝 Nota: ${nota}` : '';
+}
+
 function formatearEvento(e) {
   const hora = e.hora ? ` a las ${e.hora}` : '';
-  return `${e.titulo}${hora}`;
+  return `${e.titulo}${hora}${lineaNotaEvento(e)}`;
 }
 
 // Postgres TIME llega como "HH:MM:SS" vía PostgREST; toleramos "HH:MM" por si
@@ -261,7 +266,7 @@ async function modoUnaHoraAntes() {
   for (const e of claimed) {
     const tel = tels[e.user_id];
     const mensaje =
-      `⏰ *En 1 hora:* ${e.titulo}${e.hora ? ` a las ${e.hora}` : ''}${e.nota ? `\n${e.nota}` : ''}\n` +
+      `⏰ *En 1 hora:* ${e.titulo}${e.hora ? ` a las ${e.hora}` : ''}${lineaNotaEvento(e)}\n` +
       `\n¿Necesitas recordatorio de salida?\n` +
       `1. Sí, avísame en 15 min\n` +
       `2. No es necesario`;
@@ -318,7 +323,7 @@ async function modoQuinceMinAntes() {
   let alertas = 0;
   for (const e of claimed) {
     const tel = tels[e.user_id];
-    const mensaje = `🕐 *En ~15 min:* ${e.titulo}${e.hora ? ` a las ${e.hora}` : ''}${e.nota ? `\n${e.nota}` : ''}`;
+    const mensaje = `🕐 *En ~15 min:* ${e.titulo}${e.hora ? ` a las ${e.hora}` : ''}${lineaNotaEvento(e)}`;
     const { error: insErr } = await supabase.from('whatsapp_alerts').insert({
       tipo: 'recordatorio_15min', mensaje, telefono: tel, enviado: false
     });

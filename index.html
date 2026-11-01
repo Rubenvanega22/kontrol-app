@@ -904,7 +904,7 @@ select.form-inp option{background:#0c1228;}
         </div>
         <div style="height:80px"></div>
       </div>
-      <button class="fab" onclick="showModal('modal-nuevo-evento')">＋</button>
+      <button class="fab" onclick="abrirNuevoEvento(agendaDiaSel)">＋</button>
     </div>
 
     <!-- ══ LISTADO ══ -->
@@ -1282,7 +1282,7 @@ select.form-inp option{background:#0c1228;}
 <div class="modal-overlay hidden" id="modal-nuevo-evento" onclick="closeModalOutside(event,'modal-nuevo-evento')">
   <div class="modal">
     <div class="modal-hdr">
-      <span class="modal-ttl">Nuevo evento</span>
+      <span class="modal-ttl" id="evento-modal-ttl">Nuevo evento</span>
       <button class="modal-close" onclick="hideModal('modal-nuevo-evento')">✕</button>
     </div>
     <div class="form-group">
@@ -1298,10 +1298,10 @@ select.form-inp option{background:#0c1228;}
       <input class="form-inp" id="evento-hora" type="time"/>
     </div>
     <div class="form-group">
-      <label class="form-label">Nota</label>
-      <input class="form-inp" id="evento-nota" placeholder="Nota adicional…"/>
+      <label class="form-label">Nota (opcional)</label>
+      <input class="form-inp" id="evento-nota" maxlength="300" placeholder="Sale en el aviso de WhatsApp"/>
     </div>
-    <button class="btn-primary" onclick="guardarEvento()">Agendar</button>
+    <button class="btn-primary" id="evento-guardar" onclick="guardarEvento()">Agendar</button>
     <button class="btn-secondary" onclick="hideModal('modal-nuevo-evento')">Cancelar</button>
   </div>
 </div>
@@ -2055,25 +2055,57 @@ async function toggleRecurrenciaPago(id, el){
 // ════════════════════════════════════════
 // AGENDA
 // ════════════════════════════════════════
+let eventoEditId = null;
+
+function llenarModalEvento(ttl, boton, titulo, fecha, hora, nota){
+  document.getElementById('evento-modal-ttl').textContent = ttl;
+  document.getElementById('evento-guardar').textContent = boton;
+  document.getElementById('evento-titulo').value = titulo;
+  document.getElementById('evento-fecha').value = fecha;
+  document.getElementById('evento-hora').value = hora;
+  document.getElementById('evento-nota').value = nota;
+  showModal('modal-nuevo-evento');
+}
+function abrirNuevoEvento(fecha){
+  eventoEditId = null;
+  llenarModalEvento('Nuevo evento','Agendar','',fecha||hoyISO(),'','');
+}
+function abrirEditarEvento(id){
+  const e = DB.eventos.find(x=>String(x.id)===String(id));
+  if(!e) return;
+  eventoEditId = e.id;
+  hideModal('modal-vista-diaria');
+  llenarModalEvento('Editar evento','Guardar',e.titulo||'',e.fecha||'',(e.hora||'').slice(0,5),e.nota||'');
+}
+
 async function guardarEvento(){
   if (!(await sesionLista())) { toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
   const titulo = document.getElementById('evento-titulo').value.trim();
   const fecha = document.getElementById('evento-fecha').value;
-  const hora = document.getElementById('evento-hora').value;
-  const nota = document.getElementById('evento-nota').value.trim();
+  const hora = document.getElementById('evento-hora').value || null;
+  const nota = document.getElementById('evento-nota').value.trim() || null;
   if(!titulo){ toast('⚠️ Escribe un título','var(--amber)'); return; }
   if(!fecha){ toast('⚠️ Selecciona una fecha','var(--amber)'); return; }
 
-  const { error } = await supa.from('events').insert({
-    user_id: currentUser.id, titulo, fecha, hora: hora||null, nota: nota||null
-  });
+  let error;
+  if(eventoEditId){
+    const original = DB.eventos.find(x=>String(x.id)===String(eventoEditId));
+    const campos = { titulo, fecha, hora, nota };
+    // Con otro día u hora vuelve a tocar aviso; cambiar el texto no repite uno ya enviado.
+    if(!original || original.fecha !== fecha || (original.hora||'').slice(0,5) !== (hora||'')){
+      Object.assign(campos, { notificado_agenda:false, notificado_1h:false, notificado_15min:false });
+    }
+    ({ error } = await supa.from('events').update(campos).eq('id', eventoEditId).eq('user_id', currentUser.id));
+  } else {
+    ({ error } = await supa.from('events').insert({ user_id: currentUser.id, titulo, fecha, hora, nota }));
+  }
   if(error){ toast('❌ Error: '+error.message,'var(--red)'); return; }
 
+  const editando = !!eventoEditId;
+  eventoEditId = null;
   hideModal('modal-nuevo-evento');
-  document.getElementById('evento-titulo').value='';
-  document.getElementById('evento-hora').value='';
-  document.getElementById('evento-nota').value='';
-  toast('✅ Evento agendado','var(--green)');
+  agendaDiaSel = fecha;
+  toast(editando ? '✅ Evento actualizado' : '✅ Evento agendado','var(--green)');
   await syncDesdeSupabase();
 }
 
@@ -2104,10 +2136,10 @@ function renderAgenda(){
     el.innerHTML=`<div class="empty"><div class="empty-ico">🎉</div><div class="empty-txt">Sin eventos. ¡Día libre!</div></div>${extra}`;
     return;
   }
-  el.innerHTML = eventos.map(e=>`<div class="agenda-event" style="position:relative">
+  el.innerHTML = eventos.map(e=>`<div class="agenda-event" style="position:relative;cursor:pointer" onclick="abrirEditarEvento(${e.id})">
     <div class="ae-time">${e.hora||'—'}</div>
-    <div class="ae-info"><div class="ae-title">${e.titulo}</div><div class="ae-sub">${fmtDate(e.fecha)}${e.nota?' · '+e.nota:''}</div></div>
-    <button onclick="borrarEvento('${e.id}')" style="background:rgba(248,113,113,0.15);border:none;border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:12px;flex-shrink:0;align-self:center" title="Eliminar evento">🗑️</button>
+    <div class="ae-info"><div class="ae-title">${escAttr(e.titulo)}</div><div class="ae-sub">${fmtDate(e.fecha)}${e.nota?' · 📝 '+escAttr(e.nota):''}</div></div>
+    <button onclick="event.stopPropagation();borrarEvento('${e.id}')" style="background:rgba(248,113,113,0.15);border:none;border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:12px;flex-shrink:0;align-self:center" title="Eliminar evento">🗑️</button>
   </div>`).join('') + extra;
 }
 
@@ -2267,10 +2299,10 @@ function abrirModalDiario(fechaISO){
   if (eventos.length){
     html += `<div class="day-sec">
       <div class="day-sec-ttl">📌 AGENDADO</div>
-      ${eventos.map(e=>`<div class="day-item">
+      ${eventos.map(e=>`<div class="day-item" style="cursor:pointer" onclick="abrirEditarEvento(${e.id})">
         <span class="day-item-time">${e.hora||'—'}</span>
-        <span class="day-item-main">${e.titulo}</span>
-        <button onclick="borrarEventoDiario('${e.id}','${fechaISO}')" style="background:rgba(248,113,113,0.15);border:none;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:11px;flex-shrink:0" title="Eliminar evento">🗑️</button>
+        <span class="day-item-main">${escAttr(e.titulo)}${e.nota?`<br><small>📝 ${escAttr(e.nota)}</small>`:''}</span>
+        <button onclick="event.stopPropagation();borrarEventoDiario('${e.id}','${fechaISO}')" style="background:rgba(248,113,113,0.15);border:none;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:11px;flex-shrink:0" title="Eliminar evento">🗑️</button>
       </div>`).join('')}
     </div>`;
   }
@@ -2312,9 +2344,7 @@ function abrirModalDiario(fechaISO){
 // antes de mostrarlo. Cierra el modal diario primero.
 function agendarDesdeDiario(fechaISO){
   hideModal('modal-vista-diaria');
-  const inp = document.getElementById('evento-fecha');
-  if (inp) inp.value = fechaISO;
-  showModal('modal-nuevo-evento');
+  abrirNuevoEvento(fechaISO);
 }
 
 // ════════════════════════════════════════

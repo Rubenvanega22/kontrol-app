@@ -332,7 +332,7 @@ Pagos pendientes:
 ${ctx.pagos.map(p => `• ${p.nombre}: ${fmt(p.monto)} vence ${p.fecha_limite} [ID:${p.id}]`).join('\n') || 'ninguno'}
 
 Eventos próximos:
-${ctx.eventos.map(e => `• ${e.titulo} — ${e.fecha} ${e.hora||''} [ID:${e.id}]`).join('\n') || 'ninguno'}
+${ctx.eventos.map(e => `• ${e.titulo} — ${e.fecha} ${e.hora||''}${e.nota ? ` (nota: ${e.nota})` : ''} [ID:${e.id}]`).join('\n') || 'ninguno'}
 
 Recordatorios (notas sin ítems):
 ${ctx.recordatorios.filter(r => r.tipo === 'nota' || r.tipo === 'definicion').map(r => `• ${r.titulo}${r.recordar_fecha ? ` (aviso ${r.recordar_fecha})` : ''}${r.hecho ? ' (hecho)' : ''} [ID:${r.id}]`).join('\n') || 'ninguno'}
@@ -374,7 +374,8 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
 [ACCION:borrar_pago|ID]
 — Eventos y recordatorios
 [ACCION:evento|titulo|YYYY-MM-DD|HH:MM]
-  Sin hora, deja el último campo vacío: [ACCION:evento|titulo|YYYY-MM-DD|]
+  Sin hora, deja ese campo vacío: [ACCION:evento|titulo|YYYY-MM-DD|]
+  Si dio un detalle (dirección, qué llevar), agrégalo como nota: [ACCION:evento|titulo|YYYY-MM-DD|HH:MM|nota]
 [ACCION:recordatorio|qué recordar|YYYY-MM-DD|valor|nota]
   Solo "qué recordar" es obligatorio; deja vacíos los demás campos que no dijo.
   Con fecha, ese día le llega aviso por WhatsApp a las 8 am. Sin fecha queda como registro.
@@ -1103,7 +1104,7 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
           }
         }
         const { data: ev, error } = await supabase.from('events').insert({
-          user_id: userId, titulo, fecha, hora, nota: 'Creado por IA'
+          user_id: userId, titulo, fecha, hora, nota: (parts[4] || '').trim() || null
         }).select().single();
         if (error || !ev) {
           console.error('[evento] insert events falló:', error?.message);
