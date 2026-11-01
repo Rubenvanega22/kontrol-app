@@ -218,6 +218,27 @@ html,body{width:100%;height:100%;background:var(--bg);font-family:'DM Sans',sans
 .rt-btn{flex:1;min-width:0;height:44px;border-radius:11px;border:1px solid var(--bd);background:transparent;color:var(--t2);font:700 14px 'DM Sans',sans-serif;cursor:pointer;}
 .rt-btn.ok{border:none;background:linear-gradient(135deg,#1a56db,#4a8fe8);color:#fff;}
 .rt-btn.borrar{color:var(--red);border-color:rgba(248,113,113,0.4);}
+/* ── Pestaña Listado: mismo estilo de Recordatorios ── */
+.lt-wrap{flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;padding:0 14px 8px;-webkit-overflow-scrolling:touch;}
+.lt-card{border:1px solid var(--bd);border-radius:14px;background:var(--card);overflow:hidden;margin-bottom:12px;}
+.lt-hdr{display:flex;align-items:center;gap:8px;padding:10px 10px 10px 12px;background:var(--card3);border-bottom:1px solid var(--bd);}
+.lt-titulo{flex:1;min-width:0;font-size:18px;font-weight:700;color:var(--t1);overflow-wrap:anywhere;}
+.lt-cuenta{display:block;margin-top:2px;font-size:13px;font-weight:500;color:var(--t2);}
+.lt-accion{flex-shrink:0;height:38px;padding:0 9px;border-radius:10px;border:1px solid rgba(74,222,128,0.5);background:rgba(74,222,128,0.1);color:var(--green);font:700 13px 'DM Sans',sans-serif;cursor:pointer;}
+.lt-accion:disabled{border-color:var(--bd);background:transparent;color:rgba(232,238,248,0.4);cursor:default;}
+.lt-accion.borrar{width:38px;padding:0;border-color:rgba(248,113,113,0.4);background:rgba(248,113,113,0.1);font-size:15px;}
+.lt-item{display:flex;align-items:center;gap:12px;min-height:52px;padding:10px 12px;border-bottom:1px solid var(--bd);cursor:pointer;user-select:none;}
+.lt-item:active{background:rgba(255,255,255,0.04);}
+.lt-cb{width:26px;height:26px;border-radius:7px;border:2px solid rgba(232,238,248,0.45);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#08110a;}
+.lt-cb.done{background:var(--green);border-color:var(--green);}
+.lt-txt{flex:1;min-width:0;font-size:18px;line-height:1.3;font-weight:500;color:var(--t1);overflow-wrap:anywhere;}
+.lt-txt.done{text-decoration:line-through;color:rgba(232,238,248,0.5);}
+.lt-vacio{padding:14px 12px;font-size:15px;color:var(--t2);border-bottom:1px solid var(--bd);}
+.lt-add{display:flex;gap:8px;padding:10px 12px;}
+.lt-add input{flex:1;min-width:0;height:46px;padding:0 10px;background:rgba(255,255,255,0.06);border:1px solid var(--bd);border-radius:10px;outline:none;color:var(--t1);font:500 17px 'DM Sans',sans-serif;}
+.lt-add input::placeholder{color:rgba(232,238,248,0.5);}
+.lt-add button{flex-shrink:0;height:46px;padding:0 13px;border:none;border-radius:10px;background:linear-gradient(135deg,#1a56db,#4a8fe8);color:#fff;font:700 15px 'DM Sans',sans-serif;cursor:pointer;}
+.lt-msg{padding:32px 12px;text-align:center;font-size:15px;color:var(--t2);}
 .txt-amber{color:var(--amber);}
 .txt-red{color:var(--red);}
 /* ── Fase 5: progreso de abono + modal de pago ── */
@@ -888,11 +909,11 @@ select.form-inp option{background:#0c1228;}
 
     <!-- ══ LISTADO ══ -->
     <div class="scr" id="scr-listado">
-      <div class="scroll">
-        <div id="listado-list"></div>
-        <div style="height:80px"></div>
+      <div class="rt-tools">
+        <label class="rt-search">🔍<input id="lt-buscar" type="text" placeholder="Buscar…" aria-label="Buscar en listados" oninput="renderRecordar()"/></label>
+        <button class="rt-nueva" type="button" onclick="abrirModalRecordar('listado')">+ Nuevo listado</button>
       </div>
-      <button class="fab" onclick="abrirModalRecordar('listado')">＋</button>
+      <div class="lt-wrap" id="listado-list"></div>
     </div>
 
     <!-- ══ RECORDATORIOS ══ -->
@@ -2365,23 +2386,35 @@ function renderRecordar(){
   renderRecordatorios(recs.filter(ES_NOTA));
 }
 
-function renderListados(listas){
+function renderListados(todas){
   const el = document.getElementById('listado-list');
-  if(!listas.length){ el.innerHTML='<div class="empty"><div class="empty-ico">📋</div><div class="empty-txt">No hay listados. Toca ＋ para crear uno.</div></div>'; return; }
+  const terminos = recNormalizar((document.getElementById('lt-buscar')||{}).value).split(/\s+/).filter(Boolean);
+  const listas = todas.filter(r=>{
+    const texto = recNormalizar(r.titulo+' '+((r.content&&r.content.items)||[]).map(it=>it.text).join(' '));
+    return terminos.every(t=>texto.includes(t));
+  });
+  if(!listas.length){
+    el.innerHTML = `<div class="lt-msg">${terminos.length ? 'Nada coincide con tu búsqueda.' : 'No hay listados. Toca + Nuevo listado para crear uno.'}</div>`;
+    return;
+  }
   el.innerHTML = listas.map(r=>{
-      const items = (r.content && r.content.items) || [];
-      const hechos = items.filter(it=>it.done).length;
-      const filas = items.length ? items.map(it=>`<div class="rec-check" onclick="toggleRecItem('${r.id}','${(it.text||'').replace(/'/g,"\\'")}')"><div class="rec-cb ${it.done?'done':''}">${it.done?'✓':''}</div><span class="rec-label ${it.done?'done':''}">${it.text}</span></div>`).join('') : '<div style="font-size:12px;color:var(--t3);padding:4px 0">Sin ítems aún</div>';
-      return `<div class="rec-card" style="position:relative">
-        <button onclick="borrarRecordatorioRapido('${r.id}')" style="position:absolute;top:8px;right:8px;background:rgba(248,113,113,0.15);border:none;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:11px;padding:0" title="Eliminar listado">🗑️</button>
-        <button onclick="depurarListado('${r.id}')" ${hechos?'':'disabled'} style="position:absolute;top:8px;right:40px;background:${hechos?'rgba(74,222,128,0.15)':'rgba(255,255,255,0.05)'};border:none;border-radius:6px;height:26px;padding:0 8px;cursor:${hechos?'pointer':'default'};font-size:10px;font-weight:700;color:${hechos?'#4ade80':'var(--t3)'}" title="Borra los ítems marcados">DEPURAR</button>
-        <div class="rec-title" style="padding-right:96px">📋 ${r.titulo}</div>
-        <div style="margin-top:8px">${filas}</div>
-        <div style="display:flex;gap:6px;margin-top:8px">
-          <input id="additem-${r.id}" class="form-inp" style="flex:1;min-width:0;font-size:14px;padding:6px 8px" placeholder="+ agregar ítem" onkeydown="if(event.key==='Enter')agregarItemListado('${r.id}')"/>
-          <button class="btn-secondary" style="width:auto;flex:0 0 auto;margin-bottom:0;padding:6px 14px;font-size:14px" onclick="agregarItemListado('${r.id}')">Agregar</button>
-        </div>
-      </div>`;
+    const items = (r.content && r.content.items) || [];
+    const hechos = items.filter(it=>it.done).length;
+    const filas = items.length
+      ? items.map((it,i)=>`<div class="lt-item" onclick="toggleRecItem(${r.id},${i})"><div class="lt-cb ${it.done?'done':''}">${it.done?'✓':''}</div><span class="lt-txt ${it.done?'done':''}">${escAttr(it.text)}</span></div>`).join('')
+      : '<div class="lt-vacio">Sin ítems aún</div>';
+    return `<div class="lt-card">
+      <div class="lt-hdr">
+        <div class="lt-titulo">${escAttr(r.titulo)}<span class="lt-cuenta">${hechos} de ${items.length} hechos</span></div>
+        <button type="button" class="lt-accion" onclick="depurarListado(${r.id})" ${hechos?'':'disabled'} title="Borra los ítems marcados">Depurar</button>
+        <button type="button" class="lt-accion borrar" onclick="borrarRecordatorioRapido(${r.id})" aria-label="Eliminar listado" title="Eliminar listado">🗑️</button>
+      </div>
+      ${filas}
+      <div class="lt-add">
+        <input id="additem-${r.id}" type="text" placeholder="Agregar ítem" aria-label="Agregar ítem a ${escAttr(r.titulo)}" onkeydown="if(event.key==='Enter')agregarItemListado(${r.id})"/>
+        <button type="button" onclick="agregarItemListado(${r.id})">Agregar</button>
+      </div>
+    </div>`;
   }).join('');
 }
 
@@ -2601,6 +2634,9 @@ async function agregarItemListado(id){
   if(error){ toast('Error: '+error.message,'var(--red)'); return; }
   r.content = nuevo; save();
   renderRecordar();
+  // Sigue escribiendo el siguiente ítem sin volver a tocar el campo.
+  const sig = document.getElementById('additem-'+id);
+  if(sig) sig.focus();
 }
 
 async function borrarRecordatorioRapido(id){
@@ -2613,17 +2649,21 @@ async function borrarRecordatorioRapido(id){
   await syncDesdeSupabase();
 }
 
-async function toggleRecItem(recId, itemText){
-  if(typeof event !== 'undefined' && event) event.stopPropagation();
+// Por posición y no por texto: el texto puede traer comillas y dos ítems pueden ser iguales.
+async function toggleRecItem(recId, indice){
   const rec = DB.recordatorios.find(r => String(r.id) === String(recId));
-  if(!rec || !rec.content || !rec.content.items) return;
-  const item = rec.content.items.find(it => it.text === itemText);
+  const item = rec && rec.content && rec.content.items && rec.content.items[indice];
   if(!item) return;
   item.done = !item.done;
   save();
   renderRecordar();
-  // Persistir el content actualizado en Supabase
-  await supa.from('reminders').update({ content: rec.content }).eq('id', rec.id);
+  const { error } = await supa.from('reminders').update({ content: rec.content }).eq('id', rec.id);
+  if(error){
+    item.done = !item.done;
+    save();
+    renderRecordar();
+    toast('❌ No se pudo guardar: '+error.message,'var(--red)');
+  }
 }
 
 // ════════════════════════════════════════
