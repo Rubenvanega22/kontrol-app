@@ -345,10 +345,19 @@ async function modoQuinceMinAntes() {
 // dependía de que el matutino hubiera corrido). Un pago creado después de
 // las 8am nunca se notificaba. Ahora:
 //   • Corre en ventana 8am-6pm Col → captura pagos creados tarde el mismo día.
-//   • Recuerda CADA día (dedup por notificado_fecha) hasta status=pagado.
+//   • Recuerda hasta status=pagado (dedup por notificado_fecha): el día que vence, a
+//     diario la primera semana después de vencer, y luego solo los lunes.
 //   • Incluye vencidos no pagados (fecha_limite <= hoy), no solo "hoy exacto".
 //   • FECHA_CORTE_PAGOS evita avisos retroactivos de pagos viejos previos al deploy.
 const FECHA_CORTE_PAGOS = '2026-06-20'; // día del deploy del ARREGLO 2
+
+// ¿Hoy toca avisar este pago? Solo se llama con fecha_limite <= hoy.
+function tocaAvisoPago(fechaLimite, hoy) {
+  const aMs = f => new Date(`${f}T12:00:00-05:00`).getTime();
+  const diasVencido = Math.round((aMs(hoy) - aMs(fechaLimite)) / (24 * 3600 * 1000));
+  if (diasVencido <= 7) return true;
+  return new Date(aMs(hoy)).getUTCDay() === 1; // lunes en Colombia
+}
 
 async function modoPagos() {
   const hoy = colombiaDateString(new Date());
@@ -360,16 +369,17 @@ async function modoPagos() {
     .gte('fecha_limite', FECHA_CORTE_PAGOS)
     .or(`notificado_fecha.is.null,notificado_fecha.lt.${hoy}`);
   if (error) { console.error('[reminders-cron pagos] query error:', error.message); return { error: error.message, hoy }; }
-  if (!pagos || !pagos.length) return { alertas: 0, hoy };
+  const pagosHoy = (pagos || []).filter(p => tocaAvisoPago(p.fecha_limite, hoy));
+  if (!pagosHoy.length) return { alertas: 0, hoy };
 
-  const userIds = [...new Set(pagos.map(p => p.user_id).filter(Boolean))];
+  const userIds = [...new Set(pagosHoy.map(p => p.user_id).filter(Boolean))];
   const tels = await telefonosPorUsuario(userIds);
   const fmt = n => new Intl.NumberFormat('es-CO', { style:'currency', currency:'COP', minimumFractionDigits:0 }).format(n);
 
   // Reclamo atómico de los pagos con teléfono (anti-duplicados). notificado_pago=true
   // mantiene la asociación de respuesta en whatsapp.js; notificado_fecha=hoy = dedup
   // diario. La condición re-aplicada evita reclamar un pago ya avisado hoy por otro tick.
-  const destinatarios = pagos.filter(p => tels[p.user_id]);
+  const destinatarios = pagosHoy.filter(p => tels[p.user_id]);
   const claimed = await reclamar('payments', destinatarios.map(p => p.id),
     { notificado_pago: true, notificado_fecha: hoy },
     q => q.or(`notificado_fecha.is.null,notificado_fecha.lt.${hoy}`));
