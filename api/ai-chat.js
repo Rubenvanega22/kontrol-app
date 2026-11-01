@@ -112,7 +112,20 @@ module.exports = async function handler(req, res) {
 
     // 4. Llamar al LLM — siempre Claude Haiku (fiabilidad sobre velocidad)
     //    Groq llama-3.1-8b no seguía consistentemente el formato [ACCION:...]
-    const respuesta = await llamarClaude(systemPrompt, history, message, imagen_base64, voz ? 200 : 600);
+    let respuesta = await llamarClaude(systemPrompt, history, message, imagen_base64, voz ? 200 : 600);
+
+    // Solo el resultado de una acción puede confirmar algo. Si el modelo dice "✅ Listo,
+    // agendado" sin emitir ninguna, el usuario cree que quedó guardado y no es cierto.
+    if (!imagen_base64 && afirmaHaberHecho(respuesta)) {
+      console.warn('[ai-chat] confirmó sin acción; se reintenta');
+      const correccion = `${systemPrompt}\n\n⚠️ CORRECCIÓN: tu respuesta anterior confirmó algo sin emitir ninguna [ACCION:...], así que NO se guardó nada. Si el usuario pide crear algo, emite la acción. Si falta un dato, pregúntalo sin decir que ya está hecho.`;
+      respuesta = await llamarClaude(correccion, history, message, null, voz ? 200 : 600);
+      if (afirmaHaberHecho(respuesta)) {
+        console.warn('[ai-chat] volvió a confirmar sin acción');
+        respuesta = 'No alcancé a guardar eso. ¿Me lo repites con el qué y el día?';
+      }
+    }
+
     const respuestaLimpia = respuesta
       .replace(/\[ACCION:[^\]]+\]/g, '')
       .replace(/\n{3,}/g, '\n\n')
@@ -154,10 +167,17 @@ module.exports = async function handler(req, res) {
         partesUbicacion.push(`✅ Guardé "${a.nombre}".\n${a.url}`);
       // BUG 2/3: respuesta DETERMINÍSTICA para eventos — el ✅ solo si el insert
       // se confirmó, y SIEMPRE con día + hora exacta + qué. Salta la verification pass.
+      } else if (a.accion === 'evento' && a.ok && !a.hora) {
+        const aviso = a.fecha === colombiaDateString()
+          ? 'Queda en tu agenda de hoy.'
+          : 'Como no dijiste hora, te aviso ese día a las 8 am.';
+        partesEvento.push(`✅ Listo, agendé ${a.titulo} para ${formatearDia(a.fecha)}. ${aviso}`);
       } else if (a.accion === 'evento' && a.ok) {
         partesEvento.push(`✅ Listo, te aviso ${formatearCuando(a.fecha, a.hora)} sobre ${a.titulo}.`);
-      } else if (a.accion === 'evento' && a.error === 'sin_hora') {
-        partesEvento.push('❌ Necesito una hora exacta para programarte el aviso. ¿A qué hora te aviso?');
+      } else if (a.accion === 'evento' && a.error === 'sin_fecha') {
+        partesEvento.push('❌ No lo agendé porque me faltó el qué o el día. ¿Qué agendo y para qué día?');
+      } else if (a.accion === 'evento' && a.error === 'fecha_pasada') {
+        partesEvento.push('❌ No lo agendé porque esa fecha ya pasó. ¿Para qué día lo dejo?');
       } else if (a.accion === 'evento' && a.error === 'hora_pasada') {
         partesEvento.push('❌ Esa hora ya pasó. ¿Para qué hora te aviso?');
       } else if (a.accion === 'evento' && a.error === 'db') {
@@ -240,6 +260,15 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: error.message });
   }
 };
+
+// ¿La respuesta dice que algo quedó hecho sin traer ninguna acción?
+function afirmaHaberHecho(texto) {
+  if (/\[ACCION:/.test(texto)) return false;
+  // Solo afirmaciones de haber actuado. "Tienes 3 lugares guardados" o una lista de
+  // ayuda con ✅ son respuestas normales y no deben reintentarse.
+  const t = texto.trim();
+  return t.startsWith('✅') || /(^|[\s,.!¡])(listo|agendé|registré|guardé|anoté|creé)(?=$|[\s,.!:;])/i.test(t);
+}
 
 // ═══ CONTEXTO: pagos, agenda, listados, recordatorios y lugares ═══
 async function buildContexto(userId) {
@@ -329,6 +358,7 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
 [ACCION:borrar_pago|ID]
 — Eventos y recordatorios
 [ACCION:evento|titulo|YYYY-MM-DD|HH:MM]
+  Sin hora, deja el último campo vacío: [ACCION:evento|titulo|YYYY-MM-DD|]
 [ACCION:recordatorio|texto]
 [ACCION:borrar_evento|ID]
 [ACCION:borrar_recordatorio|ID]
@@ -404,9 +434,13 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
        UNA acción. Aplica aun si la frase incluye "pagar"/"pago"/"factura"
        — la hora gana sobre la palabra "pago".
 
-    B) "Recuérdame X" / "Avísame X" SIN hora → pregunta "¿A qué hora
-       quieres que te avise?" antes de emitir cualquier acción. Cuando
-       el usuario responda con hora, emite [ACCION:evento|...].
+    A2) Hay un QUÉ y un DÍA pero NO hora ("agéndame para mañana bañar a Luffy",
+       "recuérdame el viernes llamar a Juan") → CREA el evento SIN hora:
+       [ACCION:evento|titulo|YYYY-MM-DD|]. No preguntes la hora y NUNCA te la
+       inventes. El sistema le avisa ese día a las 8 am.
+
+    B) "Recuérdame X" / "Avísame X" sin hora Y sin día → pregunta "¿Para cuándo
+       te aviso?" antes de emitir cualquier acción.
 
     C) "Agéndame pago de X para el día Y" SIN hora → [ACCION:pago|...].
        El batch matutino de las 8am Col le avisará ese día.
@@ -425,8 +459,14 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
 
     Usuario: "recuérdame comprar pan"
     Tu respuesta:
-      ¿A qué hora quieres que te avise?
-    (NO emites ninguna acción hasta tener la hora.)
+      ¿Para cuándo te aviso?
+    (NO emites ninguna acción hasta saber cuándo.)
+
+    Usuario: "agéndame para mañana bañar a Luffy"
+    Tu respuesta:
+      ✅ Listo.
+      [ACCION:evento|Bañar a Luffy|<mañana>|]
+    (Sin hora: campo vacío. NO uses 08:00 ni ninguna otra hora inventada.)
 
     Usuario: "agéndame pago luz $80.000 el 15 de junio"
     Tu respuesta:
@@ -519,7 +559,7 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
          "listado mercado: pan, leche"          → [ACCION:crear_lista|mercado|pan;leche]
          "listado tareas"                        → [ACCION:crear_lista|tareas|]  (listado vacío)
          "recordatorio mi clave es 1234"        → [ACCION:recordatorio|mi clave es 1234]
-       (Si es evento aplica la regla 10: necesita HORA exacta; si no la dan, pídela.)
+       (Si es evento aplica la regla 10: con QUÉ y DÍA se crea, con o sin hora; si falta el día, pídelo.)
 
     B) Empieza con un VERBO DE VER (muéstrame, dime, ver, lista, "qué tengo",
        "qué hay", "qué eventos") → CONSULTAR, NO crear. Navega a la sección:
@@ -533,14 +573,14 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
          (y "listados" solo → [ACCION:navegar|listado]; "recordatorios" solo → [ACCION:navegar|recordatorios])
        • SOLO una palabra de TIEMPO y nada más (hoy/mañana/lunes/una fecha) → consultar:
          "agenda hoy" / "agenda mañana" / "agenda el lunes" → [ACCION:navegar|agenda]
-       • CUALQUIER OTRA palabra (para, algo, una, un, el…) aunque incluya un día,
-         PERO sin un QUÉ concreto Y una HORA → NO crees ni muestres: PREGUNTA.
-         "agenda para mañana" / "agenda algo mañana" / "agenda una cita"
-           → responde: "¿Qué quieres agendar y a qué hora?"
+       • CUALQUIER OTRA palabra (para, algo, una, un, el…) PERO sin un QUÉ concreto
+         o sin un DÍA → NO crees ni muestres: PREGUNTA lo que falte.
+         "agenda para mañana" / "agenda algo mañana" → responde: "¿Qué quieres agendar?"
+         "agenda una cita" → responde: "¿Para qué día?"
        REGLA FINA: "agenda" + <palabra de tiempo SOLA> = mostrar.
                    "agenda" + (relleno como "para"/"algo"/"una"…) = intención de crear
-                   → si falta el QUÉ o la HORA, PREGUNTA (nunca muestres la agenda).
-                   "agenda" + objeto concreto + hora = CREAR evento (regla 10).
+                   → si falta el QUÉ o el DÍA, PREGUNTA (nunca muestres la agenda).
+                   "agenda" + objeto concreto + día (con o sin hora) = CREAR evento (regla 10).
 
     D) Operar sobre un listado EXISTENTE (sin importar la primera palabra):
          "agrega arroz a mi lista de mercado" → [ACCION:agregar_item|mercado|arroz]
@@ -572,7 +612,21 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
         "👍 No borré nada. Tu información sigue intacta."
 
     Solo emite "confirmar" si en el turno ANTERIOR tú pediste confirmación de
-    borrado. Si no hay esa pregunta previa, usa "preguntar".`;
+    borrado. Si no hay esa pregunta previa, usa "preguntar".
+
+15. ⚠️ NUNCA CONFIRMES SIN ACCIÓN. No digas "✅", "listo", "agendado", "registrado" ni
+    "guardado" si en ESE MISMO mensaje no emites la [ACCION:...] correspondiente. El
+    historial no cuenta: lo que dijiste antes no significa que el pedido actual esté hecho.
+    Responde solo a lo que pide el mensaje actual; no vuelvas a listar lo de turnos anteriores.
+
+16. ⚠️ FECHAS. Calcula SIEMPRE a partir de HOY (arriba), nunca de fechas del historial o
+    la memoria. Un día sin mes ("el 5") es su próxima ocurrencia desde HOY. Nunca generes
+    una fecha pasada.
+
+17. ⚠️ ACLARAR UN PAGO NO ES AGENDAR. Si el usuario habla de la fecha de un pago que ya
+    existe ("el pago es para el 5"), NO crees un evento. Dile la fecha que tiene según
+    "Pagos pendientes"; si quiere cambiarla, no puedes hacerlo desde aquí: dile que no
+    quedó cambiada.`;
 }
 
 // ═══ LLAMAR A CLAUDE ═══
@@ -644,17 +698,18 @@ function parseMontoSeguro(s) {
 // "hoy a las 7:00 am", "mañana a las 2:30 pm", "el lunes 3 de junio a las 9:00 am".
 // Usado por el override determinístico de eventos (BUG 2/3) para garantizar que
 // la confirmación SIEMPRE incluya día + hora exacta.
-function formatearCuando(fecha, hora) {
+function formatearDia(fecha) {
   const hoy = colombiaDateString();
   const manana = colombiaDateString(new Date(Date.now() + 24 * 3600 * 1000));
-  let dia;
-  if (fecha === hoy) dia = 'hoy';
-  else if (fecha === manana) dia = 'mañana';
-  else {
-    // colombiaDateLongEs → "lunes, 3 de junio de 2026"; lo dejamos "el lunes 3 de junio".
-    const largo = colombiaDateLongEs(new Date(`${fecha}T12:00:00-05:00`));
-    dia = 'el ' + largo.replace(/,/g, '').replace(/ de \d{4}$/, '');
-  }
+  if (fecha === hoy) return 'hoy';
+  if (fecha === manana) return 'mañana';
+  // colombiaDateLongEs → "lunes, 3 de junio de 2026"; lo dejamos "el lunes 3 de junio".
+  const largo = colombiaDateLongEs(new Date(`${fecha}T12:00:00-05:00`));
+  return 'el ' + largo.replace(/,/g, '').replace(/ de \d{4}$/, '');
+}
+
+function formatearCuando(fecha, hora) {
+  const dia = formatearDia(fecha);
   const [h, m] = hora.split(':').map(Number);
   const ampm = h < 12 ? 'am' : 'pm';
   const h12 = h % 12 === 0 ? 12 : h % 12;
@@ -926,22 +981,30 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
       } else if (accion === 'evento') {
         const titulo = (parts[1] || '').trim();
         const fecha = (parts[2] || '').trim();
-        // BUG 3: la hora es OBLIGATORIA para un evento. Normalizar H:MM → HH:MM.
-        let hora = (parts[3] || '').trim();
-        const mHora = hora.match(/^(\d{1,2}):(\d{2})$/);
-        if (!titulo || !fecha || !mHora) {
-          console.warn('[evento] sin hora/fecha válida, no se crea');
-          ejecutadas.push({ accion: 'evento', error: 'sin_hora', titulo });
+        // Sin hora el evento es válido: no tiene aviso a hora exacta, pero sale en la
+        // Agenda y en el resumen de las 8 am de ese día. Normalizar H:MM → HH:MM.
+        const mHora = (parts[3] || '').trim().match(/^(\d{1,2}):(\d{2})$/);
+        const hora = mHora ? `${mHora[1].padStart(2, '0')}:${mHora[2]}` : null;
+        const fechaValida = /^\d{4}-\d{2}-\d{2}$/.test(fecha) && !isNaN(new Date(`${fecha}T12:00:00-05:00`).getTime());
+        if (!titulo || !fechaValida) {
+          console.warn('[evento] sin título o fecha válida, no se crea');
+          ejecutadas.push({ accion: 'evento', error: 'sin_fecha', titulo });
           continue;
         }
-        hora = `${mHora[1].padStart(2, '0')}:${mHora[2]}`;
+        if (fecha < colombiaDateString()) {
+          console.warn('[evento] fecha pasada, no se crea:', fecha);
+          ejecutadas.push({ accion: 'evento', error: 'fecha_pasada', titulo });
+          continue;
+        }
         // BUG 2 (REGLA 3): el cron notifica con ventanas relativas a "ahora" hacia
         // adelante; una hora ya pasada (>15 min) nunca dispararía. No la programamos.
-        const cuando = new Date(`${fecha}T${hora}:00-05:00`);
-        if (isNaN(cuando.getTime()) || cuando.getTime() < Date.now() - 15 * 60 * 1000) {
-          console.warn('[evento] hora pasada o inválida, no se crea:', fecha, hora);
-          ejecutadas.push({ accion: 'evento', error: 'hora_pasada', titulo });
-          continue;
+        if (hora) {
+          const cuando = new Date(`${fecha}T${hora}:00-05:00`);
+          if (isNaN(cuando.getTime()) || cuando.getTime() < Date.now() - 15 * 60 * 1000) {
+            console.warn('[evento] hora pasada o inválida, no se crea:', fecha, hora);
+            ejecutadas.push({ accion: 'evento', error: 'hora_pasada', titulo });
+            continue;
+          }
         }
         const { data: ev, error } = await supabase.from('events').insert({
           user_id: userId, titulo, fecha, hora, nota: 'Creado por IA'

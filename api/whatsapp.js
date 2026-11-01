@@ -188,7 +188,9 @@ async function procesarConIA(userId, phone, message) {
       .from('whatsapp_conversations')
       .select('role, content')
       .eq('phone', phone)
-      .order('created_at', { ascending: false })
+      // Por id: cada par usuario/asistente se guarda con el mismo created_at, y
+      // ordenar solo por fecha podía invertir los turnos que recibe la IA.
+      .order('id', { ascending: false })
       .limit(8);
     if (error) console.warn('[whatsapp] load history error:', error.message);
     else if (prev) history = prev.reverse().map(m => ({ role: m.role, content: m.content }));
