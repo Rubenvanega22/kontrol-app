@@ -170,6 +170,45 @@ html,body{width:100%;height:100%;background:var(--bg);font-family:'DM Sans',sans
 .pago-pill.pend:active{background:rgba(245,158,11,0.28);}
 .pago-pill.paid{background:rgba(74,222,128,0.13);color:var(--green);}
 .pago-foto{display:inline-block;margin-top:3px;padding:0;background:none;border:none;font-family:inherit;font-size:10.5px;font-weight:600;color:var(--green);cursor:pointer;}
+/* ── Pestaña Recordatorios: tabla al ancho de la pantalla, solo baja hacia abajo ── */
+.rt-tools{display:flex;gap:8px;padding:6px 14px 8px;flex-shrink:0;}
+.rt-search{flex:1;min-width:0;display:flex;align-items:center;gap:7px;background:var(--card2);border:1px solid var(--bd);border-radius:14px;padding:0 11px;height:48px;}
+.rt-search input{flex:1;min-width:0;width:100%;background:transparent;border:none;outline:none;font:500 16px 'DM Sans',sans-serif;color:var(--t1);}
+.rt-search input::placeholder{color:var(--t3);}
+.rt-nueva{flex-shrink:0;height:48px;padding:0 13px;border:none;border-radius:14px;background:linear-gradient(135deg,#1a56db,#4a8fe8);color:#fff;font:700 15px 'DM Sans',sans-serif;white-space:nowrap;cursor:pointer;}
+.rt-leyenda{padding:0 16px 8px;font-size:13px;color:var(--t2);flex-shrink:0;}
+.rt-wrap{flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;margin:0 14px 6px;border:1px solid var(--bd);border-radius:14px;background:var(--card);-webkit-overflow-scrolling:touch;}
+.rt-tabla{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:0;}
+.rt-col-fecha{width:88px;}
+.rt-col-valor{width:104px;}
+.rt-tabla th,.rt-tabla td{text-align:left;vertical-align:top;border-bottom:1px solid var(--bd);border-right:1px solid var(--bd2);}
+.rt-tabla tr:last-child td{border-bottom:none;}
+.rt-tabla th:last-child,.rt-tabla td:last-child{border-right:none;}
+.rt-tabla th{position:sticky;top:0;z-index:2;background:var(--card3);padding:10px 8px;font-size:13px;font-weight:700;color:var(--t2);white-space:nowrap;}
+.rt-tabla td{padding:11px 8px;font-size:17px;line-height:1.28;}
+.rt-tabla th.rt-der{text-align:right;}
+.rt-fila{cursor:pointer;}
+.rt-fila:active td{background:rgba(255,255,255,0.04);}
+.rt-que{display:block;font-weight:600;overflow-wrap:anywhere;}
+.rt-nota{display:block;margin-top:4px;font-size:14px;line-height:1.3;color:var(--t2);overflow-wrap:anywhere;}
+.rt-creada{display:block;margin-top:4px;font-size:12px;color:rgba(232,238,248,0.52);}
+.rt-tabla td.rt-fecha{font-size:16px;padding-right:4px;}
+.rt-campana{font-size:14px;}
+.rt-tabla td.rt-valor{font-size:15px;font-weight:700;text-align:right;overflow-wrap:anywhere;}
+.rt-vacio{color:rgba(232,238,248,0.52);font-weight:400;}
+.rt-tabla td.rt-msg{padding:28px 12px;text-align:center;font-size:15px;color:var(--t2);}
+.rt-tabla tr.rt-edit td{background:rgba(59,130,246,0.1);padding:10px 8px;border-bottom:1px solid rgba(59,130,246,0.45);}
+.rt-campos{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:8px;}
+.rt-ancho{grid-column:1 / -1;}
+.rt-campo{display:block;min-width:0;}
+.rt-etq{display:block;margin-bottom:3px;font-size:12px;font-weight:600;color:#93c5fd;}
+.rt-campo input{display:block;width:100%;min-width:0;height:46px;padding:0 9px;background:rgba(255,255,255,0.06);border:1px solid rgba(59,130,246,0.45);border-radius:9px;outline:none;color:var(--t1);font:500 16px 'DM Sans',sans-serif;color-scheme:dark;-webkit-appearance:none;appearance:none;}
+.rt-campo input::placeholder{color:var(--t3);}
+.rt-edit .rt-creada{color:#93c5fd;margin-top:7px;}
+.rt-acciones{display:flex;gap:8px;margin-top:9px;}
+.rt-btn{flex:1;min-width:0;height:44px;border-radius:11px;border:1px solid var(--bd);background:transparent;color:var(--t2);font:700 14px 'DM Sans',sans-serif;cursor:pointer;}
+.rt-btn.ok{border:none;background:linear-gradient(135deg,#1a56db,#4a8fe8);color:#fff;}
+.rt-btn.borrar{color:var(--red);border-color:rgba(248,113,113,0.4);}
 .txt-amber{color:var(--amber);}
 .txt-red{color:var(--red);}
 /* ── Fase 5: progreso de abono + modal de pago ── */
@@ -849,11 +888,18 @@ select.form-inp option{background:#0c1228;}
 
     <!-- ══ RECORDATORIOS ══ -->
     <div class="scr" id="scr-recordatorios">
-      <div class="scroll">
-        <div id="recordatorios-list"></div>
-        <div style="height:80px"></div>
+      <div class="rt-tools">
+        <label class="rt-search">🔍<input id="rt-buscar" type="text" placeholder="Buscar…" aria-label="Buscar en recordatorios" oninput="renderRecordar()"/></label>
+        <button class="rt-nueva" type="button" onclick="nuevaFilaRecordatorio()">+ Nueva fila</button>
       </div>
-      <button class="fab" onclick="abrirModalRecordar('nota')">＋</button>
+      <div class="rt-leyenda">🔔 Ese día llega aviso por WhatsApp</div>
+      <div class="rt-wrap" id="rt-wrap">
+        <table class="rt-tabla">
+          <colgroup><col/><col class="rt-col-fecha"/><col class="rt-col-valor"/></colgroup>
+          <thead><tr><th>Qué recordar</th><th>Fecha</th><th class="rt-der">Valor</th></tr></thead>
+          <tbody id="recordatorios-list"></tbody>
+        </table>
+      </div>
     </div>
 
     <!-- ══ IA CHAT ══ -->
@@ -1262,18 +1308,6 @@ select.form-inp option{background:#0c1228;}
   </div>
 </div>
 
-<!-- Detalle Recordatorio -->
-<div class="modal-overlay hidden" id="modal-rec-detalle" onclick="closeModalOutside(event,'modal-rec-detalle')">
-  <div class="modal">
-    <div class="modal-hdr">
-      <span class="modal-ttl" id="rec-detalle-titulo">Recordatorio</span>
-      <button class="modal-close" onclick="hideModal('modal-rec-detalle')">✕</button>
-    </div>
-    <div id="rec-detalle-body"></div>
-    <button class="btn-danger" style="margin-top:14px" onclick="eliminarRecordatorio()">🗑 Eliminar</button>
-  </div>
-</div>
-
 <!-- Modal vista diaria del calendario -->
 <div class="modal-overlay hidden" id="modal-vista-diaria" onclick="closeModalOutside(event,'modal-vista-diaria')">
   <div class="modal">
@@ -1390,6 +1424,8 @@ async function syncDesdeSupabase() {
     if (recordatorios) DB.recordatorios = recordatorios.map(r => ({
       id: r.id, tipo: r.tipo, titulo: r.titulo, fecha: r.fecha,
       recordar_fecha: r.recordar_fecha || null,
+      valor: r.valor != null ? parseFloat(r.valor) : null,
+      nota: r.nota || '',
       content: r.content || {}, status: r.status || 'open',
       created_at: r.created_at
     }));
@@ -2153,7 +2189,7 @@ function abrirModalDiario(fechaISO){
 
   const eventos = (DB.eventos||[]).filter(e=>e.fecha===fechaISO);
   const pagos = (DB.pagos||[]).filter(p=>(p.fechaLimite||p.fecha_limite)===fechaISO);
-  const recs = (DB.recordatorios||[]).filter(r=>r.fecha===fechaISO);
+  const recs = (DB.recordatorios||[]).filter(r=>r.recordar_fecha===fechaISO);
 
   let html = '';
 
@@ -2213,7 +2249,9 @@ function agendarDesdeDiario(fechaISO){
 // ════════════════════════════════════════
 // RECORDATORIOS
 // ════════════════════════════════════════
-let recDetalleId = null;
+let recEdit = null;          // fila abierta: { id:'nueva'|número, titulo, fecha, valor, nota }
+let recEditOriginal = '';    // para saber si tiene cambios sin guardar
+let recGuardando = false;
 
 // Recordatorio = tipo 'nota' (legacy 'definicion' también cae aquí).
 // Listado = tipo 'listado' (legacy 'lista'); su content.items = [{text,done}].
@@ -2297,18 +2335,163 @@ function renderListados(listas){
   }).join('');
 }
 
+const recNormalizar = s => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+
+// "5 nov"; con el año solo si no es el actual.
+function fmtFechaFila(iso){
+  if(!iso) return '';
+  const base = fmtDiaMes(iso);
+  return iso.slice(0,4) === todayStr().slice(0,4) ? base : base+' '+iso.slice(2,4);
+}
+function creadaFila(r){
+  const iso = r.created_at ? new Date(r.created_at).toLocaleDateString('en-CA',{timeZone:'America/Bogota'}) : r.fecha;
+  return iso ? 'Creada '+fmtFechaFila(iso) : '';
+}
+
+function filaEdicionRecordatorio(r){
+  const e = recEdit;
+  const creada = r ? creadaFila(r) : 'Nueva · hoy, '+fmtFechaFila(todayStr());
+  return `<tr class="rt-edit"><td colspan="3">
+    <div class="rt-campos">
+      <label class="rt-campo rt-ancho"><span class="rt-etq">Qué recordar</span><input id="rt-titulo" type="text" maxlength="200" placeholder="Escribe aquí…" value="${escAttr(e.titulo)}" oninput="recEdit.titulo=this.value"/></label>
+      <label class="rt-campo rt-ancho"><span class="rt-etq">Nota</span><input type="text" maxlength="300" placeholder="Opcional" value="${escAttr(e.nota)}" oninput="recEdit.nota=this.value"/></label>
+      <label class="rt-campo"><span class="rt-etq">Fecha</span><input type="date" value="${escAttr(e.fecha)}" onchange="recEdit.fecha=this.value" oninput="recEdit.fecha=this.value"/></label>
+      <label class="rt-campo"><span class="rt-etq">Valor (COP)</span><input type="text" inputmode="numeric" placeholder="$0" value="${escAttr(e.valor)}" oninput="formatMonto(this);recEdit.valor=this.value"/></label>
+    </div>
+    <span class="rt-creada">${escAttr(creada)}</span>
+    <div class="rt-acciones">
+      <button type="button" class="rt-btn ok" onclick="guardarFilaRecordatorio()">Guardar</button>
+      <button type="button" class="rt-btn" onclick="cancelarFilaRecordatorio()">Cancelar</button>
+      ${r ? `<button type="button" class="rt-btn borrar" onclick="borrarFilaRecordatorio()">🗑 Borrar</button>` : ''}
+    </div>
+  </td></tr>`;
+}
+
+function filaRecordatorio(r){
+  const fecha = r.recordar_fecha
+    ? `<td class="rt-fecha">${fmtFechaFila(r.recordar_fecha)} <span class="rt-campana" role="img" aria-label="Aviso por WhatsApp">🔔</span></td>`
+    : '<td class="rt-fecha rt-vacio">—</td>';
+  const valor = r.valor > 0 ? `<td class="rt-valor">${fmtCOP(r.valor)}</td>` : '<td class="rt-valor rt-vacio">—</td>';
+  return `<tr class="rt-fila" onclick="abrirFilaRecordatorio(${r.id})">
+    <td><span class="rt-que">${escAttr(r.titulo)}</span>${r.nota ? `<span class="rt-nota">${escAttr(r.nota)}</span>` : ''}<span class="rt-creada">${escAttr(creadaFila(r))}</span></td>
+    ${fecha}${valor}
+  </tr>`;
+}
+
+// Por fecha de aviso, las que no tienen al final. El buscador mira qué recordar y nota.
 function renderRecordatorios(notas){
   const el = document.getElementById('recordatorios-list');
-  if(!notas.length){ el.innerHTML='<div class="empty"><div class="empty-ico">🔔</div><div class="empty-txt">No hay recordatorios. Toca ＋ para crear uno.</div></div>'; return; }
-  el.innerHTML = notas.map(r=>{
-      const content = r.content || {};
-      const texto = content.texto || content.definicion || '';
-      return `<div class="rec-card" style="position:relative" onclick="abrirRecDetalle('${r.id}')">
-        <button onclick="event.stopPropagation();borrarRecordatorioRapido('${r.id}')" style="position:absolute;top:8px;right:8px;background:rgba(248,113,113,0.15);border:none;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:11px;padding:0" title="Eliminar">🗑️</button>
-        <div class="rec-title" style="padding-right:32px">🔔 ${r.titulo}</div>
-        ${texto && texto!==r.titulo ? `<div style="font-size:11.5px;color:var(--t2);margin-top:4px">${texto}</div>` : ''}
-      </div>`;
-  }).join('');
+  if(!el) return;
+  const terminos = recNormalizar((document.getElementById('rt-buscar')||{}).value).split(/\s+/).filter(Boolean);
+  const visibles = notas.filter(r=>{
+    if(recEdit && String(recEdit.id)===String(r.id)) return true;
+    const texto = recNormalizar(r.titulo+' '+r.nota);
+    return terminos.every(t=>texto.includes(t));
+  }).sort((a,b)=>{
+    if(a.recordar_fecha && b.recordar_fecha && a.recordar_fecha!==b.recordar_fecha) return a.recordar_fecha.localeCompare(b.recordar_fecha);
+    if(!!a.recordar_fecha !== !!b.recordar_fecha) return a.recordar_fecha ? -1 : 1;
+    return new Date(b.created_at||0) - new Date(a.created_at||0);
+  });
+  let html = recEdit && recEdit.id==='nueva' ? filaEdicionRecordatorio(null) : '';
+  html += visibles.map(r=> recEdit && String(recEdit.id)===String(r.id) ? filaEdicionRecordatorio(r) : filaRecordatorio(r)).join('');
+  if(!html){
+    html = `<tr><td colspan="3" class="rt-msg">${terminos.length ? 'Nada coincide con tu búsqueda.' : 'No hay recordatorios. Toca + Nueva fila para crear uno.'}</td></tr>`;
+  }
+  el.innerHTML = html;
+}
+
+function recTieneCambios(){
+  return !!recEdit && JSON.stringify(recEdit) !== recEditOriginal;
+}
+function recAbrirEdicion(datos){
+  if(recTieneCambios()){ toast('Guarda o cancela la fila abierta','var(--amber)'); return false; }
+  recEdit = datos;
+  recEditOriginal = JSON.stringify(datos);
+  renderRecordar();
+  return true;
+}
+function nuevaFilaRecordatorio(){
+  if(!recAbrirEdicion({ id:'nueva', titulo:'', fecha:'', valor:'', nota:'' })) return;
+  document.getElementById('rt-wrap').scrollTop = 0;
+  const inp = document.getElementById('rt-titulo');
+  if(inp) inp.focus();
+}
+function abrirFilaRecordatorio(id){
+  const r = DB.recordatorios.find(x=>String(x.id)===String(id));
+  if(!r) return;
+  const abierta = recAbrirEdicion({
+    id: r.id, titulo: r.titulo||'', fecha: r.recordar_fecha||'',
+    valor: r.valor>0 ? Math.round(r.valor).toLocaleString('es-CO') : '', nota: r.nota||''
+  });
+  if(abierta){
+    const inp = document.getElementById('rt-titulo');
+    if(inp) inp.closest('tr').scrollIntoView({ block:'nearest' });
+  }
+}
+function cancelarFilaRecordatorio(){
+  recEdit = null;
+  renderRecordar();
+}
+
+function mensajeAvisoRecordatorio(fecha){
+  if(!fecha) return '✅ Guardado como registro';
+  const hoy = todayStr();
+  if(fecha < hoy) return '✅ Guardado. Esa fecha ya pasó: no llegará aviso';
+  if(!currentProfile?.telefono) return '✅ Guardado. Agrega tu WhatsApp en Configuración para recibir el aviso';
+  if(fecha === hoy){
+    const hora = parseInt(new Intl.DateTimeFormat('en-US',{timeZone:'America/Bogota',hour:'numeric',hourCycle:'h23'}).format(new Date()),10);
+    return hora >= 19 ? '✅ Guardado. Hoy ya no llega aviso (salen hasta las 7 pm)' : '✅ Guardado. Te llega el aviso hoy por WhatsApp';
+  }
+  return `✅ Guardado. Te aviso el ${fmtFechaFila(fecha)} a las 8 am`;
+}
+
+async function guardarFilaRecordatorio(){
+  if(!recEdit || recGuardando) return;
+  const titulo = recEdit.titulo.trim();
+  if(!titulo){
+    toast('⚠️ Escribe qué quieres recordar','var(--amber)');
+    const inp = document.getElementById('rt-titulo');
+    if(inp) inp.focus();
+    return;
+  }
+  if(!(await sesionLista())){ toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
+  const valor = parseCOP(recEdit.valor);
+  const fecha = recEdit.fecha || null;
+  const campos = {
+    titulo, nota: recEdit.nota.trim() || null, valor: valor > 0 ? valor : null,
+    recordar_fecha: fecha, content: { texto: titulo }
+  };
+  recGuardando = true;
+  let error, data;
+  if(recEdit.id==='nueva'){
+    ({ data, error } = await supa.from('reminders')
+      .insert({ ...campos, user_id: currentUser.id, tipo:'nota', fecha: todayStr() })
+      .select().single());
+  } else {
+    const original = DB.recordatorios.find(x=>String(x.id)===String(recEdit.id));
+    // Con otra fecha vuelve a tocar aviso; sin cambiarla no se repite el ya enviado.
+    if(!original || (original.recordar_fecha||null) !== fecha) campos.notificado = false;
+    ({ data, error } = await supa.from('reminders').update(campos)
+      .eq('id', recEdit.id).eq('user_id', currentUser.id).select().single());
+  }
+  recGuardando = false;
+  if(error || !data){ toast('❌ No se pudo guardar: '+(error?.message||'sin confirmación'),'var(--red)'); return; }
+  recEdit = null;
+  toast(mensajeAvisoRecordatorio(fecha),'var(--green)');
+  await syncDesdeSupabase();
+  renderRecordar();
+}
+
+async function borrarFilaRecordatorio(){
+  if(!recEdit || recEdit.id==='nueva') return;
+  const id = recEdit.id;
+  if(!(await uiConfirm(`¿Borrar "${recEdit.titulo}"?`))) return;
+  const { error } = await supa.from('reminders').delete().eq('id', id).eq('user_id', currentUser.id);
+  if(error){ toast('Error: '+error.message,'var(--red)'); return; }
+  recEdit = null;
+  toast('🗑 Borrado','var(--t2)');
+  await syncDesdeSupabase();
+  renderRecordar();
 }
 
 // DEPURAR: borra los ítems marcados (done) de un listado y persiste el resto.
@@ -2361,36 +2544,6 @@ async function toggleRecItem(recId, itemText){
   // Persistir el content actualizado en Supabase
   await supa.from('reminders').update({ content: rec.content }).eq('id', rec.id);
 }
-
-function abrirRecDetalle(id){
-  recDetalleId = id;
-  const r = DB.recordatorios.find(x => String(x.id) === String(id));
-  if(!r) return;
-  const content = r.content || {};
-  document.getElementById('rec-detalle-titulo').textContent = r.titulo;
-  let body = '';
-  if(r.tipo==='lista' && content.items){
-    body = content.items.map(it=>`<div class="rec-check" onclick="toggleRecItem('${r.id}','${(it.text||'').replace(/'/g,"\\'")}')"><div class="rec-cb ${it.done?'done':''}">${it.done?'✓':''}</div><span class="rec-label ${it.done?'done':''}">${it.text}</span></div>`).join('');
-  } else if(r.tipo==='definicion'){
-    body = `<div style="font-size:14px;color:var(--t2);line-height:1.6">${content.definicion||''}</div>`;
-  } else {
-    body = `<div style="font-size:14px;color:var(--t2);line-height:1.6">${content.texto||r.titulo}</div>`;
-  }
-  if(r.fecha) body = `<div style="font-size:11px;color:var(--t3);margin-bottom:8px">📅 ${fmtDate(r.fecha)}</div>` + body;
-  document.getElementById('rec-detalle-body').innerHTML = body;
-  showModal('modal-rec-detalle');
-}
-
-async function eliminarRecordatorio(){
-  if(!(await uiConfirm('¿Eliminar este recordatorio?'))) return;
-  const id = recDetalleId;
-  const { error } = await supa.from('reminders').delete().eq('id', id);
-  if(error){ toast('Error: '+error.message, 'var(--red)'); return; }
-  hideModal('modal-rec-detalle');
-  toast('🗑 Eliminado','var(--t2)');
-  await syncDesdeSupabase();
-}
-
 
 // ════════════════════════════════════════
 // IA CHAT
@@ -2505,6 +2658,7 @@ async function sendIA(opts){
 // Con hora, fechas largas o cualquier otra frase devuelve null y responde la IA.
 async function intentLocal(msg){
   var m = msg.toLowerCase();
+  if(/^(anota|ap[uú]nta|guarda|busca|qu[eé] d[ií]a|cu[aá]ndo)/i.test(m)) return null;
 
   var agendaM = msg.match(/^ag[e\u00e9]nda(?:me)?\s+(.+?)\s+(?:para\s+el|el|para)\s+(\d{1,2})\s*\.?$/i);
   if(agendaM){
@@ -3594,7 +3748,7 @@ function refrescarAlVolver(){
   if(Date.now() - _ultimoRefrescoAuto < 5000) return;
   const activo = document.activeElement;
   if(activo && /^(INPUT|TEXTAREA|SELECT)$/.test(activo.tagName)) return;
-  if(document.querySelector('.modal-overlay:not(.hidden)')) return;
+  if(document.querySelector('.modal-overlay:not(.hidden)') || recEdit) return;
   _ultimoRefrescoAuto = Date.now();
   syncDesdeSupabase();
 }
