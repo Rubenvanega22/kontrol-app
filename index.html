@@ -607,35 +607,35 @@ select.form-inp option{background:#0c1228;}
 
   <section class="lnd-hero lnd-wrap">
     <div class="lnd-eyebrow"><span class="lnd-dot"></span>Disponible en WhatsApp</div>
-    <h1 class="lnd-h1">Tu asistente de<br/><span class="lnd-grad">finanzas personales</span><br/>por WhatsApp</h1>
-    <p class="lnd-lead">Registra gastos por voz, recibe recordatorios de pagos y controla tus cuentas. Todo desde un chat.</p>
+    <h1 class="lnd-h1">Tu asistente<br/><span class="lnd-grad">personal</span><br/>por WhatsApp</h1>
+    <p class="lnd-lead">Organiza tu agenda, tus listas, tus pagos y tus recordatorios. Todo desde un chat.</p>
     <button type="button" class="lnd-btn" onclick="enterApp()">Entrar a la app →</button>
   </section>
 
   <section class="lnd-wrap lnd-sec">
     <div class="lnd-sec-eyebrow">Qué puedes hacer</div>
-    <h2 class="lnd-h2">Todo lo que tu plata necesita</h2>
-    <p class="lnd-sec-lead">Cuatro funciones diseñadas para que dejes de perderle el rastro a tu dinero.</p>
+    <h2 class="lnd-h2">Todo lo que tu día necesita</h2>
+    <p class="lnd-sec-lead">Cuatro funciones para que no se te pase nada.</p>
     <div class="lnd-feats">
       <div class="lnd-feat">
-        <div class="lnd-feat-ic">🎙️</div>
-        <div class="lnd-feat-ttl">Gastos por voz</div>
-        <div class="lnd-feat-txt">Habla y Kontrol anota tus movimientos al instante.</div>
-      </div>
-      <div class="lnd-feat">
-        <div class="lnd-feat-ic">⏰</div>
-        <div class="lnd-feat-ttl">Recordatorios de pagos</div>
-        <div class="lnd-feat-txt">Nunca olvides una fecha límite ni vuelvas a pagar una mora.</div>
+        <div class="lnd-feat-ic">📅</div>
+        <div class="lnd-feat-ttl">Agenda</div>
+        <div class="lnd-feat-txt">Dile qué tienes y a qué hora, y te avisa antes por WhatsApp.</div>
       </div>
       <div class="lnd-feat">
         <div class="lnd-feat-ic">💳</div>
-        <div class="lnd-feat-ttl">Control de cuentas</div>
-        <div class="lnd-feat-txt">Todos tus saldos en un solo lugar, siempre actualizados.</div>
+        <div class="lnd-feat-ttl">Pagos</div>
+        <div class="lnd-feat-txt">Nunca olvides una fecha límite ni vuelvas a pagar una mora.</div>
       </div>
       <div class="lnd-feat">
-        <div class="lnd-feat-ic">📸</div>
-        <div class="lnd-feat-ttl">Escáner de facturas</div>
-        <div class="lnd-feat-txt">Toma una foto y Kontrol registra el gasto. Sin escribir nada.</div>
+        <div class="lnd-feat-ic">📋</div>
+        <div class="lnd-feat-ttl">Listado</div>
+        <div class="lnd-feat-txt">Mercado, tareas o lo que sea: dictadas, escritas o desde una foto.</div>
+      </div>
+      <div class="lnd-feat">
+        <div class="lnd-feat-ic">🔔</div>
+        <div class="lnd-feat-ttl">Recordatorios</div>
+        <div class="lnd-feat-txt">Guarda lo que no quieres olvidar y elige cuándo te lo recuerda.</div>
       </div>
     </div>
   </section>
@@ -663,7 +663,7 @@ select.form-inp option{background:#0c1228;}
         <div class="lnd-step-num">03</div>
         <div class="lnd-step-body">
           <h3>Háblale a Kontrol</h3>
-          <p>Cuéntale tus gastos como a un asistente. Audio, texto o foto — él se encarga.</p>
+          <p>Cuéntale lo que tienes pendiente como a un asistente. Audio o texto — él se encarga.</p>
         </div>
       </div>
     </div>
@@ -671,7 +671,7 @@ select.form-inp option{background:#0c1228;}
 
   <section class="lnd-wrap lnd-sec" style="padding-bottom:30px;">
     <div class="lnd-cta-band">
-      <h2 class="lnd-h2">Empieza a controlar tu plata</h2>
+      <h2 class="lnd-h2">Empieza a organizarte</h2>
       <p>Gratis para empezar. Funciona desde el primer mensaje.</p>
       <button type="button" class="lnd-btn" onclick="enterApp()">Entrar a la app →</button>
     </div>
@@ -764,130 +764,28 @@ select.form-inp option{background:#0c1228;}
     </div>
     <div class="hdr-right">
       <div class="hbtn" id="btn-refresh" onclick="refrescarPestana(this)" title="Actualizar">🔄</div>
-      <div class="hbtn" onclick="goTab('inbox');setScanTab('bandeja')">🔔<div class="badge" id="notif-badge" style="display:none">0</div></div>
+      <div class="hbtn" onclick="goTab('ia')" title="Asistente">🧠</div>
       <div class="hbtn" onclick="goTab('config')">⚙️</div>
     </div>
   </div>
 
   <!-- NAV -->
   <div class="nav">
-    <button class="ntab on" id="tab-resumen" onclick="goTab('resumen')">🏠 Resumen</button>
-    <button class="ntab" id="tab-pagos" onclick="goTab('pagos')">🗓 Pagos</button>
-    <button class="ntab" id="tab-agenda" onclick="goTab('agenda')">📅 Agenda</button>
-    <button class="ntab" id="tab-recordar" onclick="goTab('recordar')">📌 Recordar</button>
-    <button class="ntab" id="tab-mas" onclick="abrirMenuMas()">⋯ Más</button>
-    <button class="ntab" id="tab-movimientos" onclick="goTab('movimientos')" style="display:none">≡ Movimientos</button>
-    <button class="ntab" id="tab-cajas" onclick="goTab('cajas')" style="display:none">🏦 Cajas</button>
-    <button class="ntab" id="tab-ia" onclick="goTab('ia')" style="display:none">🧠 IA</button>
-    <button class="ntab" id="tab-metas" onclick="goTab('metas')" style="display:none">🎯 Metas</button>
-    <button class="ntab" id="tab-inbox" onclick="goTab('inbox')" style="display:none">📥 Bandeja</button>
-    <button class="ntab" id="tab-config" onclick="goTab('config')" style="display:none">⚙️ Config</button>
+    <button class="ntab on" id="tab-agenda" onclick="goTab('agenda')">📅 Agenda</button>
+    <button class="ntab" id="tab-listado" onclick="goTab('listado')">📋 Listado</button>
+    <button class="ntab" id="tab-pagos" onclick="goTab('pagos')">💳 Pagos</button>
+    <button class="ntab" id="tab-recordatorios" onclick="goTab('recordatorios')">🔔 Recordatorios</button>
     <button class="ntab" id="tab-admin" onclick="goTab('admin')" style="display:none">⚙️ Admin</button>
   </div>
 
   <!-- SCREENS -->
   <div class="screens">
 
-    <!-- ══ RESUMEN ══ -->
-    <div class="scr on" id="scr-resumen">
-      <div class="scroll" id="scroll-resumen">
-        <!-- Banner WhatsApp del bot (dismissible).
-             Usa el sandbox Twilio (+14155238886). Para hablar con Kontrol,
-             el tester debe enviar primero "join biggest-establish" una vez,
-             y la sesión dura 72h después del último inbound. -->
-        <div class="wa-banner" id="wa-banner" style="display:none">
-          <div class="wa-banner-info">
-            <div class="wa-banner-ttl">Háblale a Kontrol por WhatsApp:</div>
-            <div class="wa-banner-num">+1 415 523 8886</div>
-            <div class="wa-banner-hint">Primera vez: envía <b>join biggest-establish</b></div>
-          </div>
-          <a class="wa-banner-btn" href="https://wa.me/14155238886?text=join%20biggest-establish" target="_blank" rel="noopener">Abrir</a>
-          <button class="wa-banner-x" onclick="dismissWaBanner()" aria-label="Ocultar">✕</button>
-        </div>
-        <!-- Balance card -->
-        <div class="bal">
-          <div class="bal-top">
-            <div class="bal-text">
-              <div class="bal-lbl">Saldo total</div>
-              <div class="bal-amt" id="bal-total">$0</div>
-              <div class="bal-sub">Este mes <b id="bal-cambio">+$0</b></div>
-            </div>
-            <div class="bal-chart-box">
-              <canvas id="miniChart"></canvas>
-              <div class="chart-tip" id="chartTip"></div>
-            </div>
-          </div>
-          <div class="bal-days" id="bal-days-row"></div>
-          <div class="bal-sep"></div>
-          <div class="bal-row">
-            <div class="bst"><div class="bst-l">↑ Ingresos</div><div class="bst-v" id="res-ingresos">$0</div></div>
-            <div class="bst"><div class="bst-l">↓ Gastos</div><div class="bst-v" id="res-gastos">$0</div></div>
-          </div>
-        </div>
+    
 
-        <!-- Atención hoy -->
-        <div class="sc" id="sc-atencion">
-          <div class="sc-hdr"><div class="sc-ttl">⚠️ Atención hoy</div><div class="sc-lnk" onclick="goTab('pagos')">Ver pagos ›</div></div>
-          <div id="atencion-list"></div>
-          <button class="resolve" onclick="goTab('pagos')">Ver pagos pendientes ›</button>
-        </div>
+    
 
-        <!-- Cuentas -->
-        <div class="sc">
-          <div class="sc-hdr"><div class="sc-ttl">💳 Mis cuentas</div><div class="sc-lnk" onclick="showModal('modal-nueva-cuenta')">+ Nueva ›</div></div>
-          <div id="cuentas-resumen-list"></div>
-        </div>
-
-        <!-- Cajas -->
-        <div class="sc" id="sc-cajas-resumen">
-          <div class="sc-hdr"><div class="sc-ttl">🏦 Mis cajas</div><div class="sc-lnk" onclick="goTab('cajas')">Ver todas ›</div></div>
-          <div id="cajas-resumen-list"></div>
-        </div>
-
-        <!-- Actividad reciente -->
-        <div class="sc">
-          <div class="sc-hdr"><div class="sc-ttl">Actividad reciente</div><div class="sc-lnk" onclick="goTab('movimientos')">Ver todo ›</div></div>
-          <div id="actividad-reciente-list"></div>
-        </div>
-        <div style="height:80px"></div>
-      </div>
-    </div>
-
-    <!-- ══ MOVIMIENTOS ══ -->
-    <div class="scr" id="scr-movimientos">
-      <div class="scroll">
-        <div style="display:flex;justify-content:flex-end;margin-bottom:6px">
-          <button class="fbtn" onclick="abrirHistorial('movement')">📁 Ver Historial</button>
-        </div>
-        <div class="period-row">
-          <button class="pbtn" onclick="setMovPeriod(this,'hoy')">Hoy</button>
-          <button class="pbtn" onclick="setMovPeriod(this,'semana')">Semana</button>
-          <button class="pbtn on" onclick="setMovPeriod(this,'mes')">Mes</button>
-          <button class="pbtn" onclick="setMovPeriod(this,'todo')">Todo</button>
-        </div>
-        <div class="search-wrap">
-          <span class="search-ico">🔍</span>
-          <input class="search-inp" id="mov-search" placeholder="Buscar movimiento…" oninput="renderMovimientos()"/>
-        </div>
-        <div class="filter-row">
-          <button class="fbtn on" onclick="setMovFiltro(this,'todo')">Todos</button>
-          <button class="fbtn" onclick="setMovFiltro(this,'ingreso')">Ingresos</button>
-          <button class="fbtn" onclick="setMovFiltro(this,'gasto')">Gastos</button>
-        </div>
-        <div id="movimientos-list"></div>
-        <div style="height:80px"></div>
-      </div>
-      <button class="fab" onclick="showModal('modal-nuevo-mov')">＋</button>
-    </div>
-
-    <!-- ══ CAJAS ══ -->
-    <div class="scr" id="scr-cajas">
-      <div class="scroll">
-        <div class="caja-grid" id="cajas-grid"></div>
-        <div style="height:80px"></div>
-      </div>
-      <button class="fab" onclick="showModal('modal-nueva-caja')">＋</button>
-    </div>
+    
 
     <!-- ══ PAGOS ══ -->
     <div class="scr" id="scr-pagos">
@@ -903,8 +801,17 @@ select.form-inp option{background:#0c1228;}
     </div>
 
     <!-- ══ AGENDA ══ -->
-    <div class="scr" id="scr-agenda">
+    <div class="scr on" id="scr-agenda">
       <div class="scroll">
+        <div class="wa-banner" id="wa-banner" style="display:none">
+          <div class="wa-banner-info">
+            <div class="wa-banner-ttl">Háblale a Kontrol por WhatsApp:</div>
+            <div class="wa-banner-num">+1 415 523 8886</div>
+            <div class="wa-banner-hint">Primera vez: envía <b>join biggest-establish</b></div>
+          </div>
+          <a class="wa-banner-btn" href="https://wa.me/14155238886?text=join%20biggest-establish" target="_blank" rel="noopener">Abrir</a>
+          <button class="wa-banner-x" onclick="dismissWaBanner()" aria-label="Ocultar">✕</button>
+        </div>
         <div class="sc">
           <div class="agenda-day-hdr">
             <div class="agenda-fecha" id="agenda-fecha-txt"></div>
@@ -931,17 +838,22 @@ select.form-inp option{background:#0c1228;}
       <button class="fab" onclick="showModal('modal-nuevo-evento')">＋</button>
     </div>
 
-    <!-- ══ RECORDAR ══ -->
-    <div class="scr" id="scr-recordar">
+    <!-- ══ LISTADO ══ -->
+    <div class="scr" id="scr-listado">
       <div class="scroll">
-        <div class="filter-row">
-          <button class="fbtn on" id="rsub-recordatorios" onclick="setRecSubtab('recordatorios')">🔔 Recordatorios</button>
-          <button class="fbtn" id="rsub-listados" onclick="setRecSubtab('listados')">📋 Listados</button>
-        </div>
-        <div id="recordar-list"></div>
+        <div id="listado-list"></div>
         <div style="height:80px"></div>
       </div>
-      <button class="fab" onclick="abrirModalRecordar()">＋</button>
+      <button class="fab" onclick="abrirModalRecordar('listado')">＋</button>
+    </div>
+
+    <!-- ══ RECORDATORIOS ══ -->
+    <div class="scr" id="scr-recordatorios">
+      <div class="scroll">
+        <div id="recordatorios-list"></div>
+        <div style="height:80px"></div>
+      </div>
+      <button class="fab" onclick="abrirModalRecordar('nota')">＋</button>
     </div>
 
     <!-- ══ IA CHAT ══ -->
@@ -951,190 +863,15 @@ select.form-inp option{background:#0c1228;}
       </div>
     </div>
 
-    <!-- ══ BANDEJA DETECCIONES ══ -->
-    <!-- ══ ESCANEAR ══ -->
-    <!-- ══ ESCANEAR ══ -->
-    <div class="scr" id="scr-inbox">
-      <div class="scroll">
-        <!-- Tabs: Escanear / Bandeja / Correo -->
-        <div class="filter-row" style="margin-bottom:12px">
-          <button class="fbtn on" id="scan-tab-camara" onclick="setScanTab('camara')">📷 Escanear</button>
-          <button class="fbtn" id="scan-tab-bandeja" onclick="setScanTab('bandeja')">📥 Bandeja</button>
-          <button class="fbtn" id="scan-tab-correo" onclick="setScanTab('correo')">✉️ Correo</button>
-        </div>
+    
 
-        <!-- TAB: Cámara/Galería -->
-        <div id="scan-panel-camara">
-          <!-- Preview imagen -->
-          <div id="scan-preview-wrap" style="display:none;margin-bottom:12px;position:relative">
-            <img id="scan-preview-img" style="width:100%;border-radius:16px;border:1px solid var(--bd);max-height:240px;object-fit:cover"/>
-            <button onclick="resetScan()" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.7);border:none;color:#fff;border-radius:50%;width:28px;height:28px;font-size:14px;cursor:pointer">✕</button>
-          </div>
-          <!-- Frame cuando no hay imagen -->
-          <div id="scan-empty-frame" style="width:100%;aspect-ratio:4/3;border:2px dashed rgba(59,130,246,0.25);border-radius:20px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;background:rgba(59,130,246,0.03);margin-bottom:14px">
-            <div style="font-size:36px">🧾</div>
-            <div style="font-size:12px;color:var(--t3);text-align:center">Toma foto o sube una imagen<br/>de tu factura o comprobante</div>
-          </div>
-          <!-- Botones cámara/galería -->
-          <div style="display:flex;gap:8px;margin-bottom:12px">
-            <button class="scan-btn" onclick="abrirCamara()" style="flex:1">
-              <span style="font-size:18px">📷</span> Cámara
-            </button>
-            <button class="scan-btn" onclick="abrirGaleria()" style="flex:1">
-              <span style="font-size:18px">🖼️</span> Galería
-            </button>
-          </div>
-          <!-- Input oculto para archivo -->
-          <input type="file" id="scan-file-camara" accept="image/*" capture="environment" style="display:none" onchange="onImageSelected(event)"/>
-          <input type="file" id="scan-file-camara2" accept="image/jpeg,image/png" capture="environment" style="display:none" onchange="onImageSelected(event)"/>
-          <input type="file" id="scan-file-galeria" accept="image/*" style="display:none" onchange="onImageSelected(event)"/>
-          <!-- Resultado del análisis -->
-          <div id="scan-result" style="display:none">
-            <div class="sc" style="margin-bottom:10px">
-              <div class="sc-hdr"><div class="sc-ttl">🧠 Resultado del análisis</div></div>
-              <div id="scan-result-body"></div>
-            </div>
-            <!-- Formulario de corrección -->
-            <div class="sc">
-              <div class="sc-hdr"><div class="sc-ttl">✏️ Confirmar / Corregir</div></div>
-              <div class="form-group">
-                <label class="form-label">Descripción</label>
-                <input class="form-inp" id="scan-desc" placeholder="Comercio / descripción"/>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Monto (COP)</label>
-                <input class="form-inp" id="scan-monto" type="text" inputmode="numeric" oninput="formatMonto(this)"/>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Fecha</label>
-                <input class="form-inp" id="scan-fecha" type="date"/>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Categoría</label>
-                <select class="form-inp" id="scan-categoria">
-                  <option value="alimentacion">🍔 Alimentación</option>
-                  <option value="transporte">🚗 Transporte</option>
-                  <option value="servicios">💡 Servicios</option>
-                  <option value="salud">🏥 Salud</option>
-                  <option value="educacion">📚 Educación</option>
-                  <option value="hogar">🏠 Hogar</option>
-                  <option value="entretenimiento">🎮 Entretenimiento</option>
-                  <option value="otro">📦 Otro</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Cuenta</label>
-                <select class="form-inp" id="scan-cuenta"></select>
-              </div>
-              <button class="btn-primary" onclick="guardarMovimientoScan()">💾 Guardar como gasto</button>
-              <button class="btn-secondary" onclick="resetScan()">Descartar</button>
-            </div>
-          </div>
-          <!-- Loading -->
-          <div id="scan-loading" style="display:none;text-align:center;padding:30px">
-            <div style="font-size:32px;animation:spin 1s linear infinite">⏳</div>
-            <div style="font-size:13px;color:var(--t3);margin-top:10px">Analizando con IA…</div>
-          </div>
-          <!-- Sin API key -->
-          <div id="scan-no-key" style="display:none">
-            <div class="sc" style="border-color:rgba(245,158,11,0.25)">
-              <div style="font-size:13px;color:var(--t3);margin-bottom:8px" id="scan-no-key" style="display:none">⚠️ Error al analizar la imagen</div>
-              <div style="font-size:12px;color:var(--t3);margin-bottom:12px">Ve a Configuración → IA → elige Groq y pega tu API key gratuita de console.groq.com</div>
-              <button class="btn-secondary" onclick="goTab('config')">⚙️ Ir a Configuración</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- TAB: Bandeja -->
-        <div id="scan-panel-bandeja" style="display:none">
-          <p style="font-size:12px;color:var(--t3);margin-bottom:12px">Detecciones pendientes de confirmar — de correo, escaneo o texto bancario.</p>
-          <!-- Pegar texto manual -->
-          <div class="sc" style="margin-bottom:10px">
-            <div class="sc-hdr"><div class="sc-ttl">📋 Pegar texto bancario</div></div>
-            <textarea id="inbox-texto" class="form-inp" rows="3" placeholder="Ej: Bancolombia: Débito $150.000 cuenta ahorros…"></textarea>
-            <button class="btn-secondary" style="margin-top:8px;width:100%" onclick="parsearTextoManual()">🔍 Analizar texto</button>
-          </div>
-          <div id="inbox-result-list"></div>
-        </div>
-
-        <!-- TAB: Correo -->
-        <div id="scan-panel-correo" style="display:none">
-          <div class="sc" style="border-color:rgba(59,130,246,0.2)">
-            <div class="sc-hdr"><div class="sc-ttl">✉️ Sincronización de correo</div></div>
-            <div style="font-size:12px;color:var(--t3);margin-bottom:14px;line-height:1.6">
-              Conecta tu Gmail para que Kontrol detecte ingresos y gastos a partir de notificaciones bancarias. Las detecciones aparecerán en la Bandeja para que las confirmes.
-            </div>
-            <div id="correos-config-list"></div>
-            <button class="btn-primary" style="margin-top:10px" onclick="conectarGmail()">📧 Conectar Gmail</button>
-          </div>
-          <div class="sc" id="sc-correo-resultado" style="display:none">
-            <div class="sc-hdr"><div class="sc-ttl">📨 Notificaciones detectadas</div></div>
-            <div id="correo-result-list"></div>
-          </div>
-          <div id="correo-syncing" style="display:none;text-align:center;padding:20px">
-            <div style="font-size:28px;animation:spin 1s linear infinite">🔄</div>
-            <div style="font-size:12px;color:var(--t3);margin-top:8px">Revisando correos…</div>
-          </div>
-        </div>
-
-        <div style="height:80px"></div>
-      </div>
-    </div>
-
-    <!-- ══ METAS ══ -->
-    <div class="scr" id="scr-metas">
-      <div class="scroll">
-        <!-- Header -->
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-          <div>
-            <div style="font-size:17px;font-weight:800;color:#e8eef8;">🎯 Mis Metas 2026</div>
-            <div style="font-size:11px;color:rgba(232,238,248,0.4);margin-top:2px;">Tus objetivos del año</div>
-          </div>
-          <button class="fbtn on" onclick="showModal('modal-meta')" style="padding:8px 16px;font-size:13px;">+ Nueva meta</button>
-        </div>
-
-        <!-- Resumen anual -->
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;">
-          <div style="background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);border-radius:12px;padding:12px;text-align:center;">
-            <div style="font-size:22px;font-weight:800;color:#4ade80;" id="metas-completadas-count">0</div>
-            <div style="font-size:10px;color:rgba(232,238,248,0.4);">Logradas ✅</div>
-          </div>
-          <div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:12px;padding:12px;text-align:center;">
-            <div style="font-size:22px;font-weight:800;color:#3b82f6;" id="metas-activas-count">0</div>
-            <div style="font-size:10px;color:rgba(232,238,248,0.4);">En curso 🔥</div>
-          </div>
-          <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:12px;padding:12px;text-align:center;">
-            <div style="font-size:22px;font-weight:800;color:#f59e0b;" id="metas-progreso-avg">0%</div>
-            <div style="font-size:10px;color:rgba(232,238,248,0.4);">Promedio 📈</div>
-          </div>
-        </div>
-
-        <!-- Botón sugerir con IA -->
-        <button onclick="sugerirMetasIA()" style="width:100%;padding:11px;background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.25);border-radius:12px;color:#a78bfa;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:14px;">
-          🧠 Pedir sugerencias de metas a la IA
-        </button>
-
-        <!-- Lista de metas -->
-        <div id="metas-lista">
-          <div style="text-align:center;padding:40px 0;color:rgba(232,238,248,0.3);">
-            <div style="font-size:40px;margin-bottom:10px;">🎯</div>
-            <div style="font-size:14px;font-weight:600;">Sin metas aún</div>
-            <div style="font-size:12px;margin-top:6px;line-height:1.5;">Toca "+ Nueva meta" para empezar<br/>o pide sugerencias a la IA</div>
-          </div>
-        </div>
-      </div>
-    </div>
+    
 
     <!-- ══ CONFIG ══ -->
     <div class="scr" id="scr-config">
       <div class="scroll">
 
-        <!-- Cuentas -->
-        <div class="config-section">
-          <div class="config-section-ttl">💳 Cuentas / Bancos</div>
-          <div id="config-cuentas-list"></div>
-          <button class="btn-secondary" style="margin-top:4px" onclick="showModal('modal-nueva-cuenta')">+ Agregar cuenta</button>
-        </div>
+        
 
         <!-- Mi perfil (nombre + teléfono para WhatsApp) -->
         <div class="config-section">
@@ -1157,7 +894,7 @@ select.form-inp option{background:#0c1228;}
         <div class="config-section">
           <div class="config-section-ttl">🤖 Háblale a Kontrol</div>
           <div style="font-size:13px;color:var(--t2);margin-bottom:12px;line-height:1.5">
-            Manda mensajes, audio, fotos o ubicaciones al bot por WhatsApp.
+            Manda mensajes, audio o ubicaciones al bot por WhatsApp.
           </div>
           <div style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:0.5px;font-weight:700;margin-bottom:4px">📱 Número</div>
           <div style="font-family:'DM Sans',sans-serif;font-size:17px;font-weight:700;color:var(--t1);margin-bottom:14px;text-align:center;padding:10px;background:rgba(37,211,102,0.08);border-radius:10px;">+1 415 523 8886</div>
@@ -1236,23 +973,9 @@ select.form-inp option{background:#0c1228;}
           </div>
         </div>
 
-        <!-- Correos bancarios -->
-        <div class="config-section">
-          <div class="config-section-ttl">✉️ Correos bancarios</div>
-          <p style="font-size:11.5px;color:var(--t3);margin-bottom:10px;line-height:1.5">Conecta tu Gmail para que Kontrol detecte automáticamente notificaciones de Bancolombia, Nequi, Davivienda y Daviplata. Las detecciones aparecerán en la Bandeja para que las confirmes.</p>
-          <div id="correos-list-config"></div>
-          <button class="btn-primary" style="margin-top:10px" onclick="conectarGmail()">📧 Conectar Gmail</button>
-          <div style="margin-top:10px;padding:10px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:10px">
-            <div style="font-size:11px;color:var(--amber);font-weight:700;margin-bottom:4px">🔒 Privacidad</div>
-            <div style="font-size:11px;color:var(--t3);line-height:1.5">Kontrol pide permiso de solo lectura y filtra por remitentes bancarios. Nunca lee correos personales ni envía datos a terceros.</div>
-          </div>
-        </div>
+        
 
-        <!-- Bancos detectables -->
-        <div class="config-section">
-          <div class="config-section-ttl">🏦 Bancos activos para detección</div>
-          <div id="bancos-toggles"></div>
-        </div>
+        
 
         <!-- Notificaciones -->
         <div class="config-section">
@@ -1260,10 +983,6 @@ select.form-inp option{background:#0c1228;}
           <div class="config-row">
             <div class="config-row-info"><div class="config-row-lbl">Alertas de pagos</div><div class="config-row-sub">Próximos, vencidos, recordatorios</div></div>
             <div class="toggle on" id="toggle-notif" onclick="toggleConfig('toggle-notif','notif')"><div class="toggle-thumb"></div></div>
-          </div>
-          <div class="config-row">
-            <div class="config-row-info"><div class="config-row-lbl">Detecciones automáticas</div><div class="config-row-sub">Avisar cuando llega notificación bancaria</div></div>
-            <div class="toggle on" id="toggle-detec" onclick="toggleConfig('toggle-detec','detecNotif')"><div class="toggle-thumb"></div></div>
           </div>
         </div>
 
@@ -1274,12 +993,7 @@ select.form-inp option{background:#0c1228;}
           <button class="btn-primary" onclick="showModal('modal-feedback')">💬 Enviar feedback</button>
         </div>
 
-        <!-- Cierre de mes -->
-        <div class="config-section">
-          <div class="config-section-ttl">📁 Cierre de mes</div>
-          <p style="font-size:11.5px;color:var(--t3);margin-bottom:10px;line-height:1.5">Archiva los movimientos y pagos del mes actual al Historial. Tus saldos NO cambian.</p>
-          <button id="btn-cerrar-mes" class="btn-secondary" onclick="cerrarMesManual()">🔄 Cerrar mes manualmente</button>
-        </div>
+        
 
         <!-- Avanzado -->
         <div class="config-section">
@@ -1328,34 +1042,13 @@ select.form-inp option{background:#0c1228;}
 
   </div><!-- /screens -->
 
-  <!-- ══ MODAL METAS ══ -->
-  <div id="modal-meta" class="modal-overlay hidden" onclick="closeModalOutside(event,'modal-meta')">
-    <div class="modal">
-      <div class="modal-ttl">Nueva Meta</div>
-      <div class="field"><div class="flbl">Título</div><input class="finp" id="meta-titulo" placeholder="Ej: Comprar casa en diciembre"/></div>
-      <div class="field"><div class="flbl">Tipo</div>
-        <select class="finp" id="meta-tipo">
-          <option value="financiera">💰 Financiera (ahorro)</option>
-          <option value="habito">✅ Hábito</option>
-          <option value="proyecto">🚀 Proyecto</option>
-          <option value="personal">🌱 Personal</option>
-        </select>
-      </div>
-      <div class="field"><div class="flbl">Monto objetivo (COP)</div><input class="finp" id="meta-monto" type="number" placeholder="0"/></div>
-      <div class="field"><div class="flbl">Fecha límite</div><input class="finp" id="meta-fecha" type="date"/></div>
-      <div class="field"><div class="flbl">Descripción</div><input class="finp" id="meta-desc" placeholder="Opcional"/></div>
-      <div style="display:flex;gap:8px;margin-top:6px;">
-        <button class="fbtn" onclick="hideModal('modal-meta')" style="flex:1">Cancelar</button>
-        <button class="fbtn on" onclick="saveMeta()" style="flex:1">Guardar</button>
-      </div>
-    </div>
-  </div>
+  
 
   <!-- BOTTOM BAR IA -->
   <div class="bbar-wrap">
     <div class="bbar">
-      <div class="bb-cam" id="cam-btn" title="Escanear factura">📷
-        <input type="file" id="scan-file-bbar" accept="image/*" capture="environment" style="position:absolute;opacity:0;width:100%;height:100%;top:0;left:0;cursor:pointer" onchange="onImageSelected(event);goTab('inbox');setScanTab('camara')"/>
+      <div class="bb-cam" id="cam-btn" title="Foto a listado">📷
+        <input type="file" id="scan-file-bbar" accept="image/*" capture="environment" style="position:absolute;opacity:0;width:100%;height:100%;top:0;left:0;cursor:pointer" onchange="onFotoListado(event)"/>
       </div>
       <div class="bb-inp-wrap">
         <input class="bb-inp" id="ia-input" placeholder="Escribe a la IA…" onkeydown="if(event.key==='Enter'){this.blur();sendIA();}"/>
@@ -1386,17 +1079,6 @@ select.form-inp option{background:#0c1228;}
 <!-- LED de grabación: aparece arriba al centro mientras el usuario mantiene el botón mic -->
 <div class="rec-led" id="rec-led" aria-hidden="true"></div>
 
-<!-- Menú "Más" (bottom sheet) -->
-<div class="ms-overlay" id="menu-mas" onclick="if(event.target===this)cerrarMenuMas()">
-  <div class="ms-sheet">
-    <div class="ms-handle"></div>
-    <div class="ms-item" onclick="goTab('movimientos')"><span class="ms-ico">≡</span> Movimientos</div>
-    <div class="ms-item" onclick="goTab('cajas')"><span class="ms-ico">🏦</span> Cuentas (Cajas)</div>
-    <div class="ms-item" onclick="goTab('metas')"><span class="ms-ico">🎯</span> Metas</div>
-    <div class="ms-item" onclick="goTab('ia')"><span class="ms-ico">🧠</span> Asistente IA</div>
-    <div class="ms-item" onclick="goTab('config')"><span class="ms-ico">⚙️</span> Configuración</div>
-  </div>
-</div>
 
 <!-- Diálogo de confirmación (reemplaza confirm(), bloqueado en PWA standalone) -->
 <div class="modal-overlay hidden" id="modal-confirm" onclick="if(event.target===this)_uiConfirmResolve(false)">
@@ -1408,16 +1090,6 @@ select.form-inp option{background:#0c1228;}
   </div>
 </div>
 
-<!-- Cámara inteligente: imagen indecisa (otro / confianza baja) -->
-<div class="modal-overlay hidden" id="modal-clasif-imagen" onclick="if(event.target===this)clasifCancelar()">
-  <div class="modal">
-    <div class="modal-hdr"><span class="modal-ttl">¿Qué hago con esta foto?</span></div>
-    <div style="font-size:14px;color:var(--t2);line-height:1.5;margin:4px 0 18px">No estoy seguro de qué es. Elige cómo quieres guardarla:</div>
-    <button class="btn-primary" onclick="clasifComoGasto()">📊 Registrar como gasto</button>
-    <button class="btn-secondary" onclick="clasifComoListado()">📋 Crear listado</button>
-    <button class="btn-secondary" onclick="clasifCancelar()">❌ Cancelar</button>
-  </div>
-</div>
 
 <!-- Diálogo de texto (reemplaza prompt()) -->
 <div class="modal-overlay hidden" id="modal-prompt" onclick="if(event.target===this)_uiPromptResolve(false)">
@@ -1429,16 +1101,6 @@ select.form-inp option{background:#0c1228;}
   </div>
 </div>
 
-<!-- Editar nombre + saldo (Cuentas y Cajas) -->
-<div class="modal-overlay hidden" id="modal-ns" onclick="if(event.target===this)_uiNsResolve(false)">
-  <div class="modal">
-    <div class="modal-hdr"><span class="modal-ttl" id="ns-ttl">Editar</span><button class="modal-close" onclick="_uiNsResolve(false)">✕</button></div>
-    <div class="form-group"><label class="form-label">Nombre</label><input class="form-inp" id="ns-nombre" placeholder="Nombre"/></div>
-    <div class="form-group"><label class="form-label">Saldo</label><input class="form-inp" id="ns-saldo" type="text" inputmode="numeric" oninput="formatMonto(this)" placeholder="0"/></div>
-    <button class="btn-primary" onclick="_uiNsResolve(true)">Guardar</button>
-    <button class="btn-secondary" onclick="_uiNsResolve(false)">Cancelar</button>
-  </div>
-</div>
 
 <!-- Historial mensual (solo lectura) -->
 <div class="modal-overlay hidden" id="modal-historial" onclick="if(event.target===this)hideModal('modal-historial')">
@@ -1456,127 +1118,6 @@ select.form-inp option{background:#0c1228;}
 
 <!-- ══ MODALES ══ -->
 
-<!-- Nuevo Movimiento -->
-<div class="modal-overlay hidden" id="modal-nuevo-mov" onclick="closeModalOutside(event,'modal-nuevo-mov')">
-  <div class="modal">
-    <div class="modal-hdr">
-      <span class="modal-ttl">Nuevo movimiento</span>
-      <button class="modal-close" onclick="hideModal('modal-nuevo-mov')">✕</button>
-    </div>
-    <div class="tipo-row">
-      <button class="tipo-btn on-gasto" id="tipo-gasto" onclick="setTipo('gasto')">📤 Gasto</button>
-      <button class="tipo-btn" id="tipo-ingreso" onclick="setTipo('ingreso')">📥 Ingreso</button>
-    </div>
-    <div class="form-group" style="margin-top:12px">
-      <label class="form-label">Descripción</label>
-      <input class="form-inp" id="mov-desc" placeholder="Ej: Mercado, Salario, Gasolina…"/>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Monto (COP)</label>
-      <input class="form-inp" id="mov-monto" type="text" inputmode="numeric" placeholder="0" oninput="formatMonto(this)"/>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Fecha</label>
-      <input class="form-inp" id="mov-fecha" type="date"/>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Cuenta</label>
-      <select class="form-inp" id="mov-cuenta"></select>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Categoría</label>
-      <select class="form-inp" id="mov-categoria">
-        <option value="alimentacion">🍔 Alimentación</option>
-        <option value="transporte">🚗 Transporte</option>
-        <option value="servicios">💡 Servicios</option>
-        <option value="salud">🏥 Salud</option>
-        <option value="educacion">📚 Educación</option>
-        <option value="hogar">🏠 Hogar</option>
-        <option value="entretenimiento">🎮 Entretenimiento</option>
-        <option value="salario">💼 Salario</option>
-        <option value="freelance">💻 Freelance</option>
-        <option value="negocio">🏪 Negocio</option>
-        <option value="otro">📦 Otro</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Nota (opcional)</label>
-      <input class="form-inp" id="mov-nota" placeholder="Nota…"/>
-    </div>
-    <button class="btn-primary" onclick="guardarMovimiento()">Guardar movimiento</button>
-    <button class="btn-secondary" onclick="hideModal('modal-nuevo-mov')">Cancelar</button>
-  </div>
-</div>
-
-<!-- Quick Mov (acceso rápido desde tarjetas de cuenta o caja en Resumen) -->
-<div class="modal-overlay hidden" id="modal-quick-mov" onclick="closeModalOutside(event,'modal-quick-mov')">
-  <div class="modal">
-    <div class="modal-hdr">
-      <span class="modal-ttl" id="qm-titulo">Movimiento</span>
-      <button class="modal-close" onclick="hideModal('modal-quick-mov')">✕</button>
-    </div>
-    <div id="qm-subt" style="font-size:11.5px;color:var(--t3);margin-bottom:10px"></div>
-    <div class="tipo-row">
-      <button class="tipo-btn on-gasto" id="qm-tipo-gasto" onclick="setQMTipo('gasto')">📤 Gasto</button>
-      <button class="tipo-btn" id="qm-tipo-ingreso" onclick="setQMTipo('ingreso')">📥 Ingreso</button>
-    </div>
-    <div class="form-group" style="margin-top:12px">
-      <label class="form-label">Descripción</label>
-      <input class="form-inp" id="qm-desc" placeholder="Ej: Mercado, Salario, Gasolina…"/>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Monto (COP)</label>
-      <input class="form-inp" id="qm-monto" type="text" inputmode="numeric" placeholder="0" oninput="formatMonto(this)"/>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Categoría</label>
-      <select class="form-inp" id="qm-categoria">
-        <option value="alimentacion">🍔 Alimentación</option>
-        <option value="transporte">🚗 Transporte</option>
-        <option value="servicios">💡 Servicios</option>
-        <option value="salud">🏥 Salud</option>
-        <option value="educacion">📚 Educación</option>
-        <option value="hogar">🏠 Hogar</option>
-        <option value="entretenimiento">🎮 Entretenimiento</option>
-        <option value="salario">💼 Salario</option>
-        <option value="freelance">💻 Freelance</option>
-        <option value="negocio">🏪 Negocio</option>
-        <option value="otro">📦 Otro</option>
-      </select>
-    </div>
-    <button class="btn-primary" onclick="guardarMovimientoQuick()">Registrar</button>
-    <button class="btn-secondary" onclick="hideModal('modal-quick-mov')">Cancelar</button>
-  </div>
-</div>
-
-<!-- Nueva Cuenta -->
-<div class="modal-overlay hidden" id="modal-nueva-cuenta" onclick="closeModalOutside(event,'modal-nueva-cuenta')">
-  <div class="modal">
-    <div class="modal-hdr">
-      <span class="modal-ttl">Nueva cuenta</span>
-      <button class="modal-close" onclick="hideModal('modal-nueva-cuenta')">✕</button>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Nombre</label>
-      <input class="form-inp" id="cuenta-nombre" placeholder="Ej: Bancolombia, Nequi, Efectivo…"/>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Tipo</label>
-      <select class="form-inp" id="cuenta-tipo">
-        <option value="banco">🏦 Banco</option>
-        <option value="billetera">📱 Billetera digital</option>
-        <option value="efectivo">💵 Efectivo</option>
-        <option value="credito">💳 Crédito</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Saldo inicial (COP)</label>
-      <input class="form-inp" id="cuenta-saldo" type="text" inputmode="numeric" placeholder="0" oninput="formatMonto(this)"/>
-    </div>
-    <button class="btn-primary" onclick="guardarCuenta()">Crear cuenta</button>
-    <button class="btn-secondary" onclick="hideModal('modal-nueva-cuenta')">Cancelar</button>
-  </div>
-</div>
 
 <!-- Nuevo Pago -->
 <div class="modal-overlay hidden" id="modal-nuevo-pago" onclick="closeModalOutside(event,'modal-nuevo-pago')">
@@ -1608,10 +1149,6 @@ select.form-inp option{background:#0c1228;}
         <option value="entretenimiento">🎮 Entretenimiento</option>
         <option value="otro">📦 Otro</option>
       </select>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Cuenta a debitar</label>
-      <select class="form-inp" id="pago-cuenta"></select>
     </div>
     <div class="form-group">
       <label class="form-label">Nota (opcional)</label>
@@ -1664,48 +1201,6 @@ select.form-inp option{background:#0c1228;}
   </div>
 </div>
 
-<!-- Pagar / Abonar (Fase 5) -->
-<div class="modal-overlay hidden" id="modal-pagar" onclick="closeModalOutside(event,'modal-pagar')">
-  <div class="modal">
-    <div class="modal-hdr">
-      <span class="modal-ttl" id="pagar-titulo">Pagar</span>
-      <button class="modal-close" onclick="hideModal('modal-pagar')">✕</button>
-    </div>
-    <div style="margin-bottom:6px">
-      <div style="font-size:11px;color:var(--t3)">Monto a pagar</div>
-      <div id="pagar-monto" style="font-size:26px;font-family:'Syne',sans-serif;font-weight:900;color:var(--t1)">$0</div>
-    </div>
-    <div class="pagar-modes">
-      <label class="pagar-chk"><input type="checkbox" id="pagar-multiple" onchange="onPagarModeChange()"> Pago múltiple</label>
-      <label class="pagar-chk"><input type="checkbox" id="pagar-abono" onchange="onPagarModeChange()"> Abono</label>
-    </div>
-    <div id="pagar-hint" class="pagar-hint"></div>
-    <div id="pagar-fuentes"></div>
-    <div id="pagar-resumen" class="pagar-resumen"></div>
-    <button class="btn-primary" id="pagar-guardar" onclick="confirmarPago()" disabled>Guardar pago</button>
-    <button class="btn-secondary" onclick="hideModal('modal-pagar')">Cancelar</button>
-  </div>
-</div>
-
-<!-- Nueva Caja -->
-<div class="modal-overlay hidden" id="modal-nueva-caja" onclick="closeModalOutside(event,'modal-nueva-caja')">
-  <div class="modal">
-    <div class="modal-hdr">
-      <span class="modal-ttl">Nueva caja</span>
-      <button class="modal-close" onclick="hideModal('modal-nueva-caja')">✕</button>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Nombre de la caja</label>
-      <input class="form-inp" id="caja-nombre" placeholder="Ej: Caja diaria, Ahorros, Fondo…"/>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Saldo inicial (COP)</label>
-      <input class="form-inp" id="caja-saldo-ini" type="text" inputmode="numeric" placeholder="0" oninput="formatMonto(this)"/>
-    </div>
-    <button class="btn-primary" onclick="guardarCaja()">Crear caja</button>
-    <button class="btn-secondary" onclick="hideModal('modal-nueva-caja')">Cancelar</button>
-  </div>
-</div>
 
 <!-- Nuevo Evento Agenda -->
 <div class="modal-overlay hidden" id="modal-nuevo-evento" onclick="closeModalOutside(event,'modal-nuevo-evento')">
@@ -1739,10 +1234,10 @@ select.form-inp option{background:#0c1228;}
 <div class="modal-overlay hidden" id="modal-nuevo-recordar" onclick="closeModalOutside(event,'modal-nuevo-recordar')">
   <div class="modal">
     <div class="modal-hdr">
-      <span class="modal-ttl">Nuevo</span>
+      <span class="modal-ttl" id="rec-modal-ttl">Nuevo</span>
       <button class="modal-close" onclick="hideModal('modal-nuevo-recordar')">✕</button>
     </div>
-    <div class="form-group">
+    <div class="form-group" style="display:none">
       <label class="form-label">Tipo</label>
       <select class="form-inp" id="rec-tipo" onchange="onRecTipoChange()">
         <option value="nota">🔔 Recordatorio</option>
@@ -1806,27 +1301,6 @@ select.form-inp option{background:#0c1228;}
   </div>
 </div>
 
-<!-- Modal Conectar Correo (OAuth) -->
-<div class="modal-overlay hidden" id="modal-agregar-correo" onclick="closeModalOutside(event,'modal-agregar-correo')">
-  <div class="modal">
-    <div class="modal-hdr">
-      <span class="modal-ttl">Conectar correo</span>
-      <button class="modal-close" onclick="hideModal('modal-agregar-correo')">✕</button>
-    </div>
-    <div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:12px;padding:12px;margin-bottom:14px">
-      <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:6px">ℹ️ ¿Cómo funciona?</div>
-      <div style="font-size:11.5px;color:var(--t3);line-height:1.6">
-        Conecta tu Gmail para que Kontrol detecte automáticamente notificaciones de <b style="color:var(--t1)">Bancolombia, Nequi, Davivienda, Daviplata</b>.
-        Las detecciones aparecerán en <b style="color:var(--t1)">Bandeja</b> para que las confirmes o descartes antes de quedar registradas como movimientos.
-      </div>
-    </div>
-    <button class="btn-primary" onclick="conectarGmail()">📧 Conectar Gmail</button>
-    <div style="font-size:11px;color:var(--t3);margin-top:12px;line-height:1.5;text-align:center">
-      🔒 Permiso de solo lectura. Kontrol nunca verá correos que no sean de bancos.
-    </div>
-    <button class="btn-secondary" style="margin-top:14px" onclick="hideModal('modal-agregar-correo')">Cancelar</button>
-  </div>
-</div>
 
 <style>
 @keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
@@ -1847,8 +1321,13 @@ const DB_KEY = 'kontrol_v4';
 let DB = load();
 
 function load(){
-  try{ return JSON.parse(localStorage.getItem(DB_KEY)) || defaultDB(); }
-  catch(e){ return defaultDB(); }
+  try{
+    const db = JSON.parse(localStorage.getItem(DB_KEY)) || defaultDB();
+    // Limpia la caché local de módulos retirados, incluidos los tokens de correo
+    // que versiones anteriores guardaban aquí. Las tablas no se tocan.
+    for(const k of ['cuentas','movimientos','cajas','cajaMovimientos','emailAccounts','inboxDetected','correos']) delete db[k];
+    return db;
+  }catch(e){ return defaultDB(); }
 }
 function save(){
   localStorage.setItem(DB_KEY, JSON.stringify(DB));
@@ -1881,40 +1360,16 @@ async function syncDesdeSupabase() {
   try {
     const uid = currentUser.id;
     const [
-      { data: cuentas },
-      { data: movimientos },
       { data: pagos },
-      { data: cajas },
-      { data: cajaMovs, error: cajaMovsErr },
       { data: eventos },
-      { data: recordatorios },
-      { data: emailAccounts }
+      { data: recordatorios }
     ] = await Promise.all([
-      supa.from('accounts').select('*').eq('user_id', uid),
-      supa.from('movements').select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(200),
       supa.from('payments').select('*').eq('user_id', uid),
-      supa.from('cajas').select('*').eq('user_id', uid),
-      supa.from('caja_movimientos').select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(500),
       supa.from('events').select('*').eq('user_id', uid),
-      supa.from('reminders').select('*').eq('user_id', uid),
-      supa.from('email_accounts').select('*').eq('user_id', uid).eq('activo', true)
+      supa.from('reminders').select('*').eq('user_id', uid)
     ]);
-    if (cajaMovsErr) console.warn('[sync] caja_movimientos error (¿falta tabla?):', cajaMovsErr.message);
 
     // Actualizar DB local con datos de Supabase
-    if (cuentas) DB.cuentas = cuentas.map(c => ({
-      id: c.id, nombre: c.nombre, tipo: c.tipo || 'banco', saldo: parseFloat(c.saldo || 0)
-    }));
-
-    if (movimientos) DB.movimientos = movimientos.map(m => ({
-      id: m.id, tipo: m.tipo, descripcion: m.descripcion,
-      monto: parseFloat(m.monto), fecha: m.fecha,
-      cuentaId: m.account_id, categoria: m.categoria || 'otro', source: m.source || 'manual',
-      confirmado: m.confirmado !== false  // null/undefined → true (legacy), false → false
-    }));
-
-    DB.emailAccounts = emailAccounts || [];
-
     if (pagos) DB.pagos = pagos.map(p => ({
       id: p.id, nombre: p.nombre, monto: parseFloat(p.monto),
       // El resto del frontend lee fechaLimite (camelCase); guardamos ambos
@@ -1922,24 +1377,10 @@ async function syncDesdeSupabase() {
       fecha_limite: p.fecha_limite, fechaLimite: p.fecha_limite,
       fecha_pago: p.fecha_pago, fechaPago: p.fecha_pago,
       categoria: p.categoria || 'otro',
-      cuentaId: p.account_id,
       fijo: p.fijo === true,
-      montoAbonado: parseFloat(p.monto_abonado || 0),
-      montoPendiente: parseFloat(p.monto_pendiente != null ? p.monto_pendiente : p.monto),
       status: p.status,
       nota: p.nota || '',
       soporteUrl: p.soporte_url || null
-    }));
-
-    if (cajas) DB.cajas = cajas.map(c => ({
-      id: c.id, nombre: c.nombre, saldo: parseFloat(c.saldo || 0)
-    }));
-
-    DB.cajaMovimientos = (cajaMovs || []).map(cm => ({
-      id: cm.id, caja_id: cm.caja_id, tipo: cm.tipo,
-      monto: parseFloat(cm.monto || 0),
-      descripcion: cm.descripcion || '',
-      fecha: cm.fecha, created_at: cm.created_at
     }));
 
     if (eventos) DB.eventos = eventos.map(e => ({
@@ -1955,7 +1396,7 @@ async function syncDesdeSupabase() {
 
     save();
     // Re-renderiza SOLO la pantalla activa. Antes se renderizaban a mano
-    // resumen/movimientos/recordar, dejando fuera Pagos y Agenda (no se
+    // algunas pestañas, dejando fuera Pagos y Agenda (no se
     // auto-refrescaban tras una acción). renderCurrentScreen cubre todas.
     renderCurrentScreen();
   } catch(e) {
@@ -1964,19 +1405,12 @@ async function syncDesdeSupabase() {
 }
 function defaultDB(){
   return {
-    cuentas: [],
-    movimientos: [],
     pagos: [],
-    cajas: [],
-    cajaMovimientos: [],
     eventos: [],
     recordatorios: [],
-    inboxDetected: [],
-    correos: [],
     ia: {
       proveedor:'local', apiKey:'', modelo:'', nombre:'Kontrol', usuarioNombre:'',
-      notif:true, detecNotif:true,
-      bancosActivos:['bancolombia','nequi','davivienda','daviplata','bbva']
+      notif:true
     },
     nextId: 1
   };
@@ -2029,28 +1463,20 @@ function toast(msg, color){
 // ════════════════════════════════════════
 // NAVIGATION
 // ════════════════════════════════════════
-const TABS = ['resumen','movimientos','cajas','pagos','agenda','recordar','ia','inbox','config','metas','admin'];
+const TABS = ['agenda','listado','pagos','recordatorios','ia','config','admin'];
+// Secciones retiradas o con nombre anterior: la IA o un mensaje viejo aún pueden pedirlas.
+const TAB_ALIAS = { recordar:'recordatorios', listados:'listado', resumen:'agenda', inicio:'agenda', movimientos:'agenda', cajas:'agenda', metas:'agenda', inbox:'agenda' };
 // Mapa de tipo de acción IA → pestaña donde el usuario ve el resultado.
 // Si la IA ejecutó varias acciones, se usa la primera coincidencia (orden de la lista).
 const AI_ACTION_TAB = {
-  gasto: 'resumen',
-  ingreso: 'resumen',
-  editar_movimiento: 'resumen',
-  borrar_movimiento: 'resumen',
-  caja_entrada: 'cajas',
-  caja_salida: 'cajas',
-  editar_caja: 'cajas',
-  borrar_caja_movimiento: 'cajas',
   pago: 'pagos',
   marcar_pago_pagado: 'pagos',
   borrar_pago: 'pagos',
   evento: 'agenda',
   borrar_evento: 'agenda',
-  recordatorio: 'recordar',
-  borrar_recordatorio: 'recordar',
-  meta: 'metas',
-  borrar_meta: 'metas',
-  completar_micrometa: 'metas'
+  recordatorio: 'recordatorios',
+  borrar_recordatorio: 'recordatorios',
+  lista: 'listado'
 };
 
 function inferTabDestinoIA(acciones){
@@ -2063,28 +1489,17 @@ function inferTabDestinoIA(acciones){
   return null;
 }
 
-function abrirMenuMas(){ const m=document.getElementById('menu-mas'); if(m) m.classList.add('open'); }
-function cerrarMenuMas(){ const m=document.getElementById('menu-mas'); if(m) m.classList.remove('open'); }
-
 function goTab(id){
+  id = TAB_ALIAS[id] || id;
   TABS.forEach(t=>{
     const scr = document.getElementById('scr-'+t);
     const btn = document.getElementById('tab-'+t);
     if(scr) scr.classList.toggle('on', t===id);
     if(btn) btn.classList.toggle('on', t===id);
   });
-  // El botón "⋯ Más" queda activo si la sección actual vive dentro del menú.
-  const _enMenu = ['movimientos','cajas','ia','metas','config','inbox','admin'].includes(id);
-  const _btnMas = document.getElementById('tab-mas');
-  if(_btnMas) _btnMas.classList.toggle('on', _enMenu);
-  cerrarMenuMas();
-  if(id==='resumen') renderResumen();
-  if(id==='movimientos') renderMovimientos();
-  if(id==='cajas') renderCajas();
   if(id==='pagos') renderPagos();
   if(id==='agenda') renderAgenda();
-  if(id==='recordar') renderRecordar();
-  if(id==='metas') renderMetas();
+  if(id==='listado' || id==='recordatorios') renderRecordar();
   if(id==='config') renderConfig();
   if(id==='admin') renderAdmin();
 }
@@ -2092,13 +1507,10 @@ function goTab(id){
 // Detecta la pantalla activa y la re-renderiza sin cambiar de tab.
 function renderCurrentScreen(){
   const renders = {
-    resumen: renderResumen,
-    movimientos: renderMovimientos,
-    cajas: renderCajas,
     pagos: renderPagos,
     agenda: renderAgenda,
-    recordar: renderRecordar,
-    metas: renderMetas,
+    listado: renderRecordar,
+    recordatorios: renderRecordar,
     config: renderConfig
   };
   for(const [id, fn] of Object.entries(renders)){
@@ -2115,13 +1527,8 @@ function renderCurrentScreen(){
 // MODAL
 // ════════════════════════════════════════
 function showModal(id){
-  if(id==='modal-nuevo-mov'){
-    document.getElementById('mov-fecha').value = todayStr();
-    populateCuentasSelect('mov-cuenta');
-  }
   if(id==='modal-nuevo-pago'){
     document.getElementById('pago-fecha').value = todayStr();
-    populateCuentasSelect('pago-cuenta');
   }
   document.getElementById(id).classList.remove('hidden');
 }
@@ -2169,30 +1576,6 @@ function _uiPromptResolve(ok){
   if(cb) cb(val);
 }
 
-let _uiNsCb = null;
-function uiEditNombreSaldo(titulo, nombre, saldo){
-  return new Promise(resolve=>{
-    _uiNsCb = resolve;
-    document.getElementById('ns-ttl').textContent = titulo || 'Editar';
-    document.getElementById('ns-nombre').value = nombre || '';
-    document.getElementById('ns-saldo').value = (saldo != null ? String(Math.round(saldo)) : '');
-    showModal('modal-ns');
-  });
-}
-function _uiNsResolve(ok){
-  if(ok){
-    const nombre = document.getElementById('ns-nombre').value.trim();
-    if(!nombre){ toast('Escribe un nombre','var(--amber)'); return; }
-    const saldo = parseCOP(document.getElementById('ns-saldo').value);
-    hideModal('modal-ns');
-    const cb = _uiNsCb; _uiNsCb = null;
-    if(cb) cb({ nombre, saldo });
-  } else {
-    hideModal('modal-ns');
-    const cb = _uiNsCb; _uiNsCb = null;
-    if(cb) cb(null);
-  }
-}
 
 // ════════════════════════════════════════
 // HISTORIAL MENSUAL (solo lectura)
@@ -2248,199 +1631,6 @@ function verHistorialMes(mes){
     }).join('');
 }
 
-async function cerrarMesManual(){
-  if(!(await sesionLista())){ toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
-  const ok = await uiConfirm('Tus movimientos y pagos del mes pasarán a Historial. Tus saldos NO cambian. Esta acción no se puede deshacer.', { titulo:'¿Cerrar el mes actual?', okText:'Sí, cerrar mes' });
-  if(!ok) return;
-  const { data:{ session } } = await supa.auth.getSession();
-  if(!session){ toast('Sesión no válida','var(--red)'); return; }
-  const btn = document.getElementById('btn-cerrar-mes');
-  if(btn){ btn.disabled = true; btn.textContent = '⏳ Cerrando…'; }
-  try{
-    const res = await fetch('/api/cierre-mensual', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+session.access_token },
-      body: JSON.stringify({})
-    });
-    const data = await res.json();
-    if(!res.ok) throw new Error(data.error || 'Error del servidor');
-    await syncDesdeSupabase();
-    renderResumen();
-    toast(`✅ Mes cerrado — ${data.movimientos||0} mov · ${data.pagos||0} pagos archivados`,'var(--green)');
-  }catch(e){
-    toast('Error: '+e.message,'var(--red)');
-  }finally{
-    if(btn){ btn.disabled = false; btn.textContent = '🔄 Cerrar mes manualmente'; }
-  }
-}
-
-function populateCuentasSelect(selId){
-  const sel = document.getElementById(selId);
-  sel.innerHTML = DB.cuentas.length
-    ? DB.cuentas.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('')
-    : '<option value="">Sin cuentas</option>';
-}
-
-// ════════════════════════════════════════
-// TIPO MOVIMIENTO
-// ════════════════════════════════════════
-let movTipo = 'gasto';
-function setTipo(t){
-  movTipo = t;
-  document.getElementById('tipo-gasto').className = 'tipo-btn'+(t==='gasto'?' on-gasto':'');
-  document.getElementById('tipo-ingreso').className = 'tipo-btn'+(t==='ingreso'?' on-ingreso':'');
-}
-
-// ════════════════════════════════════════
-// MOVIMIENTOS
-// ════════════════════════════════════════
-let movPeriodo = 'mes';
-let movFiltro = 'todo';
-
-function setMovPeriod(btn, p){
-  movPeriodo = p;
-  document.querySelectorAll('.period-row .pbtn').forEach(b=>b.classList.remove('on'));
-  btn.classList.add('on');
-  renderMovimientos();
-}
-function setMovFiltro(btn, f){
-  movFiltro = f;
-  document.querySelectorAll('#scr-movimientos .filter-row .fbtn').forEach(b=>b.classList.remove('on'));
-  btn.classList.add('on');
-  renderMovimientos();
-}
-
-function filtrarMovsPorPeriodo(movs){
-  const hoy = new Date(); hoy.setHours(0,0,0,0);
-  return movs.filter(m=>{
-    const d = new Date(m.fecha+'T12:00:00');
-    if(movPeriodo==='hoy') return d.toDateString()===hoy.toDateString();
-    if(movPeriodo==='semana'){ const s=new Date(hoy); s.setDate(s.getDate()-7); return d>=s; }
-    if(movPeriodo==='mes') return d.getMonth()===hoy.getMonth()&&d.getFullYear()===hoy.getFullYear();
-    return true;
-  });
-}
-
-async function guardarMovimiento(){
-  if (!(await sesionLista())) { toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
-  const desc = document.getElementById('mov-desc').value.trim();
-  const monto = parseCOP(document.getElementById('mov-monto').value);
-  const fecha = document.getElementById('mov-fecha').value;
-  const cuentaId = document.getElementById('mov-cuenta').value;
-  const categoria = document.getElementById('mov-categoria').value;
-  const nota = document.getElementById('mov-nota').value.trim();
-
-  if(!desc){ toast('⚠️ Escribe una descripción','var(--amber)'); return; }
-  if(!monto){ toast('⚠️ Ingresa un monto válido','var(--amber)'); return; }
-  if(!fecha){ toast('⚠️ Selecciona una fecha','var(--amber)'); return; }
-
-  // Guardar en Supabase
-  const { data: mov, error } = await supa.from('movements').insert({
-    user_id: currentUser.id,
-    tipo: movTipo,
-    descripcion: desc,
-    monto,
-    fecha,
-    account_id: cuentaId || null,
-    categoria,
-    source: 'manual'
-  }).select().single();
-
-  if(error){ toast('❌ Error al guardar: '+error.message,'var(--red)'); return; }
-
-  // Actualizar saldo de cuenta en Supabase
-  if(cuentaId){
-    const cuenta = DB.cuentas.find(c=>String(c.id)===String(cuentaId));
-    if(cuenta){
-      const nuevoSaldo = movTipo==='ingreso' ? cuenta.saldo+monto : cuenta.saldo-monto;
-      await supa.from('accounts').update({ saldo: nuevoSaldo }).eq('id', cuentaId).eq('user_id', currentUser.id);
-    }
-  }
-
-  hideModal('modal-nuevo-mov');
-  document.getElementById('mov-desc').value='';
-  document.getElementById('mov-monto').value='';
-  document.getElementById('mov-nota').value='';
-  toast('✅ Movimiento guardado','var(--green)');
-  await syncDesdeSupabase();
-}
-
-// ════════════════════════════════════════
-// QUICK MOV — modal rápido desde tarjetas de Resumen
-// ════════════════════════════════════════
-let qmFuente = null; // { tipo: 'cuenta'|'caja', id }
-let qmTipo = 'gasto';
-
-function abrirQuickMov(tipo, id, tipoInicial){
-  qmFuente = { tipo, id };
-  const fuente = tipo === 'caja'
-    ? (DB.cajas || []).find(c => String(c.id) === String(id))
-    : (DB.cuentas || []).find(c => String(c.id) === String(id));
-  if(!fuente){ toast('No encontrado','var(--red)'); return; }
-  document.getElementById('qm-titulo').textContent = (tipo === 'caja' ? '🏦 ' : '💳 ') + fuente.nombre;
-  document.getElementById('qm-subt').textContent = `Saldo actual: ${fmtCOP(fuente.saldo)}`;
-  document.getElementById('qm-desc').value = '';
-  document.getElementById('qm-monto').value = '';
-  document.getElementById('qm-categoria').value = tipo === 'caja' ? 'otro' : 'otro';
-  setQMTipo(tipoInicial === 'ingreso' ? 'ingreso' : 'gasto');
-  showModal('modal-quick-mov');
-}
-
-function setQMTipo(t){
-  qmTipo = t;
-  document.getElementById('qm-tipo-gasto').className = 'tipo-btn'+(t==='gasto'?' on-gasto':'');
-  document.getElementById('qm-tipo-ingreso').className = 'tipo-btn'+(t==='ingreso'?' on-ingreso':'');
-}
-
-async function guardarMovimientoQuick(){
-  if(!qmFuente){ toast('Selecciona origen','var(--red)'); return; }
-  const desc = document.getElementById('qm-desc').value.trim();
-  const monto = parseCOP(document.getElementById('qm-monto').value);
-  const categoria = document.getElementById('qm-categoria').value;
-  if(!desc){ toast('⚠️ Escribe una descripción','var(--amber)'); return; }
-  if(!monto){ toast('⚠️ Ingresa un monto válido','var(--amber)'); return; }
-
-  if(qmFuente.tipo === 'cuenta'){
-    const cuenta = DB.cuentas.find(c => String(c.id) === String(qmFuente.id));
-    if(!cuenta){ toast('Cuenta no encontrada','var(--red)'); return; }
-    const { error } = await supa.from('movements').insert({
-      user_id: currentUser.id, tipo: qmTipo,
-      descripcion: desc, monto, fecha: todayStr(),
-      account_id: cuenta.id, categoria, source: 'manual'
-    });
-    if(error){ toast('❌ Error: '+error.message,'var(--red)'); return; }
-    const nuevoSaldo = qmTipo === 'ingreso' ? cuenta.saldo + monto : cuenta.saldo - monto;
-    await supa.from('accounts').update({ saldo: nuevoSaldo }).eq('id', cuenta.id).eq('user_id', currentUser.id);
-  } else {
-    const caja = DB.cajas.find(c => String(c.id) === String(qmFuente.id));
-    if(!caja){ toast('Caja no encontrada','var(--red)'); return; }
-    const { error } = await supa.from('caja_movimientos').insert({
-      user_id: currentUser.id,
-      caja_id: caja.id,
-      tipo: qmTipo,
-      descripcion: desc,
-      monto,
-      fecha: todayStr()
-    });
-    if(error){ toast('❌ Error: '+error.message,'var(--red)'); return; }
-    const nuevoSaldo = parseFloat(caja.saldo) + (qmTipo === 'ingreso' ? monto : -monto);
-    await supa.from('cajas').update({ saldo: nuevoSaldo }).eq('id', caja.id).eq('user_id', currentUser.id);
-  }
-
-  hideModal('modal-quick-mov');
-  toast('✅ Registrado','var(--green)');
-  await syncDesdeSupabase();
-}
-
-// ════════════════════════════════════════
-// EDITAR / BORRAR MOVIMIENTOS (UI manual)
-// ════════════════════════════════════════
-// ID del movimiento expandido en modo edición (o null si ninguno). Misma variable usada por
-// renderMovimientos y por el listado "Actividad reciente" del resumen — solo uno se edita
-// a la vez para evitar inputs simultáneos.
-let movEditId = null;
-// Tipo seleccionado en el toggle gasto/ingreso del form de edición (clave por id de mov).
-const editTipoState = {};
 
 // Escapa caracteres peligrosos para meter dentro de un atributo HTML value="..."
 function escAttr(s) {
@@ -2449,420 +1639,6 @@ function escAttr(s) {
     .replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// HTML del formulario de edición inline. Se inserta debajo de la fila del mov cuando
-// movEditId === mov.id. Cubre tipo, descripcion, monto, fecha, categoria y cuenta.
-function renderEditFormMov(m) {
-  const cats = ['alimentacion','transporte','servicios','salud','educacion','hogar','entretenimiento','salario','freelance','negocio','otro'];
-  const catLabels = {alimentacion:'🍔 Alimentación',transporte:'🚗 Transporte',servicios:'💡 Servicios',salud:'🏥 Salud',educacion:'📚 Educación',hogar:'🏠 Hogar',entretenimiento:'🎮 Entretenimiento',salario:'💼 Salario',freelance:'💻 Freelance',negocio:'🏪 Negocio',otro:'📦 Otro'};
-  const catOpts = cats.map(c => `<option value="${c}"${m.categoria===c?' selected':''}>${catLabels[c]}</option>`).join('');
-  const cuentasOpts = (DB.cuentas || []).map(c =>
-    `<option value="${c.id}"${String(c.id)===String(m.cuentaId)?' selected':''}>${escAttr(c.nombre)}</option>`
-  ).join('');
-  const tipo = editTipoState[m.id] || m.tipo;
-  return `<div onclick="event.stopPropagation()" style="background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.2);border-radius:10px;padding:10px;margin:6px 0 10px;">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
-      <button onclick="event.stopPropagation();setEditTipo('${m.id}','gasto')" id="edit-tipo-gasto-${m.id}" class="tipo-btn${tipo==='gasto'?' on-gasto':''}">📤 Gasto</button>
-      <button onclick="event.stopPropagation();setEditTipo('${m.id}','ingreso')" id="edit-tipo-ingreso-${m.id}" class="tipo-btn${tipo==='ingreso'?' on-ingreso':''}">📥 Ingreso</button>
-    </div>
-    <input class="form-inp" id="edit-desc-${m.id}" value="${escAttr(m.descripcion)}" placeholder="Descripción" style="margin-bottom:6px;padding:8px;font-size:12.5px"/>
-    <input class="form-inp" id="edit-monto-${m.id}" type="text" inputmode="numeric" value="${parseInt(m.monto||0,10).toLocaleString('es-CO')}" placeholder="Monto" oninput="formatMonto(this)" style="margin-bottom:6px;padding:8px;font-size:12.5px"/>
-    <input class="form-inp" id="edit-fecha-${m.id}" type="date" value="${escAttr(m.fecha)}" style="margin-bottom:6px;padding:8px;font-size:12.5px"/>
-    <select class="form-inp" id="edit-categoria-${m.id}" style="margin-bottom:6px;padding:8px;font-size:12.5px">${catOpts}</select>
-    <select class="form-inp" id="edit-cuenta-${m.id}" style="margin-bottom:8px;padding:8px;font-size:12.5px">
-      <option value=""${!m.cuentaId?' selected':''}>Sin cuenta asociada</option>
-      ${cuentasOpts}
-    </select>
-    <div style="display:flex;gap:6px">
-      <button onclick="event.stopPropagation();guardarEditMov('${m.id}')" class="btn-primary" style="flex:1;padding:8px;font-size:12.5px;margin:0">Guardar</button>
-      <button onclick="event.stopPropagation();toggleEditMov('${m.id}')" class="btn-secondary" style="flex:1;padding:8px;font-size:12.5px;margin:0">Cancelar</button>
-    </div>
-  </div>`;
-}
-
-function setEditTipo(id, tipo) {
-  editTipoState[id] = tipo;
-  const g = document.getElementById('edit-tipo-gasto-' + id);
-  const i = document.getElementById('edit-tipo-ingreso-' + id);
-  if (g) g.className = 'tipo-btn' + (tipo === 'gasto' ? ' on-gasto' : '');
-  if (i) i.className = 'tipo-btn' + (tipo === 'ingreso' ? ' on-ingreso' : '');
-}
-
-// Abre o cierra el form de edición para el id dado. Tap a la misma fila colapsa.
-function toggleEditMov(id) {
-  if (String(movEditId) === String(id)) {
-    movEditId = null;
-    delete editTipoState[id];
-  } else {
-    movEditId = id;
-    const m = (DB.movimientos || []).find(x => String(x.id) === String(id));
-    if (m) editTipoState[id] = m.tipo;
-  }
-  renderMovimientos();
-  renderResumen();  // actividad reciente puede tener el mismo mov expandido
-}
-
-// Calcula el ajuste neto sobre la cuenta cuando cambian campos del movimiento
-// (incluyendo posiblemente la cuenta destino). Mantiene la consistencia matemática
-// del saldo igual que api/ai-chat.js editar_movimiento.
-async function guardarEditMov(id) {
-  const mov = (DB.movimientos || []).find(m => String(m.id) === String(id));
-  if (!mov) { toast('Movimiento no encontrado','var(--red)'); return; }
-
-  const nuevoDesc = (document.getElementById('edit-desc-' + id) || {}).value || '';
-  const nuevoMonto = parseCOP((document.getElementById('edit-monto-' + id) || {}).value);
-  const nuevoFecha = (document.getElementById('edit-fecha-' + id) || {}).value || mov.fecha;
-  const nuevoCat = (document.getElementById('edit-categoria-' + id) || {}).value || mov.categoria;
-  const nuevoCuentaId = (document.getElementById('edit-cuenta-' + id) || {}).value || null;
-  const nuevoTipo = editTipoState[id] || mov.tipo;
-
-  if (!nuevoDesc.trim()) { toast('Escribe una descripción','var(--amber)'); return; }
-  if (!nuevoMonto || nuevoMonto <= 0) { toast('Monto inválido','var(--amber)'); return; }
-
-  // Impacto previo y nuevo sobre el saldo de la(s) cuenta(s).
-  // ingreso: + monto al saldo. gasto: - monto al saldo.
-  const prevImpact = mov.tipo === 'ingreso' ? +parseFloat(mov.monto) : -parseFloat(mov.monto);
-  const newImpact = nuevoTipo === 'ingreso' ? +nuevoMonto : -nuevoMonto;
-  const prevCuentaId = mov.cuentaId || null;
-
-  const mismaCuenta = String(prevCuentaId || '') === String(nuevoCuentaId || '');
-
-  // Aplicar ajustes ANTES de actualizar el movimiento, para que si algo falla la fila
-  // del movimiento original siga reflejando lo que realmente quedó en saldo.
-  if (mismaCuenta && nuevoCuentaId) {
-    const delta = newImpact - prevImpact;
-    if (delta !== 0) {
-      const c = DB.cuentas.find(x => String(x.id) === String(nuevoCuentaId));
-      if (c) {
-        const { error } = await supa.from('accounts').update({ saldo: c.saldo + delta }).eq('id', c.id).eq('user_id', currentUser.id);
-        if (error) { toast('Error saldo: ' + error.message,'var(--red)'); return; }
-      }
-    }
-  } else {
-    // Cambio de cuenta — revertir vieja, aplicar nueva.
-    if (prevCuentaId) {
-      const cVieja = DB.cuentas.find(x => String(x.id) === String(prevCuentaId));
-      if (cVieja) {
-        const { error } = await supa.from('accounts').update({ saldo: cVieja.saldo - prevImpact }).eq('id', cVieja.id).eq('user_id', currentUser.id);
-        if (error) { toast('Error saldo anterior: ' + error.message,'var(--red)'); return; }
-      }
-    }
-    if (nuevoCuentaId) {
-      const cNueva = DB.cuentas.find(x => String(x.id) === String(nuevoCuentaId));
-      if (cNueva) {
-        const { error } = await supa.from('accounts').update({ saldo: cNueva.saldo + newImpact }).eq('id', cNueva.id).eq('user_id', currentUser.id);
-        if (error) { toast('Error saldo nuevo: ' + error.message,'var(--red)'); return; }
-      }
-    }
-  }
-
-  const { error } = await supa.from('movements').update({
-    tipo: nuevoTipo,
-    descripcion: nuevoDesc.trim(),
-    monto: nuevoMonto,
-    fecha: nuevoFecha,
-    categoria: nuevoCat,
-    account_id: nuevoCuentaId
-  }).eq('id', id).eq('user_id', currentUser.id);
-  if (error) { toast('Error: ' + error.message,'var(--red)'); return; }
-
-  movEditId = null;
-  delete editTipoState[id];
-  toast('✅ Movimiento actualizado','var(--green)');
-  await syncDesdeSupabase();
-}
-
-async function borrarMovimientoUI(id) {
-  const mov = (DB.movimientos || []).find(m => String(m.id) === String(id));
-  if (!mov) {
-    toast('Movimiento no encontrado','var(--red)');
-    return;
-  }
-
-  const confirmMsg = `¿Eliminar este movimiento de ${fmtCOP(mov.monto)}? Esto revertirá el saldo.`;
-  if (!(await uiConfirm(confirmMsg))) return;
-
-  // Revertir saldo PRIMERO; si falla no borramos para no perder consistencia.
-  if (mov.cuentaId) {
-    const c = DB.cuentas.find(x => String(x.id) === String(mov.cuentaId));
-    if (c) {
-      const ajuste = mov.tipo === 'ingreso' ? -parseFloat(mov.monto) : +parseFloat(mov.monto);
-      const nuevoSaldo = c.saldo + ajuste;
-      const { error: errC } = await supa.from('accounts').update({ saldo: nuevoSaldo }).eq('id', c.id).eq('user_id', currentUser.id);
-      if (errC) { toast('Error saldo: ' + errC.message,'var(--red)'); return; }
-    }
-  }
-
-  const { error, data } = await supa.from('movements').delete().eq('id', id).eq('user_id', currentUser.id).select();
-  if (error) { toast('Error: ' + error.message,'var(--red)'); return; }
-  if (data && data.length === 0) {
-    // 0 filas en una DELETE bajo RLS puede significar:
-    //   (a) RLS bloqueó (user_id no matchea auth.uid()) — sería un bug real
-    //   (b) el id ya no existe en Supabase aunque sí en el cache local
-    //       (otra pestaña, otro dispositivo, deletes vía cron/MCP)
-    // El caso (b) es el común y aparece como "ghost movement" — la fila
-    // se ve en la UI porque DB.movimientos quedó stale. Forzamos sync
-    // para reconciliar y que el ghost desaparezca solo.
-    toast('Este movimiento ya no existe en el servidor. Sincronizando…','var(--amber)');
-    await syncDesdeSupabase();
-    return;
-  }
-
-  if (String(movEditId) === String(id)) movEditId = null;
-  toast('🗑️ Movimiento eliminado','var(--t2)');
-  await syncDesdeSupabase();
-}
-
-// Aliases para que cualquier referencia (manual, IA, copy-paste de otra parte) caiga
-// en la misma implementación. Las antiguas borrarCuentaLocal/borrarCajaLocal usan el
-// sufijo "Local"; mantenemos consistencia exponiendo ambos nombres.
-const borrarMovimiento = borrarMovimientoUI;
-const borrarMovimientoLocal = borrarMovimientoUI;
-
-function renderMovimientos(){
-  const search = (document.getElementById('mov-search')||{}).value||'';
-  let movs = filtrarMovsPorPeriodo((DB.movimientos||[]).filter(m => m.categoria !== 'caja' && m.categoria !== 'transferencia'));
-  if(movFiltro!=='todo') movs = movs.filter(m=>m.tipo===movFiltro);
-  if(search) movs = movs.filter(m=>m.descripcion.toLowerCase().includes(search.toLowerCase()));
-
-  const el = document.getElementById('movimientos-list');
-  if(!movs.length){
-    el.innerHTML = `<div class="empty"><div class="empty-ico">💸</div><div class="empty-txt">No hay movimientos en este período</div></div>`;
-    return;
-  }
-
-  const catIco = {alimentacion:'🍔',transporte:'🚗',servicios:'💡',salud:'🏥',educacion:'📚',hogar:'🏠',entretenimiento:'🎮',salario:'💼',freelance:'💻',negocio:'🏪',otro:'📦'};
-  el.innerHTML = movs.map(m=>{
-    const color = m.tipo==='ingreso'?'var(--green)':'var(--red)';
-    const signo = m.tipo==='ingreso'?'+':'-';
-    const cuenta = DB.cuentas.find(c=>String(c.id)===String(m.cuentaId));
-    const editing = String(movEditId) === String(m.id);
-    return `<div class="mov-row" onclick="toggleEditMov('${m.id}')" style="cursor:pointer">
-      <div class="mov-ico" style="background:${m.tipo==='ingreso'?'rgba(74,222,128,0.1)':'rgba(248,113,113,0.1)'}">${catIco[m.categoria]||'📦'}</div>
-      <div class="mov-info">
-        <div class="mov-name">${m.descripcion}</div>
-        <div class="mov-sub">${fmtDate(m.fecha)}${cuenta?' · '+cuenta.nombre:''}</div>
-      </div>
-      <div class="mov-amt" style="color:${color}">${signo}${fmtCOP(m.monto)}</div>
-      <button onclick="event.stopPropagation();borrarMovimientoUI('${m.id}')" title="Eliminar" style="background:rgba(248,113,113,0.12);border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:12px;padding:0;margin-left:6px;flex-shrink:0">🗑️</button>
-    </div>
-    ${editing ? renderEditFormMov(m) : ''}`;
-  }).join('');
-}
-
-// ════════════════════════════════════════
-// CUENTAS
-// ════════════════════════════════════════
-async function guardarCuenta(){
-  const nombre = document.getElementById('cuenta-nombre').value.trim();
-  const tipo = document.getElementById('cuenta-tipo').value;
-  const saldo = parseCOP(document.getElementById('cuenta-saldo').value);
-  if(!nombre){ toast('⚠️ Escribe un nombre','var(--amber)'); return; }
-
-  const { error } = await supa.from('accounts').insert({
-    user_id: currentUser.id, nombre, tipo, saldo
-  });
-  if(error){ toast('❌ Error: '+error.message,'var(--red)'); return; }
-
-  hideModal('modal-nueva-cuenta');
-  document.getElementById('cuenta-nombre').value='';
-  document.getElementById('cuenta-saldo').value='';
-  toast('✅ Cuenta creada','var(--green)');
-  await syncDesdeSupabase();
-}
-
-const tipoIco = {banco:'🏦',billetera:'📱',efectivo:'💵',credito:'💳'};
-const tipoColor = {banco:'#3b82f6',billetera:'#a78bfa',efectivo:'#4ade80',credito:'#f59e0b'};
-
-// ════════════════════════════════════════
-// RESUMEN
-// ════════════════════════════════════════
-function renderResumen(){
-  const hoy = new Date();
-  const mes = hoy.getMonth(), anio = hoy.getFullYear();
-
-  // Calcular totales del mes
-  const movsDelMes = DB.movimientos.filter(m=>{
-    const d = new Date(m.fecha+'T12:00:00');
-    return d.getMonth()===mes && d.getFullYear()===anio;
-  });
-  const esReal = m => m.categoria !== 'caja' && m.categoria !== 'transferencia';
-  const ingresos = movsDelMes.filter(m=>m.tipo==='ingreso' && esReal(m)).reduce((a,m)=>a+m.monto,0);
-  const gastos = movsDelMes.filter(m=>m.tipo==='gasto' && esReal(m)).reduce((a,m)=>a+m.monto,0);
-  const balanceTotal = DB.cuentas.reduce((a,c)=>a+c.saldo,0);
-
-  document.getElementById('bal-total').textContent = fmtCOP(balanceTotal);
-  document.getElementById('res-ingresos').textContent = fmtCOP(ingresos);
-  document.getElementById('res-gastos').textContent = fmtCOP(gastos);
-  const cambio = ingresos - gastos;
-  const cambioEl = document.getElementById('bal-cambio');
-  cambioEl.textContent = (cambio>=0?'+':'')+fmtCOP(cambio);
-  cambioEl.style.color = cambio>=0?'var(--green)':'var(--red)';
-
-  // Atención hoy
-  const hoyStr = todayStr();
-  const pagosHoy = DB.pagos.filter(p=>{
-    if(p.status==='pagado') return false;
-    const diff = Math.floor((new Date(p.fechaLimite+'T12:00:00')-new Date(hoyStr+'T12:00:00'))/(1000*60*60*24));
-    return diff<=3;
-  });
-  const atEl = document.getElementById('atencion-list');
-  if(pagosHoy.length){
-    atEl.innerHTML = pagosHoy.map(p=>{
-      const diff = Math.floor((new Date(p.fechaLimite+'T12:00:00')-new Date(hoyStr+'T12:00:00'))/(1000*60*60*24));
-      const msg = diff<0?'Vencido hace '+Math.abs(diff)+' día(s)':diff===0?'Vence hoy':'Vence en '+diff+' día(s)';
-      return `<div class="att-row"><div class="att-ic">⚠️</div><div class="att-tx"><b>${p.nombre}</b> — ${fmtCOP(p.monto)} · ${msg}</div></div>`;
-    }).join('');
-    document.getElementById('sc-atencion').style.display='';
-  } else {
-    document.getElementById('sc-atencion').style.display='none';
-  }
-
-  // Cuentas — tap abre quick-mov, ✏️ (con stopPropagation) abre editarCuenta (prompts).
-  const ctEl = document.getElementById('cuentas-resumen-list');
-  if(!DB.cuentas.length){
-    ctEl.innerHTML = `<div class="empty"><div class="empty-ico">💳</div><div class="empty-txt">Agrega tu primera cuenta</div></div>`;
-  } else {
-    const total = DB.cuentas.reduce((a,c)=>a+(c.saldo>0?c.saldo:0),0)||1;
-    ctEl.innerHTML = `<div class="wrow">${DB.cuentas.slice(0,3).map(c=>{
-      const pct = Math.min(100,Math.max(0,(c.saldo/total)*100));
-      const color = tipoColor[c.tipo]||'#3b82f6';
-      return `<div class="wc" onclick="abrirQuickMov('cuenta','${c.id}')" style="position:relative">
-        <button onclick="event.stopPropagation();editarCuenta('${c.id}')" title="Editar cuenta" style="position:absolute;top:4px;right:4px;background:rgba(255,255,255,0.06);border:none;border-radius:5px;width:22px;height:22px;cursor:pointer;font-size:10px;padding:0;color:var(--t2)">✏️</button>
-        <div class="wc-top"><div class="wc-name">${c.nombre}</div><div class="wc-pct" style="color:${color}">${tipoIco[c.tipo]||'💳'}</div></div>
-        <div class="wc-amt">${fmtCOP(c.saldo)}</div>
-        <div class="wbar"><div class="wfill" style="width:${pct}%;background:${color}"></div></div>
-      </div>`;
-    }).join('')}</div>`;
-  }
-
-  // Cajas en resumen
-  const cjEl = document.getElementById('cajas-resumen-list');
-  const scCajasRes = document.getElementById('sc-cajas-resumen');
-  if(cjEl){
-    if(!DB.cajas || !DB.cajas.length){
-      if(scCajasRes) scCajasRes.style.display = 'none';
-    } else {
-      if(scCajasRes) scCajasRes.style.display = '';
-      const totalCaja = DB.cajas.reduce((a,c)=>a+(parseFloat(c.saldo)>0?parseFloat(c.saldo):0),0)||1;
-      cjEl.innerHTML = `<div class="wrow">${DB.cajas.slice(0,3).map(c=>{
-        const saldo = parseFloat(c.saldo)||0;
-        const pct = Math.min(100,Math.max(0,(saldo/totalCaja)*100));
-        return `<div class="wc" onclick="abrirQuickMov('caja','${c.id}')">
-          <div class="wc-top"><div class="wc-name">${c.nombre}</div><div class="wc-pct" style="color:#4ade80">🏦</div></div>
-          <div class="wc-amt">${fmtCOP(saldo)}</div>
-          <div class="wbar"><div class="wfill" style="width:${pct}%;background:#4ade80"></div></div>
-        </div>`;
-      }).join('')}</div>`;
-    }
-  }
-
-  // Actividad reciente (excluye cajas y transferencias).
-  // Tap a la fila expande/colapsa el form de edición. El 🗑️ borra directo con confirm.
-  const arEl = document.getElementById('actividad-reciente-list');
-  const mesCol = mesActualColombia();
-  const recientes = (DB.movimientos||[])
-    .filter(m => m.categoria !== 'caja' && m.categoria !== 'transferencia')
-    .filter(m => String(m.fecha||'').slice(0,7) === mesCol)
-    .slice(0,5);
-  if(!recientes.length){
-    arEl.innerHTML = `<div class="empty"><div class="empty-ico">📊</div><div class="empty-txt">Sin movimientos este mes</div></div>`;
-  } else {
-    const catIco = {alimentacion:'🍔',transporte:'🚗',servicios:'💡',salud:'🏥',educacion:'📚',hogar:'🏠',entretenimiento:'🎮',salario:'💼',freelance:'💻',negocio:'🏪',otro:'📦'};
-    arEl.innerHTML = recientes.map(m=>{
-      const color = m.tipo==='ingreso'?'var(--green)':'var(--red)';
-      const signo = m.tipo==='ingreso'?'+':'-';
-      const editing = String(movEditId) === String(m.id);
-      return `<div class="ar" onclick="toggleEditMov('${m.id}')" style="cursor:pointer">
-        <div class="ar-ico" style="background:${m.tipo==='ingreso'?'rgba(74,222,128,0.1)':'rgba(248,113,113,0.1)'}">${catIco[m.categoria]||'📦'}</div>
-        <div class="ar-info"><div class="ar-name">${m.descripcion}</div><div class="ar-sub">${fmtDate(m.fecha)}</div></div>
-        <div class="ar-amt" style="color:${color}">${signo}${fmtCOP(m.monto)}</div>
-        <button onclick="event.stopPropagation();borrarMovimientoUI('${m.id}')" title="Eliminar" style="background:rgba(248,113,113,0.12);border:none;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:11px;padding:0;margin-left:6px;flex-shrink:0">🗑️</button>
-      </div>
-      ${editing ? renderEditFormMov(m) : ''}`;
-    }).join('');
-  }
-
-  renderMiniChart();
-}
-
-// ════════════════════════════════════════
-// MINI CHART
-// ════════════════════════════════════════
-function renderMiniChart(){
-  const canvas = document.getElementById('miniChart');
-  if(!canvas) return;
-  const dpr = window.devicePixelRatio||1;
-  const W = canvas.offsetWidth*dpr||220, H = canvas.offsetHeight*dpr||112;
-  canvas.width=W; canvas.height=H;
-  const ctx = canvas.getContext('2d');
-  ctx.clearRect(0,0,W,H);
-
-  // Build last 7 days
-  const dias = [];
-  for(let i=6;i>=0;i--){
-    const d = new Date(); d.setDate(d.getDate()-i);
-    const ds = d.toISOString().split('T')[0];
-    const daymovs = DB.movimientos.filter(m=>m.fecha===ds && m.categoria!=='caja' && m.categoria!=='transferencia');
-    const neto = daymovs.reduce((a,m)=>a+(m.tipo==='ingreso'?m.monto:-m.monto),0);
-    dias.push({ds,neto});
-  }
-
-  // Acumular
-  let acc = DB.cuentas.reduce((a,c)=>a+c.saldo,0);
-  // trabajar hacia atrás
-  const vals = [];
-  const movsOrdered = [...DB.movimientos].sort((a,b)=>b.fecha.localeCompare(a.fecha));
-  let running = DB.cuentas.reduce((a,c)=>a+c.saldo,0);
-  const dayMap = {};
-  dias.forEach(d=>{ dayMap[d.ds]=running; });
-  // reconstruir hacia atrás
-  const dayVals = dias.map(d=>{
-    const s = DB.movimientos.filter(m=>m.fecha===d.ds && m.categoria!=='caja' && m.categoria!=='transferencia').reduce((a,m)=>a+(m.tipo==='ingreso'?m.monto:-m.monto),0);
-    return s;
-  });
-  // sumar acumulado simple
-  let base = running;
-  const points = dias.map((d,i)=>base).reverse();
-  // simplemente usamos saldo actual y retrocedemos
-  const pts = [];
-  let cur = running;
-  for(let i=dias.length-1;i>=0;i--){
-    pts.unshift(cur);
-    cur -= dayVals[i];
-  }
-
-  if(pts.length<2){ return; }
-  const mn = Math.min(...pts), mx = Math.max(...pts);
-  const rng = mx-mn||1;
-  const xOf = i=>(i/(pts.length-1))*(W-3*dpr)+1.5*dpr;
-  const yOf = v=>H-((v-mn)/rng)*(H-5*dpr)-2.5*dpr;
-
-  // Gradient fill
-  const grad = ctx.createLinearGradient(0,0,0,H);
-  grad.addColorStop(0,'rgba(74,222,128,0.25)');
-  grad.addColorStop(1,'rgba(74,222,128,0)');
-  ctx.beginPath();
-  ctx.moveTo(xOf(0),yOf(pts[0]));
-  for(let i=1;i<pts.length;i++) ctx.lineTo(xOf(i),yOf(pts[i]));
-  ctx.lineTo(xOf(pts.length-1),H);
-  ctx.lineTo(xOf(0),H);
-  ctx.closePath();
-  ctx.fillStyle=grad; ctx.fill();
-
-  // Line
-  ctx.beginPath();
-  ctx.moveTo(xOf(0),yOf(pts[0]));
-  for(let i=1;i<pts.length;i++) ctx.lineTo(xOf(i),yOf(pts[i]));
-  ctx.strokeStyle='#4ade80'; ctx.lineWidth=2*dpr; ctx.lineJoin='round'; ctx.stroke();
-
-  // Days label
-  const daysEl = document.getElementById('bal-days-row');
-  const labels = dias.map(d=>{
-    const dt = new Date(d.ds+'T12:00:00');
-    return dt.toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit'}).replace('/','/');
-  });
-  daysEl.innerHTML = [labels[0], labels[3], labels[6]].map(l=>`<span>${l}</span>`).join('');
-}
 
 // ════════════════════════════════════════
 // PAGOS
@@ -2884,7 +1660,6 @@ async function guardarPago(){
   const monto = parseCOP(document.getElementById('pago-monto').value);
   const fechaLimite = document.getElementById('pago-fecha').value;
   const categoria = document.getElementById('pago-categoria').value;
-  const cuentaSel = document.getElementById('pago-cuenta').value;
   const fijo = document.getElementById('pago-fijo-toggle').classList.contains('on');
   const nota = document.getElementById('pago-nota').value.trim();
 
@@ -2894,8 +1669,7 @@ async function guardarPago(){
 
   const { error } = await supa.from('payments').insert({
     user_id: currentUser.id, nombre, monto,
-    fecha_limite: fechaLimite, categoria, fijo,
-    account_id: cuentaSel || null, status: 'pendiente',
+    fecha_limite: fechaLimite, categoria, fijo, status: 'pendiente',
     nota: nota || null
   });
   if(error){ toast('❌ Error: '+error.message,'var(--red)'); return; }
@@ -3137,219 +1911,6 @@ async function verSoportePago(id){
   showModal('modal-pago-ver-foto');
 }
 
-// ════════════════════════════════════════
-// PAGAR / ABONAR (Fase 5) — modal de 4 modos + RPC atómica registrar_pago
-// ════════════════════════════════════════
-let pagarState = null; // { pago, target }
-let pagarSel = null;   // { multiple, abono, radioIdx, fuentes, lineas }
-
-function fuentesDisponibles(){
-  const cuentas = (DB.cuentas||[]).map(c=>({tipo:'cuenta', id:c.id, nombre:c.nombre, saldo:parseFloat(c.saldo||0)}));
-  const cajas   = (DB.cajas||[]).map(c=>({tipo:'caja',   id:c.id, nombre:'🏦 '+c.nombre, saldo:parseFloat(c.saldo||0)}));
-  return [...cuentas, ...cajas];
-}
-
-function abrirModalPagar(id){
-  const p = DB.pagos.find(x=>String(x.id)===String(id));
-  if(!p){ toast('Pago no encontrado','var(--red)'); return; }
-  if(p.status==='pagado'){ toast('Ya está pagado','var(--amber)'); return; }
-  const abonado = p.montoAbonado || 0;
-  const target = p.montoPendiente != null ? p.montoPendiente : (p.monto - abonado);
-  pagarState = { pago: p, target };
-  hideModal('modal-pago-detalle');
-  document.getElementById('pagar-titulo').textContent = p.nombre;
-  document.getElementById('pagar-monto').textContent = fmtCOP(target);
-  document.getElementById('pagar-multiple').checked = false;
-  document.getElementById('pagar-abono').checked = false;
-  renderFuentesPago();
-  showModal('modal-pagar');
-}
-
-function onPagarModeChange(){ renderFuentesPago(); }
-
-function renderFuentesPago(){
-  const multiple = document.getElementById('pagar-multiple').checked;
-  const abono = document.getElementById('pagar-abono').checked;
-  const fuentes = fuentesDisponibles();
-  const cont = document.getElementById('pagar-fuentes');
-  const hint = document.getElementById('pagar-hint');
-  const target = pagarState.target;
-  pagarSel = { multiple, abono, radioIdx:null, fuentes, lineas:[] };
-
-  if(!fuentes.length){
-    cont.innerHTML = '<div style="font-size:12px;color:var(--t3)">No tienes cuentas ni cajas para pagar.</div>';
-    hint.textContent='';
-    document.getElementById('pagar-resumen').textContent='';
-    document.getElementById('pagar-guardar').disabled = true;
-    return;
-  }
-
-  if(multiple){
-    hint.textContent = abono
-      ? 'Marca las fuentes del abono e ingresa cuánto sale de cada una.'
-      : 'Marca las fuentes y reparte el monto exacto entre ellas.';
-    cont.innerHTML = fuentes.map((f,i)=>`
-      <div class="fuente-row" id="frow-${i}">
-        <div class="fuente-top">
-          <input type="checkbox" id="fchk-${i}" style="width:16px;height:16px;accent-color:var(--blue)" onchange="onFuenteToggle(${i})">
-          <div class="fuente-nombre">${f.nombre}</div>
-          <div class="fuente-saldo">${fmtCOP(f.saldo)}</div>
-        </div>
-        <input class="fuente-inp" id="finp-${i}" type="text" inputmode="numeric" placeholder="0" style="display:none" oninput="onFuenteInput(${i})">
-        <div class="fuente-rowhint" id="fhint-${i}" style="display:none"></div>
-      </div>`).join('');
-  } else {
-    hint.textContent = abono ? 'Elige la cuenta y cuánto vas a abonar.' : 'Elige de dónde sale el pago.';
-    cont.innerHTML = fuentes.map((f,i)=>{
-      const insuf = !abono && f.saldo < target; // en pago simple debe alcanzar el total
-      return `
-      <div class="fuente-row ${insuf?'disabled':''}" id="frow-${i}" ${insuf?'':`onclick="selectFuenteRadio(${i})"`}>
-        <div class="fuente-top">
-          <input type="radio" name="pagar-fuente" id="frad-${i}" ${insuf?'disabled':''} style="width:16px;height:16px;accent-color:var(--blue)" onchange="selectFuenteRadio(${i})">
-          <div class="fuente-nombre">${f.nombre}</div>
-          <div class="fuente-saldo">${fmtCOP(f.saldo)}</div>
-        </div>
-        ${insuf?'<div class="fuente-rowhint">Activa Pago múltiple o Abono</div>':''}
-      </div>`;
-    }).join('');
-    if(abono){
-      cont.innerHTML += `
-      <div style="margin-top:10px">
-        <div style="font-size:11px;color:var(--t2);margin-bottom:5px">¿Cuánto abonas?</div>
-        <input class="fuente-inp" id="abono-monto" type="text" inputmode="numeric" placeholder="0" oninput="onAbonoMontoInput()">
-        <div class="fuente-rowhint" id="abono-hint" style="margin-top:4px"></div>
-      </div>`;
-    }
-  }
-  recalcPagar();
-}
-
-function onFuenteToggle(i){
-  const checked = document.getElementById('fchk-'+i).checked;
-  const inp = document.getElementById('finp-'+i);
-  inp.style.display = checked ? '' : 'none';
-  if(!checked){ inp.value=''; inp.classList.remove('over'); document.getElementById('fhint-'+i).style.display='none'; }
-  document.getElementById('frow-'+i).classList.toggle('sel', checked);
-  recalcPagar();
-}
-
-function onFuenteInput(i){
-  const f = pagarSel.fuentes[i];
-  const inp = document.getElementById('finp-'+i);
-  const hintEl = document.getElementById('fhint-'+i);
-  let val = parseCOP(inp.value);
-  if(val > f.saldo){ inp.classList.add('over'); hintEl.textContent='Máx: '+fmtCOP(f.saldo); hintEl.style.display=''; }
-  else { inp.classList.remove('over'); hintEl.style.display='none'; }
-  if(val>0) inp.value = val.toLocaleString('es-CO');
-  recalcPagar();
-}
-
-function selectFuenteRadio(i){
-  const f = pagarSel.fuentes[i];
-  if(!pagarSel.abono && f.saldo < pagarState.target) return; // insuficiente en pago simple
-  document.querySelectorAll('#pagar-fuentes .fuente-row').forEach(r=>r.classList.remove('sel'));
-  const row = document.getElementById('frow-'+i); if(row) row.classList.add('sel');
-  const rad = document.getElementById('frad-'+i); if(rad) rad.checked = true;
-  pagarSel.radioIdx = i;
-  recalcPagar();
-}
-
-function onAbonoMontoInput(){
-  const inp = document.getElementById('abono-monto');
-  let val = parseCOP(inp.value);
-  if(val>0) inp.value = val.toLocaleString('es-CO');
-  recalcPagar();
-}
-
-function recalcPagar(){
-  if(!pagarSel) return;
-  const target = pagarState.target;
-  const resumen = document.getElementById('pagar-resumen');
-  const btn = document.getElementById('pagar-guardar');
-  let total = 0, valido = true, lineas = [];
-
-  if(pagarSel.multiple){
-    pagarSel.fuentes.forEach((f,i)=>{
-      const chk = document.getElementById('fchk-'+i);
-      if(chk && chk.checked){
-        const v = parseCOP(document.getElementById('finp-'+i).value);
-        if(v>0){ lineas.push({tipo:f.tipo,id:f.id,monto:v}); total+=v; if(v>f.saldo) valido=false; }
-      }
-    });
-    if(!lineas.length) valido=false;
-    if(pagarSel.abono){ if(total<=0 || total>target) valido=false; }
-    else { if(total!==target) valido=false; }
-  } else if(pagarSel.abono){
-    const i = pagarSel.radioIdx;
-    const v = parseCOP((document.getElementById('abono-monto')||{}).value);
-    total = v;
-    if(i==null){ valido=false; }
-    else {
-      const f = pagarSel.fuentes[i];
-      const mx = Math.min(f.saldo, target);
-      const hintEl = document.getElementById('abono-hint');
-      if(hintEl){ hintEl.textContent='Máx: '+fmtCOP(mx); hintEl.style.display=''; }
-      if(v<=0 || v>f.saldo || v>target) valido=false;
-      else lineas.push({tipo:f.tipo,id:f.id,monto:v});
-    }
-  } else {
-    const i = pagarSel.radioIdx;
-    if(i==null){ valido=false; }
-    else {
-      const f = pagarSel.fuentes[i];
-      total = target;
-      if(f.saldo < target) valido=false;
-      else lineas.push({tipo:f.tipo,id:f.id,monto:target});
-    }
-  }
-
-  // Resumen visual
-  if(pagarSel.multiple){
-    if(pagarSel.abono){
-      resumen.innerHTML = `Total abono: <span class="ok">${fmtCOP(total)}</span><br>Pendiente del pago: <span class="pend">${fmtCOP(Math.max(0,target-total))}</span>`;
-    } else {
-      const cls = total===target?'ok':(total>target?'bad':'');
-      resumen.innerHTML = `Total ingresado: <span class="${cls}">${fmtCOP(total)}</span> / ${fmtCOP(target)}`;
-    }
-  } else if(pagarSel.abono){
-    resumen.innerHTML = `Abonando: <span class="ok">${fmtCOP(total)}</span><br>Pendiente: <span class="pend">${fmtCOP(Math.max(0,target-total))}</span>`;
-  } else {
-    resumen.innerHTML = pagarSel.radioIdx!=null ? `Pagando: <span class="ok">${fmtCOP(target)}</span>` : 'Selecciona una cuenta';
-  }
-
-  pagarSel.lineas = lineas;
-  btn.disabled = !valido;
-  const esAbono = pagarSel.abono || (pagarSel.multiple ? total<target : false);
-  btn.textContent = esAbono ? 'Guardar abono' : 'Guardar pago';
-}
-
-async function confirmarPago(){
-  if(!(await sesionLista())){ toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
-  if(!pagarSel || !pagarSel.lineas || !pagarSel.lineas.length){ toast('Selecciona el medio de pago','var(--amber)'); return; }
-  const btn = document.getElementById('pagar-guardar');
-  btn.disabled = true;
-  const { data, error } = await supa.rpc('registrar_pago', {
-    p_user_id: currentUser.id,
-    p_pago_id: pagarState.pago.id,
-    p_lineas: pagarSel.lineas,
-    p_fecha: todayStr()
-  });
-  if(error){
-    const m = error.message || '';
-    let msg = '❌ No se pudo registrar el pago';
-    if(m.includes('SALDO_INSUFICIENTE')) msg='❌ Saldo insuficiente en una de las fuentes';
-    else if(m.includes('EXCEDE_PENDIENTE')) msg='❌ El monto supera lo pendiente';
-    else if(m.includes('YA_PAGADO')) msg='Este pago ya está saldado';
-    else if(m) msg='❌ '+m;
-    toast(msg,'var(--red)');
-    btn.disabled = false;
-    return;
-  }
-  hideModal('modal-pagar');
-  toast(data && data.status==='pagado' ? '✅ Pago completado' : '🟡 Abono registrado','var(--green)');
-  await syncDesdeSupabase();
-  renderPagos();
-}
 
 async function eliminarPago(){
   const p = DB.pagos.find(x=>String(x.id)===String(pagoDetalleId));
@@ -3384,292 +1945,6 @@ async function toggleRecurrenciaPago(id, el){
   await syncDesdeSupabase();
 }
 
-// ════════════════════════════════════════
-// CAJAS
-// ════════════════════════════════════════
-let cajaDetalleId = null;
-let ceTipo = 'in';
-
-async function guardarCaja(){
-  if (!(await sesionLista())) { toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
-  const nombre = document.getElementById('caja-nombre').value.trim();
-  const saldo = parseCOP(document.getElementById('caja-saldo-ini').value);
-  if(!nombre){ toast('⚠️ Escribe un nombre','var(--amber)'); return; }
-
-  const { error } = await supa.from('cajas').insert({
-    user_id: currentUser.id, nombre, saldo
-  });
-  if(error){ toast('❌ Error: '+error.message,'var(--red)'); return; }
-
-  hideModal('modal-nueva-caja');
-  document.getElementById('caja-nombre').value='';
-  document.getElementById('caja-saldo-ini').value='';
-  toast('✅ Caja creada','var(--green)');
-  await syncDesdeSupabase();
-}
-
-function renderCajas(){
-  const el = document.getElementById('cajas-grid');
-  if(!el) return;
-  const cajas = DB.cajas || [];
-  const cards = cajas.map(c => {
-    const expanded = String(cajaDetalleId) === String(c.id);
-    if(expanded) return renderCajaExpandida(c);
-    // Card colapsada (vista normal del grid)
-    return `
-    <div class="caja-card" style="position:relative" onclick="toggleCajaExpand('${c.id}')">
-      <div style="position:absolute;top:6px;right:6px;display:flex;gap:4px">
-        <button onclick="event.stopPropagation();editarCaja('${c.id}')" style="background:rgba(255,255,255,0.08);border:none;border-radius:6px;width:24px;height:24px;cursor:pointer;font-size:11px;padding:0" title="Editar">✏️</button>
-        <button onclick="event.stopPropagation();borrarCajaLocal('${c.id}')" style="background:rgba(248,113,113,0.15);border:none;border-radius:6px;width:24px;height:24px;cursor:pointer;font-size:11px;padding:0" title="Eliminar">🗑️</button>
-      </div>
-      <div class="caja-ico">🏦</div>
-      <div class="caja-name">${c.nombre}</div>
-      <div class="caja-amt">${fmtCOP(c.saldo)}</div>
-      <div class="caja-bar"><div class="caja-fill" style="width:60%;background:var(--blue)"></div></div>
-      <div style="display:flex;gap:5px;margin-top:7px">
-        <button onclick="event.stopPropagation();expandirCajaConTipo('${c.id}','ingreso')" style="flex:1;background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.25);border-radius:7px;padding:5px 0;color:#4ade80;font-size:10.5px;font-weight:700;cursor:pointer">+ Ingreso</button>
-        <button onclick="event.stopPropagation();expandirCajaConTipo('${c.id}','gasto')" style="flex:1;background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.25);border-radius:7px;padding:5px 0;color:#f87171;font-size:10.5px;font-weight:700;cursor:pointer">− Gasto</button>
-      </div>
-    </div>`;
-  }).join('');
-  el.innerHTML = cards + `<div class="caja-card" style="border-style:dashed;background:transparent;display:flex;align-items:center;justify-content:center;flex-direction:column;min-height:110px" onclick="showModal('modal-nueva-caja')">
-    <div style="font-size:24px;color:var(--t3)">+</div>
-    <div style="font-size:10px;color:var(--t3);margin-top:4px">Nueva caja</div>
-  </div>`;
-
-  // Tras pintar, si hay caja expandida con tipo preseleccionado por
-  // expandirCajaConTipo, aplicarlo al toggle de tipo.
-  if(cajaDetalleId && cajaPendienteTipo){
-    setCETipo(cajaPendienteTipo === 'ingreso' ? 'in' : 'out');
-    cajaPendienteTipo = null;
-    const inp = document.getElementById('ce-monto');
-    if(inp) inp.focus();
-  }
-}
-
-// HTML de una caja en estado expandido — ocupa el ancho completo del grid (ambas columnas).
-// Muestra: header (nombre, saldo, botones de editar/borrar/cerrar), form de registro y historial mensual.
-function renderCajaExpandida(c){
-  return `
-  <div class="caja-card caja-card-expandida" style="grid-column:1/-1;position:relative;padding:14px;border-color:var(--blue)" onclick="event.stopPropagation()">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px">
-      <div style="flex:1;min-width:0">
-        <div style="display:flex;align-items:center;gap:6px">
-          <span style="font-size:18px">🏦</span>
-          <span style="font-size:13px;font-weight:700;color:var(--t1);overflow:hidden;text-overflow:ellipsis">${c.nombre}</span>
-        </div>
-        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:900;color:#4ade80;margin-top:4px" id="caja-exp-saldo-${c.id}">${fmtCOP(c.saldo)}</div>
-      </div>
-      <div style="display:flex;gap:4px">
-        <button onclick="event.stopPropagation();editarCaja('${c.id}')" style="background:rgba(255,255,255,0.08);border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:12px;padding:0" title="Editar">✏️</button>
-        <button onclick="event.stopPropagation();borrarCajaLocal('${c.id}')" style="background:rgba(248,113,113,0.15);border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:12px;padding:0" title="Eliminar">🗑️</button>
-        <button onclick="event.stopPropagation();toggleCajaExpand('${c.id}')" style="background:rgba(255,255,255,0.08);border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:13px;padding:0;color:var(--t2)" title="Cerrar">✕</button>
-      </div>
-    </div>
-
-    <div class="tipo-row" style="margin-bottom:10px">
-      <button class="tipo-btn on-ingreso" id="ce-tipo-in" onclick="event.stopPropagation();setCETipo('in')">📥 Entrada</button>
-      <button class="tipo-btn" id="ce-tipo-out" onclick="event.stopPropagation();setCETipo('out')">📤 Retiro</button>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Monto (COP)</label>
-      <input class="form-inp" id="ce-monto" type="text" inputmode="numeric" placeholder="0" oninput="formatMonto(this)" onclick="event.stopPropagation()"/>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Motivo / Nota</label>
-      <input class="form-inp" id="ce-nota" placeholder="¿Para qué?" onclick="event.stopPropagation()"/>
-    </div>
-    <button class="btn-primary" onclick="event.stopPropagation();guardarCajaEntry()">Registrar</button>
-
-    <div class="sc-hdr" style="margin-top:14px"><div class="sc-ttl">Historial del mes</div></div>
-    <div id="caja-entries-list"></div>
-  </div>`;
-}
-
-// Editar/borrar cuentas y cajas — usados por los botones de Config y Cajas
-// y también por las acciones de la IA que requieren confirmación.
-async function editarCuenta(id){
-  const c = DB.cuentas.find(x => String(x.id) === String(id));
-  if(!c){ toast('Cuenta no encontrada', 'var(--red)'); return; }
-  const r = await uiEditNombreSaldo('Editar cuenta', c.nombre, c.saldo);
-  if(!r) return;
-  const { error } = await supa.from('accounts').update({ nombre: r.nombre, saldo: r.saldo }).eq('id', id).eq('user_id', currentUser.id);
-  if(error){ toast('Error: '+error.message, 'var(--red)'); return; }
-  await syncDesdeSupabase();
-  toast('✓ Guardado', 'var(--green)');
-}
-
-async function borrarCuentaLocal(id){
-  const c = DB.cuentas.find(x => String(x.id) === String(id));
-  if(!c){ toast('Cuenta no encontrada', 'var(--red)'); return; }
-  const nMovs = (DB.movimientos || []).filter(m => String(m.cuentaId) === String(id)).length;
-  const nPagos = (DB.pagos || []).filter(p => String(p.cuentaId) === String(id)).length;
-  const partes = [];
-  if(nMovs) partes.push(`${nMovs} movimiento${nMovs === 1 ? '' : 's'}`);
-  if(nPagos) partes.push(`${nPagos} pago${nPagos === 1 ? '' : 's'}`);
-  const detalle = partes.length
-    ? ` Sus ${partes.join(' y ')} se conservarán como "Sin cuenta asociada".`
-    : '';
-  if(!(await uiConfirm(`Vas a eliminar la cuenta "${c.nombre}".${detalle} Esta acción no se puede deshacer.`))) return;
-  const { error } = await supa.from('accounts').delete().eq('id', id).eq('user_id', currentUser.id);
-  if(error){ toast('Error: '+error.message, 'var(--red)'); return; }
-  await syncDesdeSupabase();
-  toast('🗑️ Cuenta eliminada', 'var(--t2)');
-}
-
-async function editarCaja(id){
-  const c = DB.cajas.find(x => String(x.id) === String(id));
-  if(!c){ toast('Caja no encontrada', 'var(--red)'); return; }
-  const r = await uiEditNombreSaldo('Editar caja', c.nombre, c.saldo);
-  if(!r) return;
-  const { error } = await supa.from('cajas').update({ nombre: r.nombre, saldo: r.saldo }).eq('id', id).eq('user_id', currentUser.id);
-  if(error){ toast('Error: '+error.message, 'var(--red)'); return; }
-  await syncDesdeSupabase();
-  toast('✓ Guardado', 'var(--green)');
-}
-
-async function borrarCajaLocal(id){
-  const c = DB.cajas.find(x => String(x.id) === String(id));
-  if(!c){ toast('Caja no encontrada', 'var(--red)'); return; }
-  const nMovs = (DB.cajaMovimientos || []).filter(m => String(m.caja_id) === String(id)).length;
-  const detalle = nMovs
-    ? ` Se borrarán su saldo (${fmtCOP(c.saldo)}) y sus ${nMovs} movimiento${nMovs === 1 ? '' : 's'}.`
-    : ` Se borrará su saldo (${fmtCOP(c.saldo)}).`;
-  if(!(await uiConfirm(`Vas a eliminar la caja "${c.nombre}".${detalle} Esta acción no se puede deshacer.`))) return;
-  const { error } = await supa.from('cajas').delete().eq('id', id).eq('user_id', currentUser.id);
-  if(error){ toast('Error: '+error.message, 'var(--red)'); return; }
-  await syncDesdeSupabase();
-  toast('🗑️ Caja eliminada', 'var(--t2)');
-}
-
-// Tipo pendiente cuando se llama expandirCajaConTipo desde un card colapsado:
-// renderCajas() lo lee tras pintar para aplicarlo al toggle in/out de la caja recién expandida.
-let cajaPendienteTipo = null;
-
-// Solo una caja puede estar expandida a la vez. Tocar la misma la colapsa.
-function toggleCajaExpand(id){
-  const c = DB.cajas.find(x => String(x.id) === String(id));
-  if(!c){ toast('Caja no encontrada', 'var(--red)'); return; }
-  cajaDetalleId = (String(cajaDetalleId) === String(id)) ? null : id;
-  renderCajas();
-  if(cajaDetalleId){
-    renderCajaEntries();
-    // Scroll para asegurar que la caja expandida quede visible
-    const node = document.querySelector('.caja-card-expandida');
-    if(node && node.scrollIntoView){
-      setTimeout(()=>node.scrollIntoView({behavior:'smooth', block:'center'}), 50);
-    }
-  }
-}
-
-// Expande la caja y selecciona el tipo (ingreso/gasto) en el toggle.
-function expandirCajaConTipo(id, tipo){
-  cajaPendienteTipo = tipo;
-  if(String(cajaDetalleId) === String(id)){
-    // Ya está expandida — solo cambiar tipo
-    setCETipo(tipo === 'ingreso' ? 'in' : 'out');
-    cajaPendienteTipo = null;
-    const inp = document.getElementById('ce-monto');
-    if(inp) inp.focus();
-  } else {
-    cajaDetalleId = id;
-    renderCajas();
-    renderCajaEntries();
-  }
-}
-
-function setCETipo(t){
-  ceTipo = t;
-  const inEl = document.getElementById('ce-tipo-in');
-  const outEl = document.getElementById('ce-tipo-out');
-  if(inEl) inEl.className='tipo-btn'+(t==='in'?' on-ingreso':'');
-  if(outEl) outEl.className='tipo-btn'+(t==='out'?' on-gasto':'');
-}
-
-async function guardarCajaEntry(){
-  const monto = parseCOP(document.getElementById('ce-monto').value);
-  const nota = document.getElementById('ce-nota').value.trim();
-  if(!monto){ toast('⚠️ Ingresa un monto','var(--amber)'); return; }
-  const caja = DB.cajas.find(c=>String(c.id)===String(cajaDetalleId));
-  if(!caja){ toast('Caja no encontrada','var(--red)'); return; }
-
-  const tipoMov = ceTipo === 'in' ? 'ingreso' : 'gasto';
-  const desc = nota || (tipoMov === 'ingreso' ? 'Entrada de caja' : 'Salida de caja');
-  const nuevoSaldo = parseFloat(caja.saldo) + (ceTipo === 'in' ? monto : -monto);
-
-  const { error: errMov } = await supa.from('caja_movimientos').insert({
-    user_id: currentUser.id,
-    caja_id: cajaDetalleId,
-    tipo: tipoMov,
-    descripcion: desc,
-    monto,
-    fecha: todayStr()
-  });
-  if(errMov){ toast('❌ Error: '+errMov.message,'var(--red)'); return; }
-
-  const { error: errCaja } = await supa.from('cajas').update({ saldo: nuevoSaldo }).eq('id', cajaDetalleId).eq('user_id', currentUser.id);
-  if(errCaja){ toast('❌ Error caja: '+errCaja.message,'var(--red)'); return; }
-
-  const monEl = document.getElementById('ce-monto');
-  const notaEl = document.getElementById('ce-nota');
-  if(monEl) monEl.value='';
-  if(notaEl) notaEl.value='';
-  toast('✅ Registrado','var(--green)');
-  await syncDesdeSupabase();
-  // El re-render de cajas reconstruye la card expandida con saldo nuevo + repinta historial.
-  renderCajas();
-  renderCajaEntries();
-}
-
-function renderCajaEntries(){
-  const el = document.getElementById('caja-entries-list');
-  if(!el) return;
-  if(!cajaDetalleId){ el.innerHTML=''; return; }
-  const hoy = new Date();
-  const mes = hoy.getMonth(), anio = hoy.getFullYear();
-  const entries = (DB.cajaMovimientos||[])
-    .filter(cm => String(cm.caja_id) === String(cajaDetalleId))
-    .filter(cm => {
-      if(!cm.fecha) return false;
-      const d = new Date(cm.fecha+'T12:00:00');
-      return d.getMonth() === mes && d.getFullYear() === anio;
-    })
-    .sort((a,b)=>String(b.fecha||'').localeCompare(String(a.fecha||'')));
-  if(!entries.length){ el.innerHTML='<div class="empty"><div class="empty-ico">📋</div><div class="empty-txt">Sin movimientos este mes</div></div>'; return; }
-  el.innerHTML = entries.map(e=>{
-    const nota = e.descripcion || '—';
-    const color = e.tipo==='ingreso' ? 'var(--green)' : 'var(--red)';
-    const signo = e.tipo==='ingreso' ? '+' : '-';
-    return `<div class="caja-entry">
-      <div class="ce-dot" style="background:${color}"></div>
-      <div class="ce-info"><div class="ce-note">${nota}</div><div class="ce-date">${fmtDate(e.fecha)}</div></div>
-      <div class="ce-amt" style="color:${color}">${signo}${fmtCOP(e.monto)}</div>
-      <button onclick="event.stopPropagation();borrarCajaMovimiento('${e.id}')" style="background:rgba(248,113,113,0.15);border:none;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:12px;padding:0;margin-left:6px;flex-shrink:0" title="Eliminar">🗑️</button>
-    </div>`;
-  }).join('');
-}
-
-async function borrarCajaMovimiento(movId){
-  const mov = (DB.cajaMovimientos || []).find(m => String(m.id) === String(movId));
-  if(!mov){ toast('Movimiento no encontrado','var(--red)'); return; }
-  if(!(await uiConfirm(`¿Eliminar "${mov.descripcion || 'este movimiento'}" por ${fmtCOP(mov.monto)}?`))) return;
-
-  const caja = (DB.cajas || []).find(c => String(c.id) === String(mov.caja_id));
-  // Revertir el efecto del movimiento sobre el saldo de la caja
-  if(caja){
-    const ajuste = mov.tipo === 'ingreso' ? -parseFloat(mov.monto) : parseFloat(mov.monto);
-    const nuevoSaldo = parseFloat(caja.saldo) + ajuste;
-    const { error: errCaja } = await supa.from('cajas').update({ saldo: nuevoSaldo }).eq('id', caja.id).eq('user_id', currentUser.id);
-    if(errCaja){ toast('❌ Error caja: '+errCaja.message,'var(--red)'); return; }
-  }
-  const { error: errDel } = await supa.from('caja_movimientos').delete().eq('id', movId).eq('user_id', currentUser.id);
-  if(errDel){ toast('❌ Error: '+errDel.message,'var(--red)'); return; }
-
-  toast('🗑️ Movimiento eliminado','var(--t2)');
-  await syncDesdeSupabase();
-  renderCajas();
-  renderCajaEntries();
-}
 
 // ════════════════════════════════════════
 // AGENDA
@@ -3880,13 +2155,6 @@ function abrirModalDiario(fechaISO){
   const eventos = (DB.eventos||[]).filter(e=>e.fecha===fechaISO);
   const pagos = (DB.pagos||[]).filter(p=>(p.fechaLimite||p.fecha_limite)===fechaISO);
   const recs = (DB.recordatorios||[]).filter(r=>r.fecha===fechaISO);
-  const movs = (DB.movimientos||[]).filter(m=>m.fecha===fechaISO
-    && m.categoria!=='caja' && m.categoria!=='transferencia');
-  const ingresos = movs.filter(m=>m.tipo==='ingreso');
-  const gastos = movs.filter(m=>m.tipo==='gasto');
-  const totalIng = ingresos.reduce((s,m)=>s+parseFloat(m.monto||0),0);
-  const totalGas = gastos.reduce((s,m)=>s+parseFloat(m.monto||0),0);
-  const saldoNeto = totalIng - totalGas;
 
   let html = '';
 
@@ -3921,38 +2189,7 @@ function abrirModalDiario(fechaISO){
     </div>`;
   }
 
-  if (movs.length){
-    html += `<div class="day-sec"><div class="day-sec-ttl">💸 MOVIMIENTOS DEL DÍA</div>`;
-    if (ingresos.length){
-      html += `<div class="day-subg">
-        <div class="day-subg-ttl" style="color:var(--green)">▼ Ingresos +${fmtCOP(totalIng)}</div>
-        ${ingresos.map(m=>`<div class="day-item">
-          <span class="day-item-main">${m.descripcion}</span>
-          <span class="day-item-monto" style="color:var(--green)">+${fmtCOP(m.monto)}</span>
-        </div>`).join('')}
-      </div>`;
-    }
-    if (gastos.length){
-      html += `<div class="day-subg">
-        <div class="day-subg-ttl" style="color:var(--red)">▲ Gastos -${fmtCOP(totalGas)}</div>
-        ${gastos.map(m=>`<div class="day-item">
-          <span class="day-item-main">${m.descripcion}</span>
-          <span class="day-item-monto" style="color:var(--red)">-${fmtCOP(m.monto)}</span>
-        </div>`).join('')}
-      </div>`;
-    }
-    html += `</div>`;
-
-    const color = saldoNeto >= 0 ? 'var(--green)' : 'var(--red)';
-    const signo = saldoNeto >= 0 ? '+' : '-';
-    html += `<div class="day-sec">
-      <div class="day-sec-ttl">📊 RESUMEN DEL DÍA</div>
-      <div class="day-resumen">Saldo neto: <span style="color:${color};font-weight:700">${signo}${fmtCOP(Math.abs(saldoNeto))}</span></div>
-      <div class="day-resumen">Total movimientos: ${movs.length}</div>
-    </div>`;
-  }
-
-  if (!eventos.length && !pagos.length && !recs.length && !movs.length){
+  if (!eventos.length && !pagos.length && !recs.length){
     const esPasada = fechaISO < todayStr();
     html = `<div class="day-empty">
       <div class="day-empty-ico">📅</div>
@@ -3977,7 +2214,6 @@ function agendarDesdeDiario(fechaISO){
 // ════════════════════════════════════════
 // RECORDATORIOS
 // ════════════════════════════════════════
-let recSubtab = 'recordatorios';   // 'recordatorios' | 'listados'
 let recDetalleId = null;
 
 // Recordatorio = tipo 'nota' (legacy 'definicion' también cae aquí).
@@ -3985,16 +2221,11 @@ let recDetalleId = null;
 const ES_NOTA = r => r.tipo === 'nota' || r.tipo === 'definicion';
 const ES_LISTADO = r => r.tipo === 'listado' || r.tipo === 'lista';
 
-function setRecSubtab(s){
-  recSubtab = s;
-  document.getElementById('rsub-recordatorios').classList.toggle('on', s==='recordatorios');
-  document.getElementById('rsub-listados').classList.toggle('on', s==='listados');
-  renderRecordar();
-}
 
-// Abre el modal "+" preseleccionando el tipo según el sub-tab activo.
-function abrirModalRecordar(){
-  document.getElementById('rec-tipo').value = recSubtab==='listados' ? 'listado' : 'nota';
+// Abre el modal "+" con el tipo de la pestaña desde la que se pidió.
+function abrirModalRecordar(tipo){
+  document.getElementById('rec-tipo').value = tipo;
+  document.getElementById('rec-modal-ttl').textContent = tipo==='listado' ? 'Nuevo listado' : 'Nuevo recordatorio';
   onRecTipoChange();
   showModal('modal-nuevo-recordar');
 }
@@ -4038,18 +2269,19 @@ async function guardarRecordatorio(){
   renderRecordar();   // refresca la pestaña (antes no se re-renderizaba tras guardar)
 }
 
-// Render del sub-tab activo de la pestaña Recordar.
+// Render de las pestañas Listado y Recordatorios (comparten la tabla reminders).
 function renderRecordar(){
-  const el = document.getElementById('recordar-list');
-  if(!el) return;
   const recs = [...DB.recordatorios];
   const tsOf = r => r.created_at ? new Date(r.created_at).getTime() : (r.fecha ? new Date(r.fecha+'T12:00:00').getTime() : 0);
   recs.sort((a,b)=> tsOf(b) - tsOf(a));
+  renderListados(recs.filter(ES_LISTADO));
+  renderRecordatorios(recs.filter(ES_NOTA));
+}
 
-  if(recSubtab==='listados'){
-    const listas = recs.filter(ES_LISTADO);
-    if(!listas.length){ el.innerHTML='<div class="empty"><div class="empty-ico">📋</div><div class="empty-txt">No hay listados. Toca ＋ para crear uno.</div></div>'; return; }
-    el.innerHTML = listas.map(r=>{
+function renderListados(listas){
+  const el = document.getElementById('listado-list');
+  if(!listas.length){ el.innerHTML='<div class="empty"><div class="empty-ico">📋</div><div class="empty-txt">No hay listados. Toca ＋ para crear uno.</div></div>'; return; }
+  el.innerHTML = listas.map(r=>{
       const items = (r.content && r.content.items) || [];
       const hechos = items.filter(it=>it.done).length;
       const filas = items.length ? items.map(it=>`<div class="rec-check" onclick="toggleRecItem('${r.id}','${(it.text||'').replace(/'/g,"\\'")}')"><div class="rec-cb ${it.done?'done':''}">${it.done?'✓':''}</div><span class="rec-label ${it.done?'done':''}">${it.text}</span></div>`).join('') : '<div style="font-size:12px;color:var(--t3);padding:4px 0">Sin ítems aún</div>';
@@ -4063,11 +2295,13 @@ function renderRecordar(){
           <button class="btn-secondary" style="width:auto;flex:0 0 auto;margin-bottom:0;padding:6px 14px;font-size:14px" onclick="agregarItemListado('${r.id}')">Agregar</button>
         </div>
       </div>`;
-    }).join('');
-  } else {
-    const notas = recs.filter(ES_NOTA);
-    if(!notas.length){ el.innerHTML='<div class="empty"><div class="empty-ico">🔔</div><div class="empty-txt">No hay recordatorios. Toca ＋ para crear uno.</div></div>'; return; }
-    el.innerHTML = notas.map(r=>{
+  }).join('');
+}
+
+function renderRecordatorios(notas){
+  const el = document.getElementById('recordatorios-list');
+  if(!notas.length){ el.innerHTML='<div class="empty"><div class="empty-ico">🔔</div><div class="empty-txt">No hay recordatorios. Toca ＋ para crear uno.</div></div>'; return; }
+  el.innerHTML = notas.map(r=>{
       const content = r.content || {};
       const texto = content.texto || content.definicion || '';
       return `<div class="rec-card" style="position:relative" onclick="abrirRecDetalle('${r.id}')">
@@ -4075,8 +2309,7 @@ function renderRecordar(){
         <div class="rec-title" style="padding-right:32px">🔔 ${r.titulo}</div>
         ${texto && texto!==r.titulo ? `<div style="font-size:11.5px;color:var(--t2);margin-top:4px">${texto}</div>` : ''}
       </div>`;
-    }).join('');
-  }
+  }).join('');
 }
 
 // DEPURAR: borra los ítems marcados (done) de un listado y persiste el resto.
@@ -4159,27 +2392,6 @@ async function eliminarRecordatorio(){
   await syncDesdeSupabase();
 }
 
-// ════════════════════════════════════════
-// BANDEJA DETECCIONES
-// ════════════════════════════════════════
-function confirmarDeteccion(id){
-  const e = DB.inboxDetected.find(x=>x.id===id);
-  if(!e) return;
-  e.status='confirmed';
-  DB.movimientos.unshift({ id:uid(), tipo:e.tipo, descripcion:e.banco+' detectado', monto:e.monto, fecha:e.fecha, cuentaId:0, categoria:'otro', nota:'Auto-detectado', source:'auto' });
-  save();
-  toast('✅ Movimiento creado','var(--green)');
-  renderResumen();
-  document.getElementById('inbox-result-list').innerHTML='';
-  document.getElementById('inbox-texto').value='';
-}
-
-function rechazarDeteccion(id){
-  DB.inboxDetected = DB.inboxDetected.filter(x=>x.id!==id);
-  save();
-  document.getElementById('inbox-result-list').innerHTML='';
-  toast('✕ Descartado','var(--red)');
-}
 
 // ════════════════════════════════════════
 // IA CHAT
@@ -4220,6 +2432,7 @@ async function sendIA(opts){
   if(!msg) return;
   inp.value='';
   inp.blur();
+  goTab('ia');
   setTimeout(()=>{const el=document.getElementById('ia-msgs');if(el)el.scrollTop=el.scrollHeight;},100);
   addIAMsg(msg,'usr');
   iaHistory.push({role:'user',content:msg});
@@ -4256,23 +2469,9 @@ async function sendIA(opts){
     hablar(respText);
     if(data.acciones && data.acciones.length > 0){
       const navegarAction = data.acciones.find(a => a.accion === 'navegar');
-      const accionesConfirmacion = data.acciones.filter(a => a.confirmacion_requerida);
-      const hayMutacion = data.acciones.some(a => a.accion !== 'navegar' && !a.confirmacion_requerida);
+      const hayMutacion = data.acciones.some(a => a.accion !== 'navegar');
 
-      // Procesar confirmaciones primero — bloquean hasta que el usuario decide
-      for(const a of accionesConfirmacion){
-        const confirmado = await uiConfirm(`¿Eliminar "${a.nombre}"?`);
-        if(!confirmado) continue;
-        const tabla = a.tipo === 'cuenta' ? 'accounts' : 'cajas';
-        const { error } = await supa.from(tabla).delete().eq('id', a.id);
-        if(error){
-          toast('Error: ' + error.message, 'var(--red)');
-        } else {
-          toast(`🗑️ ${a.tipo === 'cuenta' ? 'Cuenta' : 'Caja'} "${a.nombre}" eliminada`, 'var(--t2)');
-        }
-      }
-
-      if(hayMutacion || accionesConfirmacion.length > 0){
+      if(hayMutacion){
         // En modo voz reducimos el delay para respuesta más rápida; en texto se mantiene seguro
         setTimeout(async () => {
           await syncDesdeSupabase();
@@ -4286,12 +2485,6 @@ async function sendIA(opts){
             const autoTab = inferTabDestinoIA(data.acciones);
             if(autoTab) goTab(autoTab);
             else renderCurrentScreen();
-          }
-          // Si hay una caja expandida inline en la pantalla de cajas, repintarla con
-          // el saldo nuevo + historial actualizado tras la acción IA.
-          if(cajaDetalleId){
-            renderCajas();
-            renderCajaEntries();
           }
         }, voz ? 200 : 1000);
       } else if(navegarAction && navegarAction.seccion){
@@ -4307,26 +2500,12 @@ async function sendIA(opts){
 
 function intentLocal(msg){
   var m = msg.toLowerCase();
-  var total = DB.cuentas.reduce(function(a,c){return a+c.saldo;},0);
-  var nombre = DB.ia.usuarioNombre||'';
   var hoy = new Date();
 
-  if(/cu.nto tengo|saldo|dinero tengo|mis cuentas/i.test(m)){
-    var ctxt = DB.cuentas.length ? DB.cuentas.map(function(c){return c.nombre+': '+fmtCOP(c.saldo);}).join(', ') : 'sin cuentas';
-    return (nombre?nombre+', t':'T')+'u saldo total es '+fmtCOP(total)+'. ('+ctxt+')';
-  }
   if(/pagos pendientes|debo pagar|vencen/i.test(m)){
     var pend = DB.pagos.filter(function(p){return p.status!=='pagado';});
     if(!pend.length) return 'No tienes pagos pendientes!';
     return 'Tienes '+pend.length+' pago(s): '+pend.map(function(p){return p.nombre+' '+fmtCOP(p.monto);}).join(', ');
-  }
-  if(/gastos del mes|gast. este mes/i.test(m)){
-    var g = DB.movimientos.filter(function(x){return x.tipo==='gasto'&&new Date(x.fecha+'T12:00:00').getMonth()===hoy.getMonth()&&x.categoria!=='caja'&&x.categoria!=='transferencia';}).reduce(function(a,x){return a+x.monto;},0);
-    return 'Has gastado '+fmtCOP(g)+' este mes.';
-  }
-  if(/ingresos del mes|cu.nto gan./i.test(m)){
-    var g2 = DB.movimientos.filter(function(x){return x.tipo==='ingreso'&&new Date(x.fecha+'T12:00:00').getMonth()===hoy.getMonth()&&x.categoria!=='caja'&&x.categoria!=='transferencia';}).reduce(function(a,x){return a+x.monto;},0);
-    return 'Tus ingresos este mes: '+fmtCOP(g2)+'.';
   }
   if(/agenda|eventos|programado/i.test(m)){
     var evs = DB.eventos.filter(function(e){return new Date(e.fecha+'T12:00:00')>=new Date();}).slice(0,5);
@@ -4338,26 +2517,16 @@ function intentLocal(msg){
     if(!recs.length) return 'No tienes recordatorios abiertos.';
     return 'Recordatorios: '+recs.map(function(r){return r.titulo;}).join(', ');
   }
-  if(/cajas|mis cajas/i.test(m)){
-    if(!DB.cajas.length) return 'No tienes cajas creadas.';
-    return 'Cajas: '+DB.cajas.map(function(c){return c.nombre+': '+fmtCOP(c.saldo);}).join(', ');
-  }
-  var gastoM = m.match(/(?:registra?r?\s+)?gasto\s+([\d.,]+)\s+(.+)/);
-  if(gastoM){ var mo=parseCOP(gastoM[1]),desc=gastoM[2].trim(); if(mo>0){ DB.movimientos.unshift({id:uid(),tipo:'gasto',descripcion:desc,monto:mo,fecha:todayStr(),cuentaId:DB.cuentas[0]?DB.cuentas[0].id:0,categoria:'otro',nota:'IA',source:'ia'}); if(DB.cuentas[0])DB.cuentas[0].saldo-=mo; save();renderResumen(); return 'Gasto de '+fmtCOP(mo)+' por "'+desc+'" registrado.'; } }
-  var ingresoM = m.match(/(?:registra?r?\s+)?ingreso\s+([\d.,]+)\s+(.+)/);
-  if(ingresoM){ var mo2=parseCOP(ingresoM[1]),desc2=ingresoM[2].trim(); if(mo2>0){ DB.movimientos.unshift({id:uid(),tipo:'ingreso',descripcion:desc2,monto:mo2,fecha:todayStr(),cuentaId:DB.cuentas[0]?DB.cuentas[0].id:0,categoria:'otro',nota:'IA',source:'ia'}); if(DB.cuentas[0])DB.cuentas[0].saldo+=mo2; save();renderResumen(); return 'Ingreso de '+fmtCOP(mo2)+' por "'+desc2+'" registrado.'; } }
   var agendaM = msg.match(/ag[e\u00e9]nda(?:me)?\s+(.+?)\s+(?:el|para)\s+(\d{1,2})/i);
   if(agendaM){ var titulo=agendaM[1].trim(),dia=agendaM[2].padStart(2,'0'),mes2=String(hoy.getMonth()+1).padStart(2,'0'),fecha=hoy.getFullYear()+'-'+mes2+'-'+dia; DB.eventos.push({id:uid(),titulo:titulo,fecha:fecha,hora:'',nota:'IA'}); save();renderAgenda();goTab('agenda'); return 'Evento "'+titulo+'" agendado para el '+dia+'/'+mes2+'.'; }
   if(/rec[u\u00fa][e\u00e9]rdame|recuerda que/i.test(m)){ var txt=msg.replace(/rec[u\u00fa][e\u00e9]rdame|recuerda que/gi,'').trim(); if(txt){ DB.recordatorios.push({id:uid(),tipo:'nota',titulo:txt,content:{texto:txt},fecha:todayStr(),status:'open'}); save();renderRecordar(); return 'Anotado: "'+txt+'"'; } }
   var comprarM = m.match(/comprar\s+(.+)/i);
-  if(comprarM){ var items=comprarM[1].split(/,|\sy\s/).map(function(s){return s.trim();}).filter(Boolean); DB.recordatorios.push({id:uid(),tipo:'listado',titulo:'Lista de compras',content:{items:items.map(function(it){return {text:it,done:false};})},fecha:todayStr(),status:'open'}); save();renderRecordar();goTab('recordar'); return 'Lista creada: '+items.join(', '); }
+  if(comprarM){ var items=comprarM[1].split(/,|\sy\s/).map(function(s){return s.trim();}).filter(Boolean); DB.recordatorios.push({id:uid(),tipo:'listado',titulo:'Lista de compras',content:{items:items.map(function(it){return {text:it,done:false};})},fecha:todayStr(),status:'open'}); save();renderRecordar();goTab('listado'); return 'Lista creada: '+items.join(', '); }
   if(/ir a|ll[e\u00e9]vame a|abre|mu[e\u00e9]strame/i.test(m)){
-    if(/resumen|inicio/i.test(m)){goTab('resumen');return 'Aqui esta tu resumen.';}
-    if(/movimientos/i.test(m)){goTab('movimientos');return 'Aqui estan tus movimientos.';}
     if(/pagos/i.test(m)){goTab('pagos');return 'Aqui estan tus pagos.';}
     if(/agenda|calendario/i.test(m)){goTab('agenda');return 'Aqui esta tu agenda.';}
-    if(/recordatorios|notas/i.test(m)){goTab('recordar');return 'Aqui estan tus recordatorios.';}
-    if(/cajas/i.test(m)){goTab('cajas');return 'Aqui estan tus cajas.';}
+    if(/listados?|listas?/i.test(m)){goTab('listado');return 'Aqui estan tus listados.';}
+    if(/recordatorios|notas/i.test(m)){goTab('recordatorios');return 'Aqui estan tus recordatorios.';}
     if(/config/i.test(m)){goTab('config');return 'Aqui esta la configuracion.';}
   }
   return null;
@@ -4522,7 +2691,20 @@ async function procesarTextoRecordar(texto){
 }
 
 // ── FOTO → LISTADO (OCR con Claude Vision vía /api/ai-chat) ──
-// Reutilizada por la cámara inteligente (clasificarYRutear / clasifComoListado).
+// La cámara de la barra inferior comprime la foto y la manda aquí.
+async function onFotoListado(event){
+  const file = event.target.files[0];
+  event.target.value = '';
+  if(!file) return;
+  try{
+    const comprimida = await comprimirImagen(await leerArchivoComoDataUrl(file), 1024, 0.85);
+    await analizarFotoListado(comprimida.split(',')[1]);
+  }catch(e){
+    console.error('[foto-listado] error:', e);
+    toast('⚠️ ' + e.message, 'var(--red)');
+  }
+}
+
 async function analizarFotoListado(b64){
   if(!(await sesionLista())){ toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
   toast('📷 Leyendo la lista…','var(--t2)');
@@ -4546,7 +2728,7 @@ async function analizarFotoListado(b64){
       .select().single();
     if(error || !row){ toast('❌ Error al guardar: '+(error?.message||'sin confirmación'),'var(--red)'); return; }
     await syncDesdeSupabase();
-    setRecSubtab('listados');
+    goTab('listado');
     toast(`✅ Listado "${titulo}" con ${items.length} ${items.length===1?'ítem':'ítems'}`,'var(--green)');
   } catch(e){
     console.error('[foto-listado] error:', e);
@@ -4799,19 +2981,6 @@ function renderConfig(){
   const radio = document.querySelector(`input[name="voz"][value="${vozId}"]`);
   if(radio) radio.checked = true;
 
-  // Cuentas
-  const el = document.getElementById('config-cuentas-list');
-  if(!DB.cuentas.length){ el.innerHTML='<div style="font-size:12px;color:var(--t3);padding:8px 0">Sin cuentas. Agrega una.</div>'; }
-  else el.innerHTML = DB.cuentas.map(c=>`<div class="acct-card">
-    <div class="acct-ico" style="background:rgba(59,130,246,0.1)">${tipoIco[c.tipo]||'💳'}</div>
-    <div class="acct-info"><div class="acct-name">${c.nombre}</div><div class="acct-type">${c.tipo}</div></div>
-    <div class="acct-bal" style="color:${c.saldo>=0?'var(--green)':'var(--red)'}">${fmtCOP(c.saldo)}</div>
-    <div style="display:flex;gap:4px;margin-left:8px">
-      <button onclick="editarCuenta('${c.id}')" style="background:rgba(255,255,255,0.08);border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:12px;padding:0" title="Editar">✏️</button>
-      <button onclick="borrarCuentaLocal('${c.id}')" style="background:rgba(248,113,113,0.15);border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:12px;padding:0" title="Eliminar">🗑️</button>
-    </div>
-  </div>`).join('');
-
   // IA
   const cfg = DB.ia;
   document.getElementById('ia-proveedor').value = cfg.proveedor||'local';
@@ -4819,193 +2988,8 @@ function renderConfig(){
   document.getElementById('ia-usuario-nombre').value = cfg.usuarioNombre||'';
   onIAProveedorChange();
 
-  // Correos
-  renderCorreosConfig();
-
-  // Bancos toggles
-  const bancosDisp = [
-    {id:'bancolombia', nombre:'Bancolombia', ico:'🏦'},
-    {id:'nequi', nombre:'Nequi', ico:'📱'},
-    {id:'davivienda', nombre:'Davivienda', ico:'🏧'},
-    {id:'daviplata', nombre:'Daviplata', ico:'💜'},
-    {id:'bbva', nombre:'BBVA', ico:'🔵'},
-    {id:'colpatria', nombre:'Colpatria', ico:'🏦'},
-  ];
-  const activos = cfg.bancosActivos||[];
-  document.getElementById('bancos-toggles').innerHTML = bancosDisp.map(b=>`
-    <div class="config-row" style="margin-bottom:6px">
-      <div class="config-row-info"><div class="config-row-lbl">${b.ico} ${b.nombre}</div></div>
-      <div class="toggle ${activos.includes(b.id)?'on':''}" id="toggle-banco-${b.id}" onclick="toggleBanco('${b.id}')"><div class="toggle-thumb"></div></div>
-    </div>`).join('');
 }
 
-function renderCorreosConfig(){
-  const accounts = DB.emailAccounts || [];
-  const el = document.getElementById('correos-list-config');
-  if(el){
-    if(!accounts.length){
-      el.innerHTML='<div style="font-size:12px;color:var(--t3);padding:4px 0">Sin correos conectados.</div>';
-    } else {
-      el.innerHTML = accounts.map(c=>{
-        const ult = c.ultimo_sync ? new Date(c.ultimo_sync).toLocaleString('es-CO',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : 'nunca';
-        return `<div class="config-row" style="margin-bottom:6px">
-          <div class="config-row-info">
-            <div class="config-row-lbl">${c.tipo==='gmail'?'📧':'📨'} ${c.email}</div>
-            <div class="config-row-sub">${c.tipo} · último sync: ${ult}</div>
-          </div>
-          <button onclick="desconectarCorreo('${c.id}')" style="background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.2);color:var(--red);border-radius:8px;padding:4px 8px;font-size:11px;cursor:pointer">✕</button>
-        </div>`;
-      }).join('');
-    }
-  }
-
-  // También en pantalla escanear (panel Correo)
-  const elScan = document.getElementById('correos-config-list');
-  if(elScan){
-    elScan.innerHTML = accounts.length
-      ? accounts.map(c=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bd2)">
-          <div>
-            <div style="font-size:13px;font-weight:600">${c.tipo==='gmail'?'📧':'📨'} ${c.email}</div>
-            <div style="font-size:10px;color:var(--t3)">${c.tipo}</div>
-          </div>
-          <button class="btn-secondary" style="padding:6px 12px;font-size:11px;width:auto" onclick="sincronizarCorreo()">🔄 Sync</button>
-        </div>`).join('')
-      : '<div style="font-size:12px;color:var(--t3)">Sin correos. Conecta uno con el botón de abajo.</div>';
-  }
-}
-
-function conectarGmail(){
-  if(!currentUser){ toast('Inicia sesión primero','var(--red)'); return; }
-  // El backend redirige a Google y luego de vuelta a /?auth_success=gmail&email=...
-  window.location.href = `/api/auth-gmail?user_id=${encodeURIComponent(currentUser.id)}`;
-}
-
-async function desconectarCorreo(id){
-  if(!(await uiConfirm('Kontrol dejará de revisar sus correos.', {titulo:'¿Desconectar correo?', okText:'Desconectar'}))) return;
-  const { error } = await supa.from('email_accounts').delete().eq('id', id);
-  if(error){ toast('Error: '+error.message,'var(--red)'); return; }
-  toast('🗑 Cuenta desconectada','var(--t2)');
-  await syncDesdeSupabase();
-  renderCorreosConfig();
-}
-
-async function sincronizarCorreo(){
-  if(!currentUser){ toast('Inicia sesión primero','var(--red)'); return; }
-  const { data: { session } } = await supa.auth.getSession();
-  if(!session){ toast('Sin sesión activa','var(--red)'); return; }
-
-  const syncEl = document.getElementById('correo-syncing');
-  const resEl = document.getElementById('sc-correo-resultado');
-  if(syncEl) syncEl.style.display='block';
-  if(resEl) resEl.style.display='none';
-
-  try {
-    const res = await fetch('/api/sync-emails', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${session.access_token}` }
-    });
-    const data = await res.json();
-    if(!res.ok) throw new Error(data.error || 'Error sincronizando');
-
-    if(syncEl) syncEl.style.display='none';
-    const n = data.movimientos_detectados || 0;
-    if(n > 0){
-      toast(`✅ ${n} detección(es) nuevas — revisa la Bandeja`, 'var(--green)');
-    } else {
-      toast('Sin novedades en tu correo','var(--t2)');
-    }
-    await syncDesdeSupabase();
-    renderInbox();
-    renderCorreosConfig();
-    actualizarBadgeInbox();
-  } catch(e){
-    if(syncEl) syncEl.style.display='none';
-    toast('⚠️ '+e.message,'var(--red)');
-  }
-}
-
-// ── Bandeja: detecciones pendientes (movements con confirmado=false) ──
-function renderInbox(){
-  const el = document.getElementById('inbox-result-list');
-  if(!el) return;
-  const pendings = (DB.movimientos || []).filter(m => m.confirmado === false);
-  if(!pendings.length){
-    el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--t3);font-size:12px">No hay detecciones pendientes 🎉</div>';
-    return;
-  }
-  const catIcoMap = {alimentacion:'🍔',transporte:'🚗',servicios:'💡',salud:'🏥',educacion:'🎓',hogar:'🏠',entretenimiento:'🎬',otro:'📦'};
-  el.innerHTML = pendings.map(m => {
-    const ico = m.tipo === 'ingreso' ? '📥' : '📤';
-    const color = m.tipo === 'ingreso' ? 'var(--green)' : 'var(--red)';
-    const signo = m.tipo === 'ingreso' ? '+' : '-';
-    return `<div class="inbox-card">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-        <div style="font-size:18px">${ico}</div>
-        <div style="flex:1">
-          <div style="font-weight:700;color:${color};font-size:14px">${signo}${fmtCOP(m.monto)}</div>
-          <div style="font-size:12.5px;color:var(--t2);margin-top:2px">${m.descripcion}</div>
-        </div>
-        <div style="font-size:18px">${catIcoMap[m.categoria]||'📦'}</div>
-      </div>
-      <div style="font-size:10.5px;color:var(--t3)">${m.fecha} · ${m.categoria || 'otro'} · ${m.source || ''}</div>
-      <div class="inbox-actions">
-        <button class="inbox-btn-ok" onclick="confirmarMovimiento('${m.id}')">✓ Confirmar</button>
-        <button class="inbox-btn-ko" onclick="descartarMovimiento('${m.id}')">✕ Descartar</button>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-async function confirmarMovimiento(id){
-  const m = DB.movimientos.find(x => String(x.id) === String(id));
-  if(!m){ toast('No encontrado','var(--red)'); return; }
-  const { error } = await supa.from('movements').update({ confirmado: true }).eq('id', id);
-  if(error){ toast('Error: '+error.message,'var(--red)'); return; }
-  // Ajustar saldo de la cuenta si el movimiento tiene account_id
-  if(m.cuentaId){
-    const cuenta = DB.cuentas.find(c => String(c.id) === String(m.cuentaId));
-    if(cuenta){
-      const nuevoSaldo = m.tipo === 'ingreso' ? cuenta.saldo + m.monto : cuenta.saldo - m.monto;
-      await supa.from('accounts').update({ saldo: nuevoSaldo }).eq('id', cuenta.id);
-    }
-  }
-  toast('✓ Confirmado','var(--green)');
-  await syncDesdeSupabase();
-  renderInbox();
-  actualizarBadgeInbox();
-}
-
-async function descartarMovimiento(id){
-  if(!(await uiConfirm('Se eliminará permanentemente.', {titulo:'¿Descartar detección?', okText:'Descartar'}))) return;
-  const { error } = await supa.from('movements').delete().eq('id', id);
-  if(error){ toast('Error: '+error.message,'var(--red)'); return; }
-  toast('✕ Descartado','var(--t2)');
-  await syncDesdeSupabase();
-  renderInbox();
-  actualizarBadgeInbox();
-}
-
-function actualizarBadgeInbox(){
-  const pendings = (DB.movimientos || []).filter(m => m.confirmado === false);
-  const badge = document.getElementById('notif-badge');
-  if(!badge) return;
-  if(pendings.length > 0){
-    badge.textContent = pendings.length;
-    badge.style.display = '';
-  } else {
-    badge.style.display = 'none';
-  }
-}
-
-function toggleBanco(id){
-  if(!DB.ia.bancosActivos) DB.ia.bancosActivos=[];
-  const idx = DB.ia.bancosActivos.indexOf(id);
-  if(idx>=0) DB.ia.bancosActivos.splice(idx,1);
-  else DB.ia.bancosActivos.push(id);
-  const t = document.getElementById('toggle-banco-'+id);
-  if(t) t.classList.toggle('on');
-  save();
-}
 
 // (guardarCorreo, eliminarCorreo y la version stub de sincronizarCorreo fueron
 //  reemplazados por conectarGmail / desconectarCorreo / sincronizarCorreo OAuth)
@@ -5234,105 +3218,6 @@ async function probarConexionIA(){
   } catch(e){ resEl.style.color='var(--red)'; resEl.textContent='❌ Error: '+e.message; }
 }
 
-// ════════════════════════════════════════
-// ESCANEO CON GROQ VISION
-// ════════════════════════════════════════
-let scanCurrentTab = 'camara';
-let scanImageBase64 = null;
-
-function setScanTab(tab){
-  scanCurrentTab = tab;
-  ['camara','bandeja','correo'].forEach(t=>{
-    document.getElementById('scan-panel-'+t).style.display = t===tab?'':'none';
-    document.getElementById('scan-tab-'+t).classList.toggle('on', t===tab);
-  });
-  if(tab==='correo') renderCorreosConfig();
-  if(tab==='bandeja') renderInbox();
-}
-
-function abrirCamara(){
-  document.getElementById('scan-file-camara').click();
-}
-function abrirGaleria(){
-  document.getElementById('scan-file-galeria').click();
-}
-
-function onImageSelected(event){
-  const file = event.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = async (e)=>{
-    const dataUrl = e.target.result;
-    // Comprimir agresivo: max 500px, calidad 0.5 para celulares con poca RAM
-    const compressed = await comprimirImagen(dataUrl, 1024, 0.85);
-    scanImageBase64 = compressed.split(",")[1];
-    document.getElementById("scan-preview-img").src = compressed;
-    document.getElementById("scan-preview-wrap").style.display="";
-    document.getElementById("scan-empty-frame").style.display="none";
-    document.getElementById("scan-result").style.display="none";
-    await clasificarYRutear();   // cámara inteligente: decide factura/lista/otro
-  };
-  reader.readAsDataURL(file);
-  event.target.value="";
-}
-
-// ── CÁMARA INTELIGENTE ──
-// Clasifica la imagen (factura | lista | otro) con Claude Haiku visión y rutea:
-//   factura → analizarFactura()  (flujo de facturas intacto, con form de confirmación)
-//   lista   → analizarFotoListado() (crea un listado en Recordar)
-//   otro / confianza baja → modal para que el usuario decida
-async function clasificarYRutear(){
-  document.getElementById('scan-loading').style.display='block';
-  document.getElementById('scan-no-key').style.display='none';
-  document.getElementById('scan-result').style.display='none';
-
-  const prompt = `Analiza esta imagen y clasifícala. Responde SOLO en JSON estricto, sin explicación ni markdown:
-{
-  "tipo": "factura" | "lista" | "otro",
-  "confianza": "alta" | "media" | "baja"
-}
-Criterio:
-- "factura": recibo, factura, comprobante de pago o de compra con un monto total.
-- "lista": una lista de tareas, de mercado o de ítems (manuscrita o impresa) sin ser un recibo.
-- "otro": cualquier otra cosa.`;
-
-  try{
-    const res = await fetch('/api/ai-chat', {
-      method:'POST',
-      headers: await headersIA(),
-      body: JSON.stringify({ message: prompt, imagen_base64: scanImageBase64, history: [], user_id: currentUser?.id || null })
-    });
-    const data = await res.json();
-    if(!res.ok) throw new Error(data.error || 'Error del servidor');
-    const c = parseIAJson(data.respuesta || '{}') || {};
-    const tipo = (c.tipo||'').toLowerCase();
-    const conf = (c.confianza||'').toLowerCase();
-
-    if(conf==='baja' || (tipo!=='factura' && tipo!=='lista')){
-      // Indeciso: que el usuario elija
-      document.getElementById('scan-loading').style.display='none';
-      showModal('modal-clasif-imagen');
-      return;
-    }
-    if(tipo==='lista'){
-      await analizarFotoListado(scanImageBase64);
-      resetScan();
-      goTab('recordar');
-      return;
-    }
-    // factura → flujo actual (analizarFactura gestiona su propio loading/result)
-    await analizarFactura();
-  }catch(e){
-    // Ante fallo de red/parseo, asumir factura (caso más común) en vez de bloquear
-    console.warn('[clasificar] fallback a factura:', e.message);
-    await analizarFactura();
-  }
-}
-
-// Handlers del modal de imagen indecisa
-function clasifComoGasto(){ hideModal('modal-clasif-imagen'); analizarFactura(); }
-async function clasifComoListado(){ hideModal('modal-clasif-imagen'); await analizarFotoListado(scanImageBase64); resetScan(); goTab('recordar'); }
-function clasifCancelar(){ hideModal('modal-clasif-imagen'); resetScan(); }
 
 function comprimirImagen(dataUrl, maxSize, quality){
   return new Promise(resolve=>{
@@ -5358,65 +3243,6 @@ function comprimirImagen(dataUrl, maxSize, quality){
   });
 }
 
-async function analizarFactura(){
-  document.getElementById('scan-loading').style.display='block';
-  document.getElementById('scan-no-key').style.display='none';
-  document.getElementById('scan-result').style.display='none';
-
-  const prompt = `Eres un experto en leer facturas y recibos colombianos. Analiza esta imagen con mucho cuidado.
-
-INSTRUCCIONES CRÍTICAS:
-1. Lee el monto TOTAL con máxima precisión — busca "Total", "Valor", "Importe", "Neto a pagar"
-2. El monto es en pesos colombianos (COP) — puede tener puntos como separador de miles (ej: 45.000 = 45000)
-3. Si ves "$45.000" el monto es 45000
-4. Para la categoría, identifica el tipo de negocio:
-   - Restaurante, cafetería, supermercado, tienda → alimentacion
-   - Taxi, Uber, bus, gasolina, parqueadero → transporte  
-   - Agua, luz, gas, internet, teléfono, Netflix → servicios
-   - Farmacia, médico, clínica, laboratorio → salud
-   - Colegio, universidad, librería, cursos → educacion
-   - Ferretería, muebles, arriendo → hogar
-   - Cine, bar, entretenimiento → entretenimiento
-   - Cualquier otro → otro
-
-Responde SOLO en JSON válido sin ningún texto adicional ni markdown:
-{
-  "descripcion": "nombre exacto del comercio o servicio",
-  "monto": numero entero sin puntos ni comas (ejemplo: 45000),
-  "fecha": "YYYY-MM-DD o null",
-  "categoria": "alimentacion|transporte|servicios|salud|educacion|hogar|entretenimiento|otro",
-  "banco": "nombre del banco si es comprobante bancario, sino null",
-  "tipo": "gasto o ingreso",
-  "confianza": "alta si leíste el monto claramente, media si fue aproximado, baja si no pudiste leer bien",
-  "notas": "observaciones importantes"
-}`;
-
-  try{
-    // Usar el backend con Claude — no necesita config del usuario
-    const res = await fetch('/api/ai-chat', {
-      method: 'POST',
-      headers: await headersIA(),
-      body: JSON.stringify({
-        message: prompt,
-        imagen_base64: scanImageBase64,
-        history: [],
-        user_id: currentUser?.id || null
-      })
-    });
-    const data = await res.json();
-    document.getElementById('scan-loading').style.display='none';
-
-    if(!res.ok) throw new Error(data.error || 'Error del servidor');
-
-    const resultado = parseIAJson(data.respuesta || '{}');
-    if(resultado && resultado.monto) mostrarResultadoScan(resultado);
-    else toast('❌ No se pudo leer la factura','var(--red)');
-
-  } catch(e){
-    document.getElementById('scan-loading').style.display='none';
-    toast('❌ Error: '+e.message,'var(--red)');
-  }
-}
 
 function parseIAJson(raw){
   try{
@@ -5430,91 +3256,6 @@ function parseIAJson(raw){
   }
 }
 
-function mostrarResultadoScan(res){
-  const confianzaColor = {alta:'var(--green)',media:'var(--amber)',baja:'var(--red)'}[res.confianza]||'var(--t3)';
-  document.getElementById('scan-result-body').innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-      <div style="background:var(--card2);border-radius:10px;padding:8px">
-        <div style="font-size:10px;color:var(--t3)">Monto detectado</div>
-        <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:900;color:var(--red)">${fmtCOP(res.monto||0)}</div>
-      </div>
-      <div style="background:var(--card2);border-radius:10px;padding:8px">
-        <div style="font-size:10px;color:var(--t3)">Confianza</div>
-        <div style="font-size:14px;font-weight:700;color:${confianzaColor}">${res.confianza||'—'}</div>
-      </div>
-    </div>
-    <div style="font-size:11.5px;color:var(--t2);line-height:1.6">
-      📍 <b>Comercio:</b> ${res.descripcion||'No detectado'}<br/>
-      📅 <b>Fecha:</b> ${res.fecha||'No detectada'}<br/>
-      🏷️ <b>Categoría:</b> ${res.categoria||'otro'}<br/>
-      ${res.banco?`🏦 <b>Banco:</b> ${res.banco}<br/>`:''}
-      ${res.notas?`📝 <b>Nota:</b> ${res.notas}`:''}
-    </div>`;
-
-  // Pre-llenar formulario de corrección
-  document.getElementById('scan-desc').value = res.descripcion||'';
-  document.getElementById('scan-monto').value = res.monto ? (res.monto).toLocaleString('es-CO') : '';
-  document.getElementById('scan-fecha').value = res.fecha||todayStr();
-  const catSel = document.getElementById('scan-categoria');
-  if(catSel && res.categoria) catSel.value = res.categoria;
-  populateCuentasSelect('scan-cuenta');
-
-  document.getElementById('scan-result').style.display='';
-}
-
-function guardarMovimientoScan(){
-  const desc = document.getElementById('scan-desc').value.trim();
-  const monto = parseCOP(document.getElementById('scan-monto').value);
-  const fecha = document.getElementById('scan-fecha').value||todayStr();
-  const categoria = document.getElementById('scan-categoria').value;
-  const cuentaId = parseInt(document.getElementById('scan-cuenta').value)||0;
-
-  if(!desc){ toast('⚠️ Escribe una descripción','var(--amber)'); return; }
-  if(!monto){ toast('⚠️ Ingresa un monto válido','var(--amber)'); return; }
-
-  DB.movimientos.unshift({id:uid(), tipo:'gasto', descripcion:desc, monto, fecha, cuentaId, categoria, nota:'Escaneado con IA', source:'scan'});
-  const cuenta = DB.cuentas.find(c=>String(c.id)===String(cuentaId));
-  if(cuenta) cuenta.saldo -= monto;
-  save();
-  toast('✅ Gasto registrado desde factura','var(--green)');
-  resetScan();
-  renderResumen();
-}
-
-function resetScan(){
-  scanImageBase64=null;
-  document.getElementById('scan-preview-wrap').style.display='none';
-  document.getElementById('scan-empty-frame').style.display='';
-  document.getElementById('scan-result').style.display='none';
-  document.getElementById('scan-loading').style.display='none';
-  document.getElementById('scan-no-key').style.display='none';
-}
-
-// Parsear texto bancario manual
-function parsearTextoManual(){
-  const texto = document.getElementById('inbox-texto').value.trim();
-  if(!texto){ toast('⚠️ Pega el texto del banco','var(--amber)'); return; }
-  const montoMatch = texto.match(/([\d]{1,3}(?:[.,]\d{3})*(?:[.,]\d{1,2})?)/);
-  const monto = montoMatch ? parseCOP(montoMatch[1]) : 0;
-  const esIngreso = /recib|crédito|consignación|abono|depósito|ingres/i.test(texto);
-  const tipo = esIngreso ? 'ingreso' : 'gasto';
-  const banco = texto.match(/bancolombia|nequi|daviplata|bbva|davivienda|colpatria/i)?.[0]||'Banco';
-  const entry = { id:uid(), raw:texto, monto, tipo, banco, status:'pending', fecha:todayStr() };
-  DB.inboxDetected.push(entry); save();
-  const el = document.getElementById('inbox-result-list');
-  el.innerHTML = `<div class="inbox-card">
-    <div style="font-size:11px;font-weight:700;color:var(--amber)">Detección — ${banco}</div>
-    <div class="inbox-raw">${texto.substring(0,200)}</div>
-    <div style="font-size:13px;color:var(--t1);margin:6px 0">
-      Tipo: <b style="color:${tipo==='ingreso'?'var(--green)':'var(--red)'}">${tipo==='ingreso'?'📥 Ingreso':'📤 Gasto'}</b>
-      &nbsp;·&nbsp; Monto: <b>${fmtCOP(monto)}</b>
-    </div>
-    <div class="inbox-actions">
-      <button class="inbox-btn-ok" onclick="confirmarDeteccion(${entry.id})">✅ Confirmar</button>
-      <button class="inbox-btn-ko" onclick="rechazarDeteccion(${entry.id})">✕ Rechazar</button>
-    </div>
-  </div>` + el.innerHTML;
-}
 
 function toggleConfig(toggleId, key){
   const t = document.getElementById(toggleId);
@@ -5569,7 +3310,7 @@ async function recargarApp() {
   }
 }
 
-// Banner del número WhatsApp en Resumen. Se muestra hasta que el usuario lo
+// Banner del número WhatsApp en Agenda. Se muestra hasta que el usuario lo
 // cierre — el flag wa_banner_dismissed queda en localStorage.
 function maybeShowWaBanner(){
   if (localStorage.getItem('wa_banner_dismissed') === '1') return;
@@ -5719,7 +3460,7 @@ async function onLogin(user) {
   const { data: { session } } = await supa.auth.getSession();
   currentUser = session?.user || user;
   // Mostrar loading overlay ANTES de ocultar auth-screen para evitar flash de dashboard vacío.
-  // Hasta que sync termine el usuario ve la K + "Cargando…" en lugar de saldos en $0.
+  // Hasta que sync termine el usuario ve la K + "Cargando…" en lugar de pantallas vacías.
   const loadingEl = document.getElementById('loading-overlay');
   if (loadingEl) loadingEl.style.display = 'flex';
   document.getElementById('auth-screen').style.display = 'none';
@@ -5772,21 +3513,6 @@ function addLogoutBtn() {
     if (landing) landing.style.display = 'none';
     try { localStorage.setItem('kontrol_returning_user', '1'); } catch(e){}
     await onLogin(session.user);
-    // Manejar redirecciones de OAuth (?auth_success=gmail&email=... o ?auth_error=...)
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('auth_success') === 'gmail') {
-      const email = params.get('email') || '';
-      toast(`✅ Gmail conectado: ${email}`, 'var(--green)');
-      window.history.replaceState({}, '', window.location.pathname);
-      await syncDesdeSupabase();
-      renderCorreosConfig();
-      // Disparar la primera sincronización automática tras conectar
-      setTimeout(() => { sincronizarCorreo(); }, 800);
-    } else if (params.get('auth_error')) {
-      toast(`⚠️ Error de OAuth: ${params.get('auth_error')}`, 'var(--red)');
-      window.history.replaceState({}, '', window.location.pathname);
-    }
-    actualizarBadgeInbox();
   } else {
     // Sin sesión: usuario ya conocido (localStorage) o que ya saltó la
     // landing en esta pestaña (sessionStorage) va directo al login.
@@ -5816,153 +3542,12 @@ function init(){
     addIAMsg(saludo, 'bot');
     localStorage.setItem('last_open_date', hoy);
   }, 500);
-  renderResumen();
-  renderCalendario();
+  renderAgenda();
   renderConfig();
   maybeShowWaBanner();
-  // renderMetas() ya no se llama aquí — se dispara desde goTab('metas') la primera vez
-  // que el usuario navegue a esa pestaña, ahorrando una query Supabase en el startup.
 }
 
-// ════════════════════════════════════════
-// METAS
-// ════════════════════════════════════════
-let metasData = [];
 
-async function renderMetas() {
-  if (!currentUser) return;
-  const { data: metas } = await supa.from('metas').select('*, micrometas(*)').eq('user_id', currentUser.id).order('created_at', { ascending: false });
-  metasData = metas || [];
-
-  const completadas = metasData.filter(m => m.estado === 'completada').length;
-  const activas = metasData.filter(m => m.estado === 'activa').length;
-  const progresoAvg = metasData.length ? Math.round(metasData.reduce((a, m) => a + (m.progreso || 0), 0) / metasData.length) : 0;
-
-  document.getElementById('metas-completadas-count').textContent = completadas;
-  document.getElementById('metas-activas-count').textContent = activas;
-  document.getElementById('metas-progreso-avg').textContent = progresoAvg + '%';
-
-  const lista = document.getElementById('metas-lista');
-  if (!metasData.length) {
-    lista.innerHTML = `<div style="text-align:center;padding:40px 0;color:rgba(232,238,248,0.3);"><div style="font-size:40px;margin-bottom:10px;">🎯</div><div style="font-size:14px;font-weight:600;">Sin metas aún</div><div style="font-size:12px;margin-top:6px;line-height:1.5;">Toca "+ Nueva meta" para empezar<br/>o pide sugerencias a la IA</div></div>`;
-    return;
-  }
-
-  lista.innerHTML = metasData.map(m => {
-    const prog = m.progreso || 0;
-    const progColor = prog >= 80 ? '#4ade80' : prog >= 40 ? '#f59e0b' : '#3b82f6';
-    const tipoIcon = { financiera: '💰', habito: '✅', proyecto: '🚀', personal: '🌱' }[m.tipo] || '🎯';
-    const micros = m.micrometas || [];
-    const microsCompletas = micros.filter(mm => mm.completada).length;
-    const diasRestantes = m.fecha_limite ? Math.ceil((new Date(m.fecha_limite) - new Date()) / (1000*60*60*24)) : null;
-
-    return `<div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:16px;margin-bottom:12px;">
-      <!-- Cabecera -->
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;">
-        <div style="flex:1;">
-          <div style="font-size:15px;font-weight:800;color:#e8eef8;">${tipoIcon} ${m.titulo}</div>
-          ${m.descripcion ? `<div style="font-size:11px;color:rgba(232,238,248,0.4);margin-top:3px;">${m.descripcion}</div>` : ''}
-          ${diasRestantes !== null ? `<div style="font-size:10px;color:${diasRestantes < 30 ? '#f87171' : 'rgba(232,238,248,0.3)'};margin-top:3px;">📅 ${diasRestantes > 0 ? diasRestantes + ' días restantes' : 'Vencida'}</div>` : ''}
-        </div>
-        <div style="display:flex;gap:5px;margin-left:8px;">
-          <button onclick="sugerirMicrometas('${m.id}','${m.titulo.replace(/'/g,"\\'")}','${m.tipo}')" style="background:rgba(167,139,250,0.15);border:1px solid rgba(167,139,250,0.25);border-radius:8px;padding:5px 8px;font-size:10px;color:#a78bfa;cursor:pointer;">🧠 IA</button>
-          <button onclick="deleteMeta('${m.id}')" style="background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.15);border-radius:8px;padding:5px 8px;font-size:10px;color:#f87171;cursor:pointer;">🗑</button>
-        </div>
-      </div>
-      
-      ${m.monto_objetivo ? `
-      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:6px;">
-        <span style="color:rgba(232,238,248,0.5);">Progreso financiero</span>
-        <span style="color:${progColor};font-weight:700;">${fmtCOP(m.monto_actual||0)} / ${fmtCOP(m.monto_objetivo)}</span>
-      </div>` : ''}
-      
-      <!-- Barra de progreso -->
-      <div style="background:rgba(255,255,255,0.07);border-radius:8px;height:8px;margin-bottom:8px;overflow:hidden;">
-        <div style="background:linear-gradient(90deg,${progColor}88,${progColor});height:8px;border-radius:8px;width:${prog}%;transition:width 0.5s;"></div>
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${micros.length ? '12px' : '0'};">
-        <div style="font-size:10px;color:rgba(232,238,248,0.4);">${micros.length ? `${microsCompletas}/${micros.length} pasos completados` : 'Sin pasos aún'}</div>
-        <div style="font-size:12px;font-weight:800;color:${progColor};">${prog}%</div>
-      </div>
-      
-      <!-- Micrometas -->
-      ${micros.length ? `<div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">
-        <div style="font-size:10px;font-weight:700;color:rgba(232,238,248,0.4);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Pasos para lograrlo</div>
-        ${micros.map(mm => `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);" onclick="toggleMicrometa('${mm.id}','${m.id}')">
-          <div style="width:20px;height:20px;border-radius:50%;border:2px solid ${mm.completada ? '#4ade80' : 'rgba(255,255,255,0.2)'};background:${mm.completada ? '#4ade80' : 'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;transition:all 0.2s;">
-            ${mm.completada ? '<span style="font-size:10px;color:#000;font-weight:900;">✓</span>' : ''}
-          </div>
-          <div style="font-size:13px;color:${mm.completada ? 'rgba(232,238,248,0.35)' : '#e8eef8'};${mm.completada ? 'text-decoration:line-through;' : ''};flex:1;">${mm.titulo}</div>
-        </div>`).join('')}
-        <button onclick="addMicrometa('${m.id}')" style="margin-top:8px;background:transparent;border:1px dashed rgba(255,255,255,0.15);border-radius:8px;padding:6px 12px;font-size:11px;color:rgba(232,238,248,0.4);cursor:pointer;width:100%;">+ Agregar paso manualmente</button>
-      </div>` : `<button onclick="sugerirMicrometas('${m.id}','${m.titulo.replace(/'/g,"\\'")}','${m.tipo}')" style="width:100%;padding:8px;background:rgba(167,139,250,0.08);border:1px dashed rgba(167,139,250,0.2);border-radius:10px;color:#a78bfa;font-size:12px;cursor:pointer;">🧠 La IA te sugiere los pasos para lograrlo</button>`}
-    </div>`;
-  }).join('');
-}
-
-async function sugerirMetasIA() {
-  goTab('ia');
-  setTimeout(() => {
-    document.getElementById('ia-input').value = 'Basándote en mi situación financiera actual, ¿qué metas me recomiendas establecer para este año? Dame 3 metas concretas y alcanzables.';
-    sendIA();
-  }, 300);
-}
-
-async function sugerirMicrometas(metaId, metaTitulo, metaTipo) {
-  goTab('ia');
-  setTimeout(() => {
-    document.getElementById('ia-input').value = `Tengo la meta: "${metaTitulo}" (tipo: ${metaTipo}). ¿Cuáles serían los pasos concretos (micrometas) que debo seguir para lograrla? Dame 5 pasos específicos y ordenados.`;
-    sendIA();
-  }, 300);
-}
-
-async function saveMeta() {
-  if (!(await sesionLista())) { toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
-  const titulo = document.getElementById('meta-titulo').value.trim();
-  const tipo = document.getElementById('meta-tipo').value;
-  const monto = parseFloat(document.getElementById('meta-monto').value) || 0;
-  const fecha = document.getElementById('meta-fecha').value;
-  const desc = document.getElementById('meta-desc').value.trim();
-  if (!titulo) return toast('Escribe un título', 'red');
-
-  const { error } = await supa.from('metas').insert({ user_id: currentUser.id, titulo, tipo, monto_objetivo: monto || null, fecha_limite: fecha || null, descripcion: desc, año: new Date().getFullYear() });
-  if (error) { toast('❌ Error: '+error.message, 'var(--red)'); return; }
-  hideModal('modal-meta');
-  document.getElementById('meta-titulo').value = '';
-  document.getElementById('meta-monto').value = '';
-  document.getElementById('meta-fecha').value = '';
-  document.getElementById('meta-desc').value = '';
-  toast('Meta creada ✅', 'green');
-  renderMetas();
-}
-
-async function deleteMeta(id) {
-  if (!(await uiConfirm('¿Eliminar esta meta?'))) return;
-  await supa.from('metas').delete().eq('id', id);
-  renderMetas();
-}
-
-async function toggleMicrometa(microId, metaId) {
-  const micro = metasData.flatMap(m => m.micrometas || []).find(mm => mm.id === microId);
-  if (!micro) return;
-  await supa.from('micrometas').update({ completada: !micro.completada }).eq('id', microId);
-  // Actualizar progreso de la meta
-  const meta = metasData.find(m => m.id === metaId);
-  if (meta) {
-    const micros = meta.micrometas || [];
-    const totalCompletas = micros.filter(mm => mm.id === microId ? !micro.completada : mm.completada).length;
-    const progreso = micros.length ? Math.round((totalCompletas / micros.length) * 100) : 0;
-    await supa.from('metas').update({ progreso }).eq('id', metaId);
-  }
-  renderMetas();
-}
-
-async function addMicrometa(metaId) {
-  const titulo = await uiPrompt('Nuevo paso');
-  if (!titulo) return;
-  await supa.from('micrometas').insert({ meta_id: metaId, user_id: currentUser.id, titulo });
-  renderMetas();
-}
 </script>
 </body>
 </html>
