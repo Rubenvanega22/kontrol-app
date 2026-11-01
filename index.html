@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover"/>
 <title>Kontrol</title>
 <meta name="application-name" content="Kontrol"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -32,6 +32,8 @@
   --mor:#8B5CF6;--blue:#387BFF;--green:#22C993;--amber:#F2B84B;--red:#EF6067;--gold:#F2B84B;--purple:#A78BFA;--teal:#22C993;
   --glow-blue:rgba(56,123,255,0.15);--glow-green:rgba(34,201,147,0.15);
   --sombra:0 6px 18px rgba(2,6,20,0.45);
+  --k-abajo:max(10px,env(safe-area-inset-bottom,0px),var(--k-abajo-js,0px));
+  --k-arriba:env(safe-area-inset-top,0px);
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{width:100%;height:100%;background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--t1);overflow:hidden;}
@@ -41,7 +43,7 @@ html,body{width:100%;height:100%;background:var(--bg);font-family:'DM Sans',sans
 button{font-family:inherit;}
 svg.i{width:23px;height:23px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round;}
 svg.rel{fill:currentColor;stroke:none;}
-.hdr{display:flex;align-items:center;justify-content:space-between;gap:4px;padding:7px 8px 7px 12px;flex-shrink:0;z-index:10;}
+.hdr{display:flex;align-items:center;justify-content:space-between;gap:4px;padding:calc(7px + var(--k-arriba)) 8px 7px 12px;flex-shrink:0;z-index:10;}
 .logo{display:flex;align-items:center;gap:7px;min-width:0;}
 .logo-k{display:block;width:31px;height:31px;flex-shrink:0;}
 .logo-name{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;letter-spacing:-0.3px;color:#fff;}
@@ -58,7 +60,7 @@ svg.rel{fill:currentColor;stroke:none;}
 .hb-wa.mal{color:var(--amber);}
 .hb-wa.venc{color:var(--red);}
 .hb-wa-tx{display:none;}
-.nav{order:2;position:relative;z-index:6;display:flex;flex-shrink:0;gap:2px;background:var(--card2);border-top:1px solid var(--bd);padding:5px 5px calc(5px + env(safe-area-inset-bottom));}
+.nav{order:2;position:relative;z-index:6;display:flex;flex-shrink:0;gap:2px;background:var(--card2);border-top:1px solid var(--bd);padding:5px 5px var(--k-abajo);}
 .lat-top,.lat-sp,.nav .solo-comp{display:none;}
 .ntab{flex:1 1 0;min-width:0;min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:none;border-radius:14px;background:transparent;color:var(--t2);font-size:12px;font-weight:600;cursor:pointer;}
 .ntab.on{background:var(--mor);color:#fff;font-weight:700;box-shadow:0 4px 14px rgba(139,92,246,0.5);}
@@ -137,7 +139,7 @@ button.wa{cursor:pointer;}
 .pf-f.rojo{color:#FF8087;}
 .ms-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.25s;z-index:200;}
 .ms-overlay.open{opacity:1;pointer-events:auto;}
-.ms-sheet{width:100%;max-width:480px;background:var(--card2);border:1px solid var(--bd);border-bottom:none;border-radius:22px 22px 0 0;padding:10px 14px calc(18px + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform 0.28s cubic-bezier(.22,1,.36,1);}
+.ms-sheet{width:100%;max-width:480px;background:var(--card2);border:1px solid var(--bd);border-bottom:none;border-radius:22px 22px 0 0;padding:10px 14px calc(18px + var(--k-abajo));transform:translateY(100%);transition:transform 0.28s cubic-bezier(.22,1,.36,1);}
 .ms-overlay.open .ms-sheet{transform:translateY(0);}
 .ms-handle{width:40px;height:4px;border-radius:3px;background:rgba(255,255,255,0.2);margin:6px auto 12px;}
 .ms-item{display:flex;align-items:center;gap:14px;padding:15px 12px;border-radius:14px;font-size:15px;font-weight:600;color:var(--t1);cursor:pointer;transition:background 0.15s;}
@@ -148,7 +150,7 @@ button.wa{cursor:pointer;}
 .scr.on{display:flex;}
 @keyframes fu{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
 .scr.on>*{animation:fu 0.28s both;}
-.scroll{flex:1;overflow-y:auto;padding:6px 14px 0;-webkit-overflow-scrolling:touch;}
+.scroll{flex:1;overflow-y:auto;padding:6px 14px 20px;-webkit-overflow-scrolling:touch;}
 .scroll::-webkit-scrollbar{display:none;}
 .sc{border-radius:16px;padding:13px;margin-bottom:10px;background:var(--card);border:1px solid var(--bd2);}
 .sc-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;}
@@ -557,7 +559,7 @@ svg.hj-campana{position:absolute;right:2px;top:2px;width:14px;height:14px;color:
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px);}
 .modal-overlay.hidden{display:none;}
 #modal-confirm{z-index:110;} /* siempre encima del modal que lo abrió */
-.modal{background:var(--card);color:var(--t1);border:1px solid var(--lin2);border-radius:24px 24px 0 0;padding:20px 18px 32px;width:100%;max-width:480px;max-height:85vh;overflow-y:auto;}
+.modal{background:var(--card);color:var(--t1);border:1px solid var(--lin2);border-radius:24px 24px 0 0;padding:20px 18px calc(22px + var(--k-abajo));width:100%;max-width:480px;max-height:85vh;max-height:85dvh;overflow-y:auto;}
 .modal::-webkit-scrollbar{display:none;}
 .modal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
 .modal-ttl{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;}
@@ -611,7 +613,7 @@ select.form-inp option{background:var(--card2);}
 .scan-btn{width:100%;padding:13px;border-radius:14px;border:1px solid var(--bd);background:var(--card2);color:var(--t1);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;}
 
 /* Toast */
-.toast{position:fixed;top:64px;left:50%;transform:translateX(-50%);max-width:calc(100vw - 24px);background:var(--card3);border:1px solid var(--lin2);box-shadow:var(--sombra);border-radius:12px;padding:10px 18px;font-size:14px;font-weight:600;z-index:200;pointer-events:none;opacity:0;transition:opacity 0.3s;text-align:center;}
+.toast{position:fixed;top:calc(64px + var(--k-arriba));left:50%;transform:translateX(-50%);max-width:calc(100vw - 24px);background:var(--card3);border:1px solid var(--lin2);box-shadow:var(--sombra);border-radius:12px;padding:10px 18px;font-size:14px;font-weight:600;z-index:200;pointer-events:none;opacity:0;transition:opacity 0.3s;text-align:center;}
 .toast.show{opacity:1;}
 
 /* Empty state */
@@ -688,7 +690,7 @@ select.form-inp option{background:var(--card2);}
 .lnd-wrap{max-width:1080px;margin:0 auto;padding:0 22px;width:100%;}
 .lnd-nav{
   display:flex;align-items:center;justify-content:space-between;
-  padding:18px 22px;position:sticky;top:0;z-index:50;
+  padding:calc(18px + var(--k-arriba)) 22px 18px;position:sticky;top:0;z-index:50;
   backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
   background:rgba(8,13,28,0.72);
   border-bottom:1px solid rgba(255,255,255,0.05);
@@ -793,7 +795,7 @@ select.form-inp option{background:var(--card2);}
 .lnd-cta-band .lnd-h2{margin-bottom:12px;}
 .lnd-cta-band p{color:var(--t2);max-width:440px;margin:0 auto 24px;font-size:14.5px;line-height:1.55;}
 .lnd-foot{
-  padding:36px 0 30px;border-top:1px solid rgba(255,255,255,0.05);
+  padding:36px 0 calc(20px + var(--k-abajo));border-top:1px solid rgba(255,255,255,0.05);
   margin-top:30px;color:var(--t3);font-size:13.5px;
 }
 .lnd-foot-inner{
@@ -811,7 +813,7 @@ select.form-inp option{background:var(--card2);}
   .lnd-sec{padding:80px 0;}
 }
 /* ── Entrada ── */
-.au-pant{display:none;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;background:var(--bg) radial-gradient(ellipse 90% 260px at 50% -40px,rgba(139,92,246,0.38),rgba(139,92,246,0) 72%) no-repeat;padding:24px;position:fixed;inset:0;z-index:9999;overflow-y:auto;}
+.au-pant{display:none;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;background:var(--bg) radial-gradient(ellipse 90% 260px at 50% -40px,rgba(139,92,246,0.38),rgba(139,92,246,0) 72%) no-repeat;padding:calc(24px + var(--k-arriba)) 24px calc(14px + var(--k-abajo));position:fixed;inset:0;z-index:9999;overflow-y:auto;}
 .au-caja{width:100%;max-width:380px;margin:auto 0;}
 .au-marca{text-align:center;margin-bottom:26px;}
 .au-logo{display:block;width:72px;height:72px;margin:0 auto 10px;filter:drop-shadow(0 6px 18px rgba(139,92,246,0.5));}
@@ -1406,6 +1408,7 @@ select.form-inp option{background:var(--card2);}
           <div class="config-section-ttl">Avanzado</div>
           <p style="font-size:12.5px;color:var(--t3);margin-bottom:10px;line-height:1.5">Si ves cambios viejos después de una actualización, limpia la caché y recarga.</p>
           <button id="btn-recargar-app" class="btn-secondary" onclick="recargarApp()">Refrescar app (limpiar caché)</button>
+          <div id="diag-pantalla" style="font-size:12.5px;color:var(--t3);margin-top:6px;line-height:1.4"></div>
         </div>
 
         <div style="height:80px"></div>
@@ -1750,6 +1753,7 @@ select.form-inp option{background:var(--card2);}
 // ════════════════════════════════════════
 // DB — localStorage
 // ════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => ajustarZonaSegura());
 const icono = (n, c='') => `<svg class="i ${n==='wa'?'rel ':''}${c}" aria-hidden="true"><use href="#i-${n}"/></svg>`;
 const DB_KEY = 'kontrol_v4';
 let DB = load();
@@ -1950,6 +1954,7 @@ function goTab(id){
   });
   document.querySelector('.app').dataset.tab = id;
   if(id==='inicio') renderInicio();
+  if(id==='config') ajustarZonaSegura();
   actualizarCampana();
   if(id==='pagos') renderPagos();
   if(id==='agenda') renderAgenda();
@@ -1979,6 +1984,29 @@ function renderCurrentScreen(){
   }
   return null;
 }
+
+// Algunos Android dibujan la app instalada debajo de sus botones y aun así informan
+// zona segura 0. Eso se reconoce porque la ventana mide igual que la pantalla completa.
+const K_BARRA_ANDROID = 48;
+function ajustarZonaSegura(){
+  const raiz = document.documentElement;
+  const sonda = document.createElement('div');
+  sonda.style.cssText = 'position:fixed;left:0;bottom:0;width:0;height:env(safe-area-inset-bottom,0px);pointer-events:none';
+  document.body.appendChild(sonda);
+  const informada = sonda.offsetHeight;
+  sonda.remove();
+  const instalada = ['standalone','fullscreen','minimal-ui'].some(m=>matchMedia(`(display-mode: ${m})`).matches);
+  const tapada = instalada && /Android/i.test(navigator.userAgent) && !informada && window.innerHeight >= screen.height - 1;
+  raiz.style.setProperty('--k-abajo-js', tapada ? K_BARRA_ANDROID+'px' : '0px');
+  const diag = document.getElementById('diag-pantalla');
+  if(diag){
+    const nav = document.querySelector('.nav');
+    diag.textContent = `Pantalla: ${window.innerWidth}×${window.innerHeight} de ${screen.width}×${screen.height} · zona segura informada: ${informada} px · margen abajo: ${Math.round(parseFloat(getComputedStyle(nav).paddingBottom))} px · ${instalada?'app instalada':'navegador'}`;
+  }
+}
+window.addEventListener('resize', ajustarZonaSegura);
+window.addEventListener('orientationchange', ajustarZonaSegura);
+window.addEventListener('load', ajustarZonaSegura);
 
 // Barra lateral del computador: se encoge a íconos y recuerda la posición.
 function alternarLateral(){
