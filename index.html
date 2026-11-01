@@ -1415,7 +1415,6 @@ function defaultDB(){
     nextId: 1
   };
 }
-function uid(){ const id = DB.nextId++; save(); return id; }
 
 // ════════════════════════════════════════
 // HELPERS
@@ -2439,7 +2438,7 @@ async function sendIA(opts){
   showTyping();
 
   // Intent local primero
-  const localResp = intentLocal(msg);
+  const localResp = await intentLocal(msg);
   if(localResp){
     hideTyping();
     addIAMsg(localResp,'bot');
@@ -2498,16 +2497,29 @@ async function sendIA(opts){
   }
 }
 
-function intentLocal(msg){
+// Resuelve sin IA unas pocas frases. Lo que crea se guarda en Supabase y solo se
+// confirma si la base lo aceptó; antes quedaba en la caché local y se perdía al sincronizar.
+// Con hora, fechas largas o cualquier otra frase devuelve null y responde la IA.
+async function intentLocal(msg){
   var m = msg.toLowerCase();
-  var hoy = new Date();
+
+  var agendaM = msg.match(/^ag[e\u00e9]nda(?:me)?\s+(.+?)\s+(?:para\s+el|el|para)\s+(\d{1,2})\s*\.?$/i);
+  if(agendaM){
+    var fechaEv = proximaFechaDelDia(parseInt(agendaM[2],10));
+    if(fechaEv) return await agendarSinHora(agendaM[1].trim(), fechaEv);
+  }
+  var comprarM = msg.match(/^comprar\s+(.+)/i);
+  if(comprarM){
+    var items = comprarM[1].split(/,|\s+y\s+/).map(function(s){return s.trim().replace(/\.$/,'');}).filter(Boolean);
+    if(items.length) return await agregarAListaCompras(items);
+  }
 
   if(/pagos pendientes|debo pagar|vencen/i.test(m)){
     var pend = DB.pagos.filter(function(p){return p.status!=='pagado';});
     if(!pend.length) return 'No tienes pagos pendientes!';
     return 'Tienes '+pend.length+' pago(s): '+pend.map(function(p){return p.nombre+' '+fmtCOP(p.monto);}).join(', ');
   }
-  if(/agenda|eventos|programado/i.test(m)){
+  if(/agenda|eventos|programado/i.test(m) && !/^ag[e\u00e9]nda(?:me)?\s+\S/i.test(m)){
     var evs = DB.eventos.filter(function(e){return new Date(e.fecha+'T12:00:00')>=new Date();}).slice(0,5);
     if(!evs.length) return 'No tienes eventos proximos.';
     return 'Eventos: '+evs.map(function(e){return e.titulo+' el '+fmtDate(e.fecha);}).join(', ');
@@ -2517,11 +2529,6 @@ function intentLocal(msg){
     if(!recs.length) return 'No tienes recordatorios abiertos.';
     return 'Recordatorios: '+recs.map(function(r){return r.titulo;}).join(', ');
   }
-  var agendaM = msg.match(/ag[e\u00e9]nda(?:me)?\s+(.+?)\s+(?:el|para)\s+(\d{1,2})/i);
-  if(agendaM){ var titulo=agendaM[1].trim(),dia=agendaM[2].padStart(2,'0'),mes2=String(hoy.getMonth()+1).padStart(2,'0'),fecha=hoy.getFullYear()+'-'+mes2+'-'+dia; DB.eventos.push({id:uid(),titulo:titulo,fecha:fecha,hora:'',nota:'IA'}); save();renderAgenda();goTab('agenda'); return 'Evento "'+titulo+'" agendado para el '+dia+'/'+mes2+'.'; }
-  if(/rec[u\u00fa][e\u00e9]rdame|recuerda que/i.test(m)){ var txt=msg.replace(/rec[u\u00fa][e\u00e9]rdame|recuerda que/gi,'').trim(); if(txt){ DB.recordatorios.push({id:uid(),tipo:'nota',titulo:txt,content:{texto:txt},fecha:todayStr(),status:'open'}); save();renderRecordar(); return 'Anotado: "'+txt+'"'; } }
-  var comprarM = m.match(/comprar\s+(.+)/i);
-  if(comprarM){ var items=comprarM[1].split(/,|\sy\s/).map(function(s){return s.trim();}).filter(Boolean); DB.recordatorios.push({id:uid(),tipo:'listado',titulo:'Lista de compras',content:{items:items.map(function(it){return {text:it,done:false};})},fecha:todayStr(),status:'open'}); save();renderRecordar();goTab('listado'); return 'Lista creada: '+items.join(', '); }
   if(/ir a|ll[e\u00e9]vame a|abre|mu[e\u00e9]strame/i.test(m)){
     if(/pagos/i.test(m)){goTab('pagos');return 'Aqui estan tus pagos.';}
     if(/agenda|calendario/i.test(m)){goTab('agenda');return 'Aqui esta tu agenda.';}
@@ -2530,6 +2537,52 @@ function intentLocal(msg){
     if(/config/i.test(m)){goTab('config');return 'Aqui esta la configuracion.';}
   }
   return null;
+}
+
+// Próxima fecha con ese día del mes (hoy cuenta). null si ese día no existe en ese mes.
+function proximaFechaDelDia(dia){
+  var hoy = todayStr();
+  var y = parseInt(hoy.slice(0,4),10), mes = parseInt(hoy.slice(5,7),10);
+  if(dia < parseInt(hoy.slice(8,10),10)){ mes++; if(mes>12){ mes=1; y++; } }
+  if(dia < 1 || dia > new Date(y, mes, 0).getDate()) return null;
+  return y+'-'+String(mes).padStart(2,'0')+'-'+String(dia).padStart(2,'0');
+}
+
+async function agendarSinHora(titulo, fecha){
+  if(!(await sesionLista())) return '⚠️ Sesión no lista. Recarga la página e intenta de nuevo.';
+  const { data, error } = await supa.from('events')
+    .insert({ user_id: currentUser.id, titulo, fecha, hora: null, nota: null })
+    .select().single();
+  if(error || !data) return '❌ No pude guardar el evento. Intenta de nuevo.';
+  await syncDesdeSupabase();
+  agendaDiaSel = fecha;
+  goTab('agenda');
+  const aviso = fecha === todayStr() ? 'Queda en tu agenda de hoy.' : 'Como no dijiste hora, te aviso ese día en el resumen de las 8 am.';
+  return '✅ Agendé "'+titulo+'" para el '+fmtDiaMes(fecha)+'. '+aviso;
+}
+
+// Suma a la "Lista de compras" si ya existe, para no crear una lista por cada frase.
+async function agregarAListaCompras(textos){
+  if(!(await sesionLista())) return '⚠️ Sesión no lista. Recarga la página e intenta de nuevo.';
+  const TITULO = 'Lista de compras';
+  const lista = DB.recordatorios.find(r => ES_LISTADO(r) && r.titulo === TITULO);
+  let error;
+  if(lista){
+    const actuales = (lista.content && lista.content.items) || [];
+    const nuevos = textos.filter(t => !actuales.some(it => (it.text||'').toLowerCase() === t.toLowerCase()));
+    const content = { ...(lista.content||{}), items: [...actuales, ...nuevos.map(t => ({ text:t, done:false }))] };
+    ({ error } = await supa.from('reminders').update({ content }).eq('id', lista.id).eq('user_id', currentUser.id));
+  } else {
+    let data;
+    ({ data, error } = await supa.from('reminders')
+      .insert({ user_id: currentUser.id, tipo:'listado', titulo:TITULO, content:{ items: textos.map(t => ({ text:t, done:false })) }, fecha: todayStr() })
+      .select().single());
+    if(!error && !data) error = { message:'sin confirmación' };
+  }
+  if(error) return '❌ No pude guardar la lista. Intenta de nuevo.';
+  await syncDesdeSupabase();
+  goTab('listado');
+  return '✅ Agregué a tu lista de compras: '+textos.join(', ')+'.';
 }
 
 // ════════════════════════════════════════
