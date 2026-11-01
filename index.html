@@ -3511,8 +3511,11 @@ async function guardarPerfil(){
   const nombre = document.getElementById('profile-nombre').value.trim();
   const telefonoRaw = document.getElementById('profile-telefono').value.trim();
   // Normalizar teléfono: solo dígitos y un + opcional al inicio
-  const telefono = telefonoRaw ? telefonoRaw.replace(/[^\d+]/g, '') : null;
-  if(telefono && !/^\+?\d{8,15}$/.test(telefono)){
+  let telefono = telefonoRaw ? telefonoRaw.replace(/[^\d+]/g, '') : null;
+  // El bot y los avisos necesitan +código de país. Un celular colombiano suele escribirse sin él.
+  if(telefono && /^3\d{9}$/.test(telefono)) telefono = '+57'+telefono;
+  else if(telefono && /^57\d{10}$/.test(telefono)) telefono = '+'+telefono;
+  if(telefono && !/^\+\d{8,15}$/.test(telefono)){
     toast('⚠️ Teléfono inválido. Usa formato +57 300 123 4567','var(--amber)');
     return;
   }
@@ -3524,6 +3527,7 @@ async function guardarPerfil(){
 
   // Refrescar currentProfile y DB.ia.usuarioNombre
   currentProfile = { ...(currentProfile||{}), id: currentUser.id, nombre: nombre || null, telefono };
+  document.getElementById('profile-telefono').value = telefono || '';
   if(nombre) DB.ia.usuarioNombre = nombre;
   toast('✅ Perfil guardado','var(--green)');
 }

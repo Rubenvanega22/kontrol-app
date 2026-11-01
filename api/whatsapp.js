@@ -97,7 +97,20 @@ async function findUserByPhone(rawFrom) {
     .eq('telefono', phone)
     .maybeSingle();
   if (error) console.error('[whatsapp] findUserByPhone error:', error.message);
-  return data;
+  if (data) return data;
+
+  // Respaldo: teléfonos guardados sin +57 o con otro formato. Solo si hay una única
+  // coincidencia, para no confundir a una persona con otra.
+  const ultimos10 = phone.replace(/\D/g, '').slice(-10);
+  if (ultimos10.length === 10) {
+    const { data: parecidos, error: e2 } = await supabase
+      .from('profiles').select('id, telefono').like('telefono', `%${ultimos10}`).limit(2);
+    if (e2) console.error('[whatsapp] findUserByPhone respaldo error:', e2.message);
+    if (parecidos && parecidos.length === 1) return parecidos[0];
+  }
+  // Sin el número completo en los logs: los últimos 4 bastan para diagnosticar.
+  console.warn('[whatsapp] número sin perfil, termina en', phone.slice(-4));
+  return null;
 }
 
 // ─── Estado conversacional (multi-turno) ──────────────────────
@@ -370,7 +383,7 @@ module.exports = async function handler(req, res) {
   const usuario = await findUserByPhone(from);
   if (!usuario) {
     await sendTwilio(from,
-      'Tu número no está vinculado a Kontrol. Agrégalo en Perfil → Teléfono.');
+      'Tu número no está vinculado a Kontrol. Agrégalo en la app: ⚙️ Configuración → Mi perfil.');
     return twimlOk(res);
   }
 
