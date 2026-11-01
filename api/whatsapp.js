@@ -66,7 +66,7 @@ async function sendTwilio(to, body) {
     }
   );
   const data = await r.json();
-  if (!data.sid) console.error('[whatsapp] Twilio send error:', JSON.stringify(data));
+  if (!data.sid) console.error('[whatsapp] Twilio send error, code=', data.code, 'status=', data.status);
   return !!data.sid;
 }
 
@@ -213,11 +213,11 @@ async function procesarConIA(userId, phone, message) {
   let data;
   try { data = JSON.parse(raw); }
   catch (e) {
-    console.error('[whatsapp] ai-chat respuesta no-JSON. status=', r.status, 'body=', raw.slice(0, 300));
+    console.error('[whatsapp] ai-chat respuesta no-JSON. status=', r.status);
     return 'El motor de IA devolvió una respuesta inesperada.';
   }
   if (!r.ok) {
-    console.error('[whatsapp] ai-chat HTTP', r.status, JSON.stringify(data));
+    console.error('[whatsapp] ai-chat HTTP', r.status);
     return data.error ? `Error IA: ${data.error}` : 'No pude procesar tu mensaje.';
   }
   const respuesta = data.respuesta || 'No tengo respuesta para eso.';
@@ -252,11 +252,11 @@ async function transcribirAudio(buf, contentType) {
   let data;
   try { data = JSON.parse(raw); }
   catch (e) {
-    console.error('[whatsapp] transcribe respuesta no-JSON. status=', r.status, 'body=', raw.slice(0, 300));
+    console.error('[whatsapp] transcribe respuesta no-JSON. status=', r.status);
     return '';
   }
   if (!r.ok) {
-    console.error('[whatsapp] transcribe HTTP', r.status, JSON.stringify(data));
+    console.error('[whatsapp] transcribe HTTP', r.status);
     return '';
   }
   return data.texto || '';
@@ -310,7 +310,7 @@ NO incluyas texto adicional, solo el JSON.`;
     const jsonStr = raw.match(/\{[\s\S]*\}/)?.[0] || '{}';
     extraida = JSON.parse(jsonStr);
   } catch (e) {
-    console.error('[whatsapp] vision JSON parse falló:', raw);
+    console.error('[whatsapp] vision JSON parse falló, longitud=', raw.length);
     return 'No entendí el comprobante.';
   }
   if (extraida.error || !extraida.monto) {
@@ -490,7 +490,7 @@ module.exports = async function handler(req, res) {
   const locLabel = req.body?.Label || '';
 
   console.log('[whatsapp] in:', {
-    from, text: text.substring(0, 80), numMedia, mediaCt,
+    hasText: !!text, numMedia, mediaCt,
     messageType, hasLatLng: !!(latRaw && lngRaw)
   });
 
@@ -537,7 +537,7 @@ module.exports = async function handler(req, res) {
       if (!texto) {
         respuesta = 'No pude entender el audio, intenta de nuevo.';
       } else {
-        console.log('[whatsapp] audio transcrito:', texto.substring(0, 80));
+        console.log('[whatsapp] audio transcrito, longitud=', texto.length);
         respuesta = await procesarConIA(usuario.id, phone, texto);
       }
     } else if (numMedia > 0 && mediaUrl && mediaCt.startsWith('image/')) {

@@ -121,9 +121,9 @@ module.exports = async function handler(req, res) {
     // 5. Ejecutar acciones (registrar gastos, eventos, etc.)
     const accionMatches = [...respuesta.matchAll(/\[ACCION:([^\]]+)\]/g)];
     const accionesIntencion = accionMatches.length;
-    console.log('[ai-chat] markers [ACCION:] encontrados:', accionesIntencion, accionMatches.map(m => m[0]));
+    console.log('[ai-chat] markers [ACCION:] encontrados:', accionesIntencion);
     const acciones = await ejecutarAcciones(respuesta, contexto, user_id);
-    console.log('[ai-chat] acciones realmente ejecutadas:', acciones.length, JSON.stringify(acciones));
+    console.log('[ai-chat] acciones realmente ejecutadas:', acciones.length, acciones.map(a => a.accion));
 
     // 5b. Override determinístico para acciones de ubicación.
     // Claude tiende a parafrasear ("perfecto, encontré...") y romper el formato
@@ -826,7 +826,7 @@ async function ajustarSaldo(tabla, id, userId, delta, opLabel) {
     console.error(`[${opLabel}] update saldo ${tabla}#${id} falló:`, uerr.message);
     return null;
   }
-  console.log(`[saldo] ${opLabel} → ${tabla} "${row.nombre}" (id=${id}) | antes=${antes} | delta=${delta >= 0 ? '+' : ''}${delta} | después=${despues}`);
+  console.log(`[saldo] ${opLabel} → ${tabla} (id=${id}) actualizado`);
   return { antes, delta, despues, nombre: row.nombre };
 }
 
@@ -855,7 +855,7 @@ async function leerCajaMovimientoFresh(movId, userId) {
 // ═══ EJECUTAR ACCIONES — todo queda visible en la app ═══
 async function ejecutarAcciones(respuesta, contexto, userId) {
   const matches = [...respuesta.matchAll(/\[ACCION:([^\]]+)\]/g)];
-  console.log('[ejecutarAcciones] matches encontrados:', matches.length, matches.map(m => m[0]));
+  console.log('[ejecutarAcciones] matches encontrados:', matches.length);
   const ejecutadas = [];
   const errores = [];
 
@@ -1046,7 +1046,7 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
         let hora = (parts[3] || '').trim();
         const mHora = hora.match(/^(\d{1,2}):(\d{2})$/);
         if (!titulo || !fecha || !mHora) {
-          console.warn('[evento] sin hora/fecha válida, no se crea:', JSON.stringify(parts));
+          console.warn('[evento] sin hora/fecha válida, no se crea');
           ejecutadas.push({ accion: 'evento', error: 'sin_hora', titulo });
           continue;
         }
