@@ -1543,6 +1543,7 @@ const AI_ACTION_TAB = {
   recordatorio: 'recordatorios',
   borrar_recordatorio: 'recordatorios',
   marcar_recordatorio_hecho: 'recordatorios',
+  desmarcar_recordatorio: 'recordatorios',
   lista: 'listado'
 };
 
@@ -2822,21 +2823,6 @@ async function intentLocal(msg){
     if(items.length) return await agregarAListaCompras(items);
   }
 
-  if(/pagos pendientes|debo pagar|vencen/i.test(m)){
-    var pend = DB.pagos.filter(function(p){return p.status!=='pagado';});
-    if(!pend.length) return 'No tienes pagos pendientes!';
-    return 'Tienes '+pend.length+' pago(s): '+pend.map(function(p){return p.nombre+' '+fmtCOP(p.monto);}).join(', ');
-  }
-  if(/agenda|eventos|programado/i.test(m) && !/^ag[e\u00e9]nda(?:me)?\s+\S/i.test(m)){
-    var evs = DB.eventos.filter(function(e){return new Date(e.fecha+'T12:00:00')>=new Date();}).slice(0,5);
-    if(!evs.length) return 'No tienes eventos proximos.';
-    return 'Eventos: '+evs.map(function(e){return e.titulo+' el '+fmtDate(e.fecha);}).join(', ');
-  }
-  if(/recordatorios|notas pendientes/i.test(m)){
-    var recs = DB.recordatorios.filter(function(r){return r.status==='open';}).slice(0,5);
-    if(!recs.length) return 'No tienes recordatorios abiertos.';
-    return 'Recordatorios: '+recs.map(function(r){return r.titulo;}).join(', ');
-  }
   if(/ir a|ll[e\u00e9]vame a|abre|mu[e\u00e9]strame/i.test(m)){
     if(/pagos/i.test(m)){goTab('pagos');return 'Aqui estan tus pagos.';}
     if(/agenda|calendario/i.test(m)){goTab('agenda');return 'Aqui esta tu agenda.';}

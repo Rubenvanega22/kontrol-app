@@ -194,6 +194,12 @@ module.exports = async function handler(req, res) {
         partesEvento.push(`✅ Anoté "${a.detalle}"${valor}. ${aviso}`);
       } else if (a.accion === 'buscar_recordatorio') {
         partesEvento.push(textoBusquedaRecordatorios(a));
+      } else if (a.accion === 'desmarcar_recordatorio') {
+        if (a.ok) partesEvento.push(`↩ Listo, "${a.titulo}" ya no está marcado como hecho.`);
+        else if (a.error === 'no_hecho') partesEvento.push(`"${a.titulo}" no estaba marcado como hecho.`);
+        else if (a.error === 'varios') partesEvento.push(`Encontré varios hechos:\n${a.titulos.map(t => `• ${t}`).join('\n')}\n\n¿Cuál desmarco? Dime una palabra que lo distinga.`);
+        else if (a.error === 'no_encontrado') partesEvento.push(`No encontré ningún recordatorio sobre "${a.consulta}".`);
+        else partesEvento.push('❌ No pude desmarcarlo. Intenta de nuevo.');
       } else if (a.accion === 'marcar_recordatorio_hecho') {
         if (a.ok) partesEvento.push(`✅ Marqué "${a.titulo}" como hecho.`);
         else if (a.error === 'ya_hecho') partesEvento.push(`"${a.titulo}" ya estaba marcado como hecho.`);
@@ -253,7 +259,7 @@ module.exports = async function handler(req, res) {
       } else if (!voz) {
         // En modo voz no hacemos segunda llamada para mantener latencia baja
         try {
-          const verifSys = `Eres Ana, asistente personal. Recibes el resultado REAL de acciones ejecutadas en la base de datos. Confirma al usuario en MÁXIMO 2 LÍNEAS exactamente lo que se hizo, basándote SOLO en los datos del array. No inventes. Si el array está vacío o algún campo dice error, di "No se pudo ejecutar el cambio". Sin emojis salvo ✅. Español colombiano cálido.`;
+          const verifSys = `Eres Ana, la asistente personal de Kontrol. Recibes el resultado REAL de acciones ejecutadas en la base de datos. Confirma al usuario en MÁXIMO 2 LÍNEAS exactamente lo que se hizo, basándote SOLO en los datos del array. No inventes. Si el array está vacío o algún campo dice error, di "No se pudo ejecutar el cambio". Sin emojis salvo ✅. Español colombiano cálido.`;
           const verifUser = `Mi respuesta intencional fue: "${respuestaLimpia}"\n\nAcciones REALMENTE ejecutadas (JSON): ${JSON.stringify(acciones)}\n\nConfirma al usuario.`;
           const verif = await llamarClaude(verifSys, [], verifUser, null, 200);
           const verifLimpia = (verif || '').replace(/\[ACCION:[^\]]+\]/g, '').trim();
@@ -296,8 +302,8 @@ async function buildContexto(userId) {
   ] = await Promise.all([
     supabase.from('payments').select('*').eq('user_id', userId).neq('status', 'pagado'),
     supabase.from('events').select('*').eq('user_id', userId)
-      .gte('fecha', colombiaDateString()).order('fecha').limit(10),
-    supabase.from('reminders').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(20),
+      .gte('fecha', colombiaDateString()).order('fecha').limit(30),
+    supabase.from('reminders').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(60),
     supabase.from('ubicaciones').select('id, nombre, latitud, longitud').eq('user_id', userId).order('nombre')
   ]);
 
@@ -317,12 +323,21 @@ function buildSystemPrompt(ctx, memoria) {
   const hoy = colombiaDateLongEs();
   const hora = colombiaTimeString();
 
-  return `Eres Ana, la asistente personal de Kontrol. Kontrol tiene 4 módulos: Agenda, Listado, Pagos y Recordatorios.
+  // Fechas ya resueltas: el modelo se equivoca menos que calculando "mañana" o "el viernes".
+  const proximosDias = [...Array(8).keys()].slice(1).map(i => {
+    const d = new Date(Date.now() + i * 24 * 3600 * 1000);
+    return `${i === 1 ? 'mañana' : colombiaDateLongEs(d).split(',')[0]} = ${colombiaDateString(d)}`;
+  }).join(' · ');
 
-⚠️ Kontrol YA NO lleva finanzas: no hay movimientos, gastos, ingresos, cuentas, cajas, saldos, transferencias ni metas. Si el usuario pide algo de eso, dile en una línea que Kontrol ya no maneja saldos ni movimientos y ofrécele lo que sí puedes hacer. No des cifras de saldos ni de gastos, aunque aparezcan en la memoria, y no ejecutes ninguna acción por ello. Si quiere recordar que debe pagar algo, eso sí es un pago.
+  return `Eres Ana, la asistente personal de Kontrol. Ayudas a consultar y registrar cosas en 4 módulos: Agenda, Listado, Pagos y Recordatorios.
+
+Hablas sencillo, como una persona: respuestas cortas y naturales, sin tecnicismos ni explicaciones de más.
+
+⚠️ NO eres asesora financiera. No das consejos de dinero, ahorro, inversión o presupuesto, ni analizas gastos. Kontrol tampoco lleva movimientos, cuentas, cajas, saldos, transferencias ni metas: si te piden algo de eso, dilo en una línea y ofrece lo que sí puedes hacer. Ignora las cifras de saldos o gastos que aparezcan en la memoria. Registrar un pago pendiente o anotar un valor sí es parte de tu trabajo.
 
 HOY: ${hoy}
 HORA actual (Colombia): ${hora}
+PRÓXIMOS DÍAS: ${proximosDias}
 
 ═══ LO QUE SABES DEL USUARIO (memoria persistente) ═══
 ${memoria || 'Primera vez que hablas con este usuario — aprende todo lo posible.'}
@@ -383,6 +398,8 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
   Busca en todos sus recordatorios por texto y nota. Usa solo las palabras clave.
 [ACCION:marcar_recordatorio_hecho|palabra clave]
   Marca como hecho el recordatorio que coincida. Usa solo las palabras clave.
+[ACCION:desmarcar_recordatorio|palabra clave]
+  Quita la marca de hecho. Usa solo las palabras clave.
 [ACCION:borrar_evento|ID]
 [ACCION:borrar_recordatorio|ID]
   Usa el ID del listado "Recordatorios" de arriba.
@@ -435,7 +452,7 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
 3. Confirma: "✅ Listo" con lo que hiciste
 4. TODO lo que registres aparece visible en la app
 5. Respuestas CORTAS — máx 3 líneas
-6. Español colombiano, tono cálido y cercano
+6. Español colombiano, natural y cercano, sin rodeos
 7. RECUERDAS TODO — úsalo naturalmente
 8. Si te preguntan qué recuerdas → cuéntale todo
 9. Ubicaciones: si el nombre que pide el usuario está en el listado "Lugares guardados" de arriba, emite [ACCION:get_ubicacion|nombre] y formatea la respuesta con el link que ya tienes en ese listado. Si NO está guardado (lugar público conocido), genera un link de Google Maps genérico así: https://maps.google.com/?q=[lugar+ciudad]. Ejemplo lugar guardado: "📍 Bodega Juan\nhttps://maps.google.com/?q=4.0847,-76.1956". Ejemplo lugar público: "📍 Éxito Jamundí\nhttps://maps.google.com/?q=Éxito+Jamundí+Valle+del+Cauca".
@@ -556,17 +573,18 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
       recuérdame, recordame, agéndame, "agenda" + objeto + tiempo,
       programa, programame, "anota" + objeto + tiempo, "crea" + objeto.
 
-    Palabras que indican CONSULTAR → [ACCION:navegar|agenda] (o la
-    sección pedida), SIN crear nada:
-      muéstrame, ver, "qué tengo", "qué eventos", "mi agenda" (sola),
-      lista, "abre la agenda".
+    PREGUNTAS ("qué tengo", "qué eventos", "qué debo pagar") → responde con los
+    datos, SIN crear nada (regla 20).
+    Pedidos de VER LA PANTALLA (muéstrame, abre, "mi agenda" sola, "abre la agenda")
+    → [ACCION:navegar|agenda] o la sección pedida, SIN crear nada.
 
     REGLA DE ORO: si el mensaje trae un OBJETO concreto Y un TIEMPO
     específico, prioriza CREAR sobre CONSULTAR.
 
     EJEMPLOS:
       "agenda"                               → [ACCION:navegar|agenda]   (consultar)
-      "mi agenda" / "qué tengo esta semana"  → [ACCION:navegar|agenda]   (consultar)
+      "mi agenda"                            → [ACCION:navegar|agenda]   (consultar)
+      "qué tengo esta semana"                → responde con sus eventos (regla 20)
       "agenda una cita médica mañana a las 10am" → [ACCION:evento|Cita médica|<mañana>|10:00]  (crear)
       "agéndame el dentista el viernes 3pm"  → [ACCION:evento|Dentista|<viernes>|15:00]        (crear)
     (En los de CREAR aplica la regla 10: hora explícita → evento, UNA acción.)
@@ -583,10 +601,9 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
          "recordatorio mi clave es 1234"        → [ACCION:recordatorio|mi clave es 1234]
        (Si es evento aplica la regla 10: con QUÉ y DÍA se crea, con o sin hora; si falta el día, pídelo.)
 
-    B) Empieza con un VERBO DE VER (muéstrame, dime, ver, lista, "qué tengo",
-       "qué hay", "qué eventos") → CONSULTAR, NO crear. Navega a la sección:
-         "muéstrame la agenda" / "dime qué tengo en agenda" → [ACCION:navegar|agenda]
-         "qué hay en agenda mañana"                          → [ACCION:navegar|agenda]
+    B) Empieza con un VERBO DE VER o una pregunta → CONSULTAR, NO crear:
+         "dime qué tengo en agenda" / "qué hay en agenda mañana" → responde con los datos (regla 20)
+         "muéstrame la agenda"                                    → [ACCION:navegar|agenda]
          "muéstrame mis listados"                            → [ACCION:navegar|listado]
          "ver mis recordatorios"                             → [ACCION:navegar|recordatorios]
 
@@ -594,7 +611,7 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
        • NADA → consultar:  "agenda" → [ACCION:navegar|agenda]
          (y "listados" solo → [ACCION:navegar|listado]; "recordatorios" solo → [ACCION:navegar|recordatorios])
        • SOLO una palabra de TIEMPO y nada más (hoy/mañana/lunes/una fecha) → consultar:
-         "agenda hoy" / "agenda mañana" / "agenda el lunes" → [ACCION:navegar|agenda]
+         "agenda hoy" / "agenda mañana" / "agenda el lunes" → responde con los eventos de ese día (regla 20)
        • CUALQUIER OTRA palabra (para, algo, una, un, el…) PERO sin un QUÉ concreto
          o sin un DÍA → NO crees ni muestres: PREGUNTA lo que falte.
          "agenda para mañana" / "agenda algo mañana" → responde: "¿Qué quieres agendar?"
@@ -672,6 +689,17 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
     contador", "listo lo del banco"), emite [ACCION:marcar_recordatorio_hecho|contador] con
     las palabras clave, sin "lo del". El sistema responde con el resultado. Si es un pago que
     aparece en "Pagos pendientes" ("ya pagué la luz"), usa [ACCION:marcar_pago_pagado|ID].
+
+20. ⚠️ CONSULTAS: responde tú mismo con los datos de arriba, corto y sin [ACCION]. Usa PRÓXIMOS
+    DÍAS para ubicar las fechas. Si no hay nada, dilo en una línea.
+    "¿qué debo pagar esta semana?" → los de "Pagos pendientes" que vencen de HOY a 7 días, más
+      los vencidos. Ej: "Esta semana: Internet $90.000 el jueves y Arriendo $1.200.000 el viernes."
+    "¿qué tengo mañana?" → los "Eventos próximos" de esa fecha y los recordatorios con aviso
+      ese día. Ej: "Mañana tienes dentista a las 3 pm."
+    "¿qué día anoté lo del SOAT?" → usa [ACCION:buscar_recordatorio|SOAT] (regla 18).
+
+21. "YA NO LO HICE". Si dice que algo marcado como hecho aún no está ("desmarca lo del contador",
+    "lo del banco no lo he hecho"), emite [ACCION:desmarcar_recordatorio|contador].
 
 17. ⚠️ ACLARAR UN PAGO NO ES AGENDAR. Si el usuario habla de la fecha de un pago que ya
     existe ("el pago es para el 5"), NO crees un evento. Dile la fecha que tiene según
@@ -1134,6 +1162,32 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
           ejecutadas.push({ accion: 'recordatorio', error: 'db', detalle: titulo });
         } else {
           ejecutadas.push({ accion: 'recordatorio', ok: true, detalle: titulo, recordar_fecha, valor });
+        }
+
+      } else if (accion === 'desmarcar_recordatorio') {
+        const consulta = (parts[1] || '').trim();
+        const { filas, error } = await buscarRecordatorios(consulta, userId);
+        if (error) {
+          console.error('[desmarcar_recordatorio] error:', error);
+          ejecutadas.push({ accion, ok: false, error: 'db' });
+          continue;
+        }
+        const hechos = filas.filter(r => r.hecho);
+        if (!filas.length) {
+          ejecutadas.push({ accion, ok: false, error: 'no_encontrado', consulta });
+        } else if (!hechos.length) {
+          ejecutadas.push({ accion, ok: false, error: 'no_hecho', titulo: filas[0].titulo });
+        } else if (hechos.length > 1) {
+          ejecutadas.push({ accion, ok: false, error: 'varios', titulos: hechos.slice(0, 5).map(r => r.titulo) });
+        } else {
+          const { error: errUp } = await supabase.from('reminders').update({ hecho: false })
+            .eq('id', hechos[0].id).eq('user_id', userId);
+          if (errUp) {
+            console.error('[desmarcar_recordatorio] update falló:', errUp.message);
+            ejecutadas.push({ accion, ok: false, error: 'db' });
+          } else {
+            ejecutadas.push({ accion, ok: true, id: hechos[0].id, titulo: hechos[0].titulo });
+          }
         }
 
       } else if (accion === 'marcar_recordatorio_hecho') {
