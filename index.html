@@ -1679,7 +1679,7 @@ async function abrirHistorial(tipo){
   if(!currentUser) return;
   const { data, error } = await supa.from('historial_mensual').select('*')
     .eq('user_id', currentUser.id).eq('tipo', tipo).order('mes_cerrado', { ascending:false });
-  if(error){ body.innerHTML = `<div style="padding:20px;color:var(--red)">Error: ${error.message}</div>`; return; }
+  if(error){ body.innerHTML = `<div style="padding:20px;color:var(--red)">Error: ${escAttr(error.message)}</div>`; return; }
   if(!data || !data.length){ body.innerHTML = '<div class="empty"><div class="empty-ico">📁</div><div class="empty-txt">Aún no hay meses archivados</div></div>'; return; }
   _histGrupos = {};
   for(const r of data){ (_histGrupos[r.mes_cerrado] = _histGrupos[r.mes_cerrado] || []).push(r.data || {}); }
@@ -1687,7 +1687,7 @@ async function abrirHistorial(tipo){
   body.innerHTML = meses.map(mes=>{
     const items = _histGrupos[mes];
     const total = items.reduce((s,it)=>s+parseFloat(it.monto||0),0);
-    return `<div class="rec-card" style="cursor:pointer;margin-bottom:8px" onclick="verHistorialMes('${mes}')">
+    return `<div class="rec-card" style="cursor:pointer;margin-bottom:8px" onclick="verHistorialMes('${escAttr(mes)}')">
       <div class="rec-title">${nombreMes(mes)}</div>
       <div style="font-size:12px;color:var(--t2);margin-top:3px">${items.length} ${tipo==='payment'?'pago(s)':'movimiento(s)'} · ${fmtCOP(total)}</div>
     </div>`;
@@ -1703,11 +1703,11 @@ function verHistorialMes(mes){
     items.map(it=>{
       if(histTipo==='payment'){
         const venc = it.fecha_limite ? fmtDate(it.fecha_limite) : '';
-        return `<div class="mov-row"><div class="mov-info"><div class="mov-name">${it.nombre||'Pago'}</div><div class="mov-sub">${venc}${it.status?' · '+it.status:''}</div></div><div class="mov-amt">${fmtCOP(it.monto)}</div></div>`;
+        return `<div class="mov-row"><div class="mov-info"><div class="mov-name">${escAttr(it.nombre||'Pago')}</div><div class="mov-sub">${venc}${it.status?' · '+escAttr(it.status):''}</div></div><div class="mov-amt">${fmtCOP(it.monto)}</div></div>`;
       }
       const signo = it.tipo==='ingreso'?'+':'-';
       const color = it.tipo==='ingreso'?'var(--green)':'var(--red)';
-      return `<div class="mov-row"><div class="mov-info"><div class="mov-name">${it.descripcion||''}</div><div class="mov-sub">${it.fecha?fmtDate(it.fecha):''}</div></div><div class="mov-amt" style="color:${color}">${signo}${fmtCOP(it.monto)}</div></div>`;
+      return `<div class="mov-row"><div class="mov-info"><div class="mov-name">${escAttr(it.descripcion||'')}</div><div class="mov-sub">${it.fecha?fmtDate(it.fecha):''}</div></div><div class="mov-amt" style="color:${color}">${signo}${fmtCOP(it.monto)}</div></div>`;
     }).join('');
 }
 
@@ -2343,7 +2343,7 @@ function abrirModalDiario(fechaISO){
       <div class="day-sec-ttl">💳 PAGOS PROGRAMADOS</div>
       ${pagos.map(p=>`<div class="day-item">
         <span class="day-item-icon">${p.status==='pagado'?'✅':'⏳'}</span>
-        <span class="day-item-main">${p.nombre}</span>
+        <span class="day-item-main">${escAttr(p.nombre)}</span>
         <span class="day-item-monto">${fmtCOP(p.monto)}</span>
       </div>`).join('')}
     </div>`;
@@ -2353,7 +2353,7 @@ function abrirModalDiario(fechaISO){
     html += `<div class="day-sec">
       <div class="day-sec-ttl">🔔 RECORDATORIOS</div>
       ${recs.map(r=>`<div class="day-item">
-        <span class="day-item-main">${r.hecho?'✅ ':''}${r.titulo}</span>
+        <span class="day-item-main">${r.hecho?'✅ ':''}${escAttr(r.titulo)}</span>
       </div>`).join('')}
     </div>`;
   }
@@ -3387,7 +3387,7 @@ function onIAProveedorChange(){
         <div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:4px">✅ Groq es 100% gratuito</div>
         <div style="font-size:11.5px;color:var(--t3);line-height:1.5">1. Ve a <b style="color:var(--t1)">console.groq.com</b><br/>2. Inicia sesión con Gmail<br/>3. API Keys → Create API Key<br/>4. Pega la key aquí</div>
       </div>
-      <div class="form-group"><label class="form-label">API Key de Groq</label><input class="form-inp" id="ia-apikey" type="password" placeholder="gsk_…" value="${DB.ia.apiKey||''}"/></div>
+      <div class="form-group"><label class="form-label">API Key de Groq</label><input class="form-inp" id="ia-apikey" type="password" placeholder="gsk_…" value="${escAttr(DB.ia.apiKey||'')}"/></div>
       <div class="form-group"><label class="form-label">Modelo</label>
         <select class="form-inp" id="ia-modelo">
           <option value="llama-3.2-11b-vision-preview" ${DB.ia.modelo==='llama-3.2-11b-vision-preview'?'selected':''}>Llama 3.2 11B Vision ⭐ (facturas)</option>
@@ -3405,7 +3405,7 @@ function onIAProveedorChange(){
   };
   const opts = (modelos[prov]||[]).map(m=>`<option value="${m}" ${DB.ia.modelo===m?'selected':''}>${m}</option>`).join('');
   el.innerHTML = `
-    <div class="form-group"><label class="form-label">API Key</label><input class="form-inp" id="ia-apikey" type="password" placeholder="sk-…" value="${DB.ia.apiKey||''}"/></div>
+    <div class="form-group"><label class="form-label">API Key</label><input class="form-inp" id="ia-apikey" type="password" placeholder="sk-…" value="${escAttr(DB.ia.apiKey||'')}"/></div>
     <div class="form-group"><label class="form-label">Modelo</label><select class="form-inp" id="ia-modelo">${opts}</select></div>`;
 }
 
@@ -3443,15 +3443,15 @@ async function renderAdmin(){
   // Lista de usuarios
   const usersEl = document.getElementById('admin-users-list');
   if(profilesError){
-    usersEl.innerHTML = `<div style="font-size:12px;color:var(--red)">Error: ${profilesError.message}</div>`;
+    usersEl.innerHTML = `<div style="font-size:12px;color:var(--red)">Error: ${escAttr(profilesError.message)}</div>`;
   } else if(!profiles?.length){
     usersEl.innerHTML = '<div style="font-size:12px;color:var(--t3)">Sin usuarios.</div>';
   } else {
     usersEl.innerHTML = profiles.map(p => {
       const fechaReg = p.created_at ? new Date(p.created_at).toLocaleDateString('es-CO') : '—';
-      const tel = p.telefono ? ` · 📱 ${p.telefono}` : '';
+      const tel = p.telefono ? ` · 📱 ${escAttr(p.telefono)}` : '';
       return `<div style="padding:8px 10px;background:var(--card2);border:1px solid var(--bd);border-radius:10px;margin-bottom:6px;font-size:12px">
-        <div style="font-weight:600;color:var(--t1)">${p.nombre || '(sin nombre)'}</div>
+        <div style="font-weight:600;color:var(--t1)">${escAttr(p.nombre || '(sin nombre)')}</div>
         <div style="font-size:11px;color:var(--t3);margin-top:2px">Registro: ${fechaReg}${tel}</div>
         <div style="font-size:10px;color:var(--t3);margin-top:2px;font-family:monospace">${p.id}</div>
       </div>`;
@@ -3461,7 +3461,7 @@ async function renderAdmin(){
   // Lista de feedback
   const fbEl = document.getElementById('admin-feedback-list');
   if(feedbacksError){
-    fbEl.innerHTML = `<div style="font-size:12px;color:var(--red)">Error: ${feedbacksError.message}</div>`;
+    fbEl.innerHTML = `<div style="font-size:12px;color:var(--red)">Error: ${escAttr(feedbacksError.message)}</div>`;
   } else if(!feedbacks?.length){
     fbEl.innerHTML = '<div style="font-size:12px;color:var(--t3)">Sin feedback.</div>';
   } else {
@@ -3476,7 +3476,7 @@ async function renderAdmin(){
       return `<div style="padding:10px;background:var(--card2);border:1px solid var(--bd);border-radius:10px;margin-bottom:6px;font-size:12px;opacity:${f.resuelto?0.55:1}">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
           <input type="checkbox" ${f.resuelto?'checked':''} onchange="marcarFeedbackResuelto('${f.id}', this.checked)" style="cursor:pointer"/>
-          <div style="font-weight:600;color:var(--t1)">${autor}</div>
+          <div style="font-weight:600;color:var(--t1)">${escAttr(autor)}</div>
           <div style="font-size:10px;color:var(--t3);margin-left:auto">${fecha}</div>
         </div>
         <div style="color:var(--t2);line-height:1.4;white-space:pre-wrap">${safeMsg}</div>
