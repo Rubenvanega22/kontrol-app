@@ -6,8 +6,9 @@
 // Modos:
 //   • MANUAL: POST con Authorization: Bearer <jwt de usuario>. Archiva el mes del
 //     body ({mes:"2026-05"}, o el mes actual Colombia) SOLO para ese usuario.
-//   • AUTOMÁTICO: GET (cron de Vercel). Si hoy es día 1 en Colombia, archiva el mes
-//     ANTERIOR para todos los usuarios con datos de ese mes. Si no, no-op.
+//   • AUTOMÁTICO: GET con Authorization: Bearer <CRON_SECRET> (cron de Vercel). Si
+//     hoy es día 1 en Colombia, archiva el mes ANTERIOR para todos los usuarios con
+//     datos de ese mes. Si no, no-op.
 
 const supabase = require('../lib/supabase');
 const { colombiaDateParts } = require('../lib/datetime');
@@ -82,7 +83,9 @@ module.exports = async function handler(req, res) {
     }
 
     // ── MODO AUTOMÁTICO (cron de Vercel): solo el día 1 en Colombia ──
-    if (req.method !== 'GET' && token !== process.env.CRON_SECRET) {
+    // Vercel envía Authorization: Bearer <CRON_SECRET> en sus crons. También se
+    // exige en GET: sin esto, cualquiera podía archivar y borrar datos de todos.
+    if (!process.env.CRON_SECRET || token !== process.env.CRON_SECRET) {
       return res.status(401).json({ error: 'No autorizado' });
     }
     const { dia } = colombiaDateParts();
