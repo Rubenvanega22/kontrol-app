@@ -12,11 +12,12 @@
 //        - Texto → /api/ai-chat (mismo Claude/Mem0/acciones que el chat web)
 //   3. Responder vía Twilio REST API (no TwiML — evita el timeout de 5s)
 //
-// ⚠️ Esta v1 NO verifica X-Twilio-Signature. Cualquiera que conozca la URL
-//    puede impersonar usuarios. Endurecer en un PR de seguridad aparte.
+// Rechaza con 403 lo que no traiga una X-Twilio-Signature válida: identificar por
+// From no basta, porque sin firma cualquiera podría suplantar un número.
 
 const supabase = require('../lib/supabase');
 const { colombiaDateString } = require('../lib/datetime');
+const { firmaValida, urlDelWebhook } = require('../lib/twilio-signature');
 
 const TWILIO_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_TOKEN = process.env.TWILIO_AUTH_TOKEN;
@@ -467,6 +468,12 @@ async function procesarUbicacion(userId, phone, lat, lng, label, address, captio
 // ─── Handler principal ────────────────────────────────────────
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return twimlOk(res, 405);
+
+  const urlFirmada = urlDelWebhook(req);
+  if (!firmaValida(TWILIO_TOKEN, req.headers['x-twilio-signature'], urlFirmada, req.body)) {
+    console.warn('[whatsapp] firma de Twilio inválida. url=', urlFirmada, 'trae firma=', !!req.headers['x-twilio-signature']);
+    return twimlOk(res, 403);
+  }
 
   const from = req.body?.From || '';
   const text = (req.body?.Body || '').trim();
