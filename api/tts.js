@@ -1,6 +1,9 @@
 // /api/tts.js — ElevenLabs TTS para Kontrol
+import auth from '../lib/auth.js';
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
+  if (!(await auth.esSistemaOUsuario(req))) return res.status(401).json({ error: 'No autorizado' });
 
   const { texto, voice_id } = req.body;
   if (!texto || !texto.trim()) {

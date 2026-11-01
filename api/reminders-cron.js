@@ -41,7 +41,10 @@ async function disparoSendWhatsApp() {
     // VERCEL_URL apunta al deployment específico (protegido en algunos planes);
     // usamos el alias público estable.
     const baseUrl = 'https://kontrol-app-eight.vercel.app';
-    const r = await fetch(`${baseUrl}/api/send-whatsapp`, { method: 'POST' });
+    const r = await fetch(`${baseUrl}/api/send-whatsapp`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${process.env.CRON_SECRET}` }
+    });
     return await r.json().catch(() => null);
   } catch (e) {
     console.error('[reminders-cron] fetch send-whatsapp failed:', e.message);
@@ -394,7 +397,9 @@ async function modoPagos() {
 // ─── Handler: cada tick corre rolling + time-specific ──────────────
 module.exports = async function handler(req, res) {
   const authHeader = req.headers.authorization || '';
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}` && req.method !== 'GET') {
+  // Vercel (GET) y cron-job.org (POST) envían el secreto. Sin esto, cualquiera podía
+  // forzar los avisos con ?modo=.
+  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return res.status(401).json({ error: 'No autorizado' });
   }
 

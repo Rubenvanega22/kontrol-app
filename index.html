@@ -2943,7 +2943,7 @@ async function startRecording(e){
       try {
         const res = await fetch('/api/transcribe', {
           method: 'POST',
-          headers: { 'Content-Type': blobType },
+          headers: { ...(await headersIA()), 'Content-Type': blobType },
           body: audioBlob
         });
         const data = await res.json();
@@ -3104,7 +3104,7 @@ async function hablar(texto){
   try {
     const res = await fetch('/api/tts', {
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers: await headersIA(),
       body: JSON.stringify({ texto: limpio, voice_id: currentProfile?.voz_id || null })
     });
     if(!res.ok) throw new Error('TTS error: '+res.status);
@@ -3789,7 +3789,7 @@ async function doRegistro() {
 // currentUser antes de permitir ESCRITURAS. Cierra el race del registro: signUp
 // entrega el `user` antes de que la sesión esté 100% lista en el cliente, y los
 // inserts disparados en esa ventana eran rechazados por RLS y se "perdían".
-// Headers para /api/ai-chat: el backend identifica al usuario por este token.
+// Headers para /api/ai-chat, tts y transcribe: el backend valida este token.
 async function headersIA() {
   const { data: { session } } = await supa.auth.getSession();
   const headers = { 'Content-Type': 'application/json' };

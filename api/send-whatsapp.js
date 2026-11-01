@@ -3,8 +3,10 @@
 // Se llama desde reminders-cron o manualmente
 
 const supabase = require('../lib/supabase');
+const { esSistema } = require('../lib/auth');
 
 module.exports = async function handler(req, res) {
+  if (!esSistema(req)) return res.status(401).json({ error: 'No autorizado' });
   try {
     // Obtener alertas pendientes
     const { data: alertas } = await supabase

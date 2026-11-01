@@ -243,7 +243,7 @@ async function transcribirAudio(buf, contentType) {
   try {
     r = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': contentType || 'audio/ogg' },
+      headers: { 'Content-Type': contentType || 'audio/ogg', 'Authorization': `Bearer ${process.env.CRON_SECRET}` },
       body: buf
     });
     raw = await r.text();

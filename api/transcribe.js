@@ -1,10 +1,13 @@
 // /api/transcribe.js — Transcripción de audio via Groq Whisper
+import auth from '../lib/auth.js';
+
 export const config = {
   api: { bodyParser: false }
 };
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
+  if (!(await auth.esSistemaOUsuario(req))) return res.status(401).json({ error: 'No autorizado' });
 
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'GROQ_API_KEY no configurada' });
