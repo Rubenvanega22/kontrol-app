@@ -1,18 +1,13 @@
 {
   "name": "kontrol-pro",
   "version": "1.0.0",
-  "description": "Kontrol - App financiera personal con IA",
+  "description": "Kontrol - Agenda, listados, pagos y recordatorios con IA",
   "engines": { "node": "24.x" },
   "scripts": {
-    "build": "echo 'static site'",
-    "start": "node api/sync-emails.js"
+    "build": "echo 'static site'"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
-    "googleapis": "^140.0.0",
-    "@microsoft/microsoft-graph-client": "^3.0.7",
-    "isomorphic-fetch": "^3.0.0",
-    "node-cron": "^3.0.3",
     "ws": "^8.18.0"
   }
 }

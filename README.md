@@ -30,11 +30,6 @@ CREATE POLICY "users own caja_movimientos" ON caja_movimientos
 
 | Path                    | UTC         | Hora Colombia (UTC-5) |
 |-------------------------|-------------|-----------------------|
-| `/api/sync-emails`      | `0 13 * * *`| 08:00                 |
-| `/api/sync-emails`      | `0 17 * * *`| 12:00                 |
-| `/api/sync-emails`      | `0 21 * * *`| 16:00                 |
-| `/api/sync-emails`      | `0 1 * * *` | 20:00                 |
-| `/api/ai-analysis`      | `0 9 * * *` | 04:00                 |
 | `/api/reminders-cron`   | `0 13 * * *`| 08:00 (resumen diario)|
 
 ## cron-job.org — frecuencia fina del "rolling" de recordatorios
@@ -42,13 +37,6 @@ CREATE POLICY "users own caja_movimientos" ON caja_movimientos
 Vercel Hobby solo permite crons diarios (rechaza `*/1 * * * *` al deploy).
 Para soporte de "recuérdame en 5 minutos" usamos un cron externo en
 [cron-job.org](https://console.cron-job.org/):
-
-### Job: Sync de correos cada 4 horas
-
-- **Title:** Kontrol sync-emails (4h)
-- **URL:** `https://kontrol-app-eight.vercel.app/api/sync-emails`
-- **Schedule:** every 4 hours (`0 */4 * * *` en UTC)
-- **Notifications:** disabled
 
 ### Job: Recordatorios cada 1 minuto
 

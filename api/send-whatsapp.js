@@ -1,6 +1,6 @@
 // /api/send-whatsapp.js
 // Envía alertas WhatsApp pendientes
-// Se llama desde sync-emails o manualmente
+// Se llama desde reminders-cron o manualmente
 
 const supabase = require('../lib/supabase');
 
