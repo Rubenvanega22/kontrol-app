@@ -1657,15 +1657,24 @@ select.form-inp option{background:var(--card2);}
     </div>
     <div class="form-group">
       <label class="form-label">Fecha</label>
-      <input class="form-inp" id="evento-fecha" type="date"/>
+      <input class="form-inp" id="evento-fecha" type="date" oninput="actualizarAvisoEvento()"/>
     </div>
     <div class="form-group">
       <label class="form-label">Hora (opcional)</label>
       <input class="form-inp" id="evento-hora" type="time" oninput="actualizarAvisoEvento()"/>
     </div>
     <div class="form-group" id="evento-aviso-grupo" style="display:none">
-      <label class="form-label">¿A qué hora quieres que te avise? (opcional)</label>
-      <input class="form-inp" id="evento-aviso" type="time" oninput="actualizarAvisoEvento()"/>
+      <label class="form-label">Avisarme</label>
+      <select class="form-inp" id="evento-avisar" onchange="cambiarOpcionAviso()">
+        <option value="siempre">Como siempre</option>
+        <option value="antes:15">15 min antes</option>
+        <option value="antes:30">30 min antes</option>
+        <option value="antes:60">1 hora antes</option>
+        <option value="antes:120">2 horas antes</option>
+        <option value="dia_anterior">El día anterior</option>
+        <option value="hora">Hora personalizada</option>
+      </select>
+      <input class="form-inp" id="evento-aviso" type="time" style="display:none;margin-top:8px" oninput="actualizarAvisoEvento()"/>
       <div id="evento-aviso-ayuda" style="font-size:12px;color:var(--t3);margin-top:6px"></div>
     </div>
     <div class="form-group">
@@ -2633,29 +2642,71 @@ async function toggleRecurrenciaPago(id, el){
 // ════════════════════════════════════════
 let eventoEditId = null;
 
-// Un evento antes de las 8 am no entra en el resumen de las 8 am: tiene su propio aviso.
-const eventoEsTemprano = hora => !!hora && hora < '08:00';
+// El aviso que eligió al abrir el formulario, para no recalcularlo si no lo toca.
+let avisoAbierto = null;
 
 function horaEventoCorta(hora){
   const [h, m] = hora.split(':').map(Number);
   return `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2,'0')} ${h < 12 ? 'am' : 'pm'}`;
 }
 
-// La hora elegida cae en la última vez que ocurre antes del evento (igual que lib/avisos-evento.js).
-function momentoAvisoEvento(fecha, hora, aviso){
-  if(aviso <= hora) return new Date(`${fecha}T${aviso}:00-05:00`);
-  return new Date(new Date(`${fecha}T${aviso}:00-05:00`).getTime() - 24*3600*1000);
+function diaAnteriorEvento(fecha){
+  return new Date(new Date(`${fecha}T12:00:00-05:00`).getTime() - 24*3600*1000).toLocaleDateString('en-CA',{ timeZone:'America/Bogota' });
+}
+
+function fechaHoraBogota(date){
+  const [f, h] = date.toLocaleString('sv-SE',{ timeZone:'America/Bogota' }).split(' ');
+  return { fecha:f, hora:h.slice(0,5) };
+}
+
+// El momento del aviso según el formulario (mismas reglas que lib/avisos-evento.js):
+// null = como siempre; undefined = falta la hora. La hora personalizada cae en la última
+// vez que ocurre antes del evento.
+function avisoDelFormulario(fecha, hora){
+  const opcion = document.getElementById('evento-avisar').value;
+  const tiempo = document.getElementById('evento-aviso').value;
+  if(opcion === 'siempre' || !hora || !fecha) return null;
+  if(opcion.startsWith('antes:')) return new Date(new Date(`${fecha}T${hora}:00-05:00`).getTime() - Number(opcion.slice(6))*60000);
+  if(!tiempo) return undefined;
+  const dia = opcion === 'dia_anterior' || tiempo > hora ? diaAnteriorEvento(fecha) : fecha;
+  return new Date(`${dia}T${tiempo}:00-05:00`);
+}
+
+function opcionDeAviso(e){
+  if(!e.aviso_en) return { opcion:'siempre', tiempo:'' };
+  const aviso = new Date(e.aviso_en);
+  const minutos = Math.round((new Date(`${e.fecha}T${(e.hora||'').slice(0,5)}:00-05:00`).getTime() - aviso.getTime())/60000);
+  if([15,30,60,120].includes(minutos)) return { opcion:'antes:'+minutos, tiempo:'' };
+  const { fecha, hora } = fechaHoraBogota(aviso);
+  return { opcion: fecha === diaAnteriorEvento(e.fecha) ? 'dia_anterior' : 'hora', tiempo:hora };
+}
+
+function cambiarOpcionAviso(){
+  const tiempo = document.getElementById('evento-aviso');
+  if(document.getElementById('evento-avisar').value === 'dia_anterior' && !tiempo.value) tiempo.value = '20:00';
+  actualizarAvisoEvento();
 }
 
 function actualizarAvisoEvento(){
+  const fecha = document.getElementById('evento-fecha').value;
   const hora = document.getElementById('evento-hora').value;
-  const aviso = document.getElementById('evento-aviso').value;
-  const temprano = eventoEsTemprano(hora);
-  document.getElementById('evento-aviso-grupo').style.display = temprano ? '' : 'none';
-  if(!temprano) return;
-  document.getElementById('evento-aviso-ayuda').textContent = !aviso
-    ? 'Si lo dejas vacío, te aviso el día anterior a las 8 pm y 1 hora antes.'
-    : `Te aviso ${aviso <= hora ? 'el mismo día' : 'el día anterior'} a las ${horaEventoCorta(aviso)}.`;
+  const opcion = document.getElementById('evento-avisar').value;
+  const conHora = opcion === 'dia_anterior' || opcion === 'hora';
+  document.getElementById('evento-aviso-grupo').style.display = hora ? '' : 'none';
+  document.getElementById('evento-aviso').style.display = conHora ? '' : 'none';
+  if(!hora) return;
+  const ayuda = document.getElementById('evento-aviso-ayuda');
+  if(opcion === 'siempre'){
+    ayuda.textContent = hora < '08:00'
+      ? 'El día anterior a las 8 pm y 1 hora antes.'
+      : 'En el resumen de las 8 am, 1 hora antes y 15 minutos antes.';
+    return;
+  }
+  const aviso = avisoDelFormulario(fecha, hora);
+  if(!aviso){ ayuda.textContent = 'Elige la hora del aviso.'; return; }
+  const a = fechaHoraBogota(aviso);
+  const dia = a.fecha === fecha ? 'el mismo día' : a.fecha === diaAnteriorEvento(fecha) ? 'el día anterior' : `el ${a.fecha}`;
+  ayuda.textContent = `Un solo aviso, ${dia} a las ${horaEventoCorta(a.hora)}.`;
 }
 
 function llenarModalEvento(ttl, boton, titulo, fecha, hora, nota, aviso){
@@ -2664,21 +2715,23 @@ function llenarModalEvento(ttl, boton, titulo, fecha, hora, nota, aviso){
   document.getElementById('evento-titulo').value = titulo;
   document.getElementById('evento-fecha').value = fecha;
   document.getElementById('evento-hora').value = hora;
-  document.getElementById('evento-aviso').value = aviso || '';
+  document.getElementById('evento-avisar').value = aviso.opcion;
+  document.getElementById('evento-aviso').value = aviso.tiempo;
   document.getElementById('evento-nota').value = nota;
+  avisoAbierto = aviso;
   actualizarAvisoEvento();
   showModal('modal-nuevo-evento');
 }
 function abrirNuevoEvento(fecha){
   eventoEditId = null;
-  llenarModalEvento('Nueva actividad','Agendar','',fecha||hoyISO(),'','','');
+  llenarModalEvento('Nueva actividad','Agendar','',fecha||hoyISO(),'','',{ opcion:'siempre', tiempo:'' });
 }
 function abrirEditarEvento(id){
   const e = DB.eventos.find(x=>String(x.id)===String(id));
   if(!e) return;
   eventoEditId = e.id;
   hideModal('modal-vista-diaria');
-  llenarModalEvento('Editar actividad','Guardar',e.titulo||'',e.fecha||'',(e.hora||'').slice(0,5),e.nota||'',(e.aviso_hora||'').slice(0,5));
+  llenarModalEvento('Editar actividad','Guardar',e.titulo||'',e.fecha||'',(e.hora||'').slice(0,5),e.nota||'',opcionDeAviso(e));
 }
 
 async function guardarEvento(){
@@ -2689,17 +2742,23 @@ async function guardarEvento(){
   const nota = document.getElementById('evento-nota').value.trim() || null;
   if(!titulo){ toast('⚠️ Escribe un título','var(--amber)'); return; }
   if(!fecha){ toast('⚠️ Selecciona una fecha','var(--amber)'); return; }
-  const aviso_hora = eventoEsTemprano(hora) ? (document.getElementById('evento-aviso').value || null) : null;
+  const aviso = avisoDelFormulario(fecha, hora);
+  if(aviso === undefined){ toast('⚠️ Elige la hora del aviso','var(--amber)'); return; }
+  const AVISO_PASADO = '⚠️ Ese aviso ya pasó. Elige otro o déjalo como siempre';
 
   let error;
   if(eventoEditId){
     const original = DB.eventos.find(x=>String(x.id)===String(eventoEditId));
-    const avisoCambio = !original || (original.aviso_hora||'').slice(0,5) !== (aviso_hora||'');
     const cuandoCambio = !original || original.fecha !== fecha || (original.hora||'').slice(0,5) !== (hora||'');
-    if(aviso_hora && (avisoCambio || cuandoCambio) && momentoAvisoEvento(fecha, hora, aviso_hora).getTime() <= Date.now()){
-      toast('⚠️ Esa hora de aviso ya pasó. Elige otra o déjala vacía','var(--amber)'); return;
+    const sinTocar = !cuandoCambio && avisoAbierto
+      && document.getElementById('evento-avisar').value === avisoAbierto.opcion
+      && document.getElementById('evento-aviso').value === avisoAbierto.tiempo;
+    const aviso_en = sinTocar ? (original.aviso_en || null) : (aviso ? aviso.toISOString() : null);
+    const avisoCambio = !sinTocar && (!original || new Date(original.aviso_en||0).getTime() !== new Date(aviso_en||0).getTime());
+    if(aviso && !sinTocar && aviso.getTime() <= Date.now()){
+      toast(AVISO_PASADO,'var(--amber)'); return;
     }
-    const campos = { titulo, fecha, hora, nota, aviso_hora };
+    const campos = { titulo, fecha, hora, nota, aviso_en };
     // Con otro día u hora vuelve a tocar aviso; cambiar el texto no repite uno ya enviado.
     if(cuandoCambio){
       Object.assign(campos, { notificado_agenda:false, notificado_1h:false, notificado_15min:false, notificado_aviso:false });
@@ -2708,10 +2767,10 @@ async function guardarEvento(){
     }
     ({ error } = await supa.from('events').update(campos).eq('id', eventoEditId).eq('user_id', currentUser.id));
   } else {
-    if(aviso_hora && momentoAvisoEvento(fecha, hora, aviso_hora).getTime() <= Date.now()){
-      toast('⚠️ Esa hora de aviso ya pasó. Elige otra o déjala vacía','var(--amber)'); return;
+    if(aviso && aviso.getTime() <= Date.now()){
+      toast(AVISO_PASADO,'var(--amber)'); return;
     }
-    ({ error } = await supa.from('events').insert({ user_id: currentUser.id, titulo, fecha, hora, nota, aviso_hora }));
+    ({ error } = await supa.from('events').insert({ user_id: currentUser.id, titulo, fecha, hora, nota, aviso_en: aviso ? aviso.toISOString() : null }));
   }
   if(error){ toast('❌ Error: '+error.message,'var(--red)'); return; }
 

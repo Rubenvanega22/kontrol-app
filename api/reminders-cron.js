@@ -3,7 +3,7 @@
 // crons sub-diarios). En cada tick ejecuta los modos "rolling":
 //   • modoQuinceMinAntes — ventana [-15, +15] min vs hora del evento
 //   • modoUnaHoraAntes  — ventana (+15, +60] min vs hora del evento
-//   • modoEventosTempranos — eventos antes de las 8 am, reglas en lib/avisos-evento.js
+//   • modoAvisosPropios — aviso elegido y eventos antes de las 8 am, reglas en lib/avisos-evento.js
 // Dedup garantizado por los flags notificado_* de events. Los modos rolling corren a
 // cualquier hora, también de madrugada: solo el resumen, pagos y recordatorios tienen horario.
 //
@@ -15,7 +15,7 @@
 const supabase = require('../lib/supabase');
 const { colombiaDateString } = require('../lib/datetime');
 const {
-  esTemprano, debeSalirAviso, debeSalirUnaHoraAntes, horaCorta,
+  entraEnResumen, debeSalirAviso, debeSalirUnaHoraAntes, horaCorta,
   minutosFaltantes, tocaUnaHoraNormal, tocaQuinceNormal, textoFaltan
 } = require('../lib/avisos-evento');
 
@@ -64,8 +64,7 @@ async function modoResumenDiario() {
     .eq('notificado_agenda', false);
   if (error) { console.error('[reminders-cron daily] query error:', error.message); return { error: error.message }; }
 
-  // Un evento antes de las 8 am ya pasó cuando sale el resumen.
-  const delResumen = (eventos || []).filter(e => !esTemprano(e));
+  const delResumen = (eventos || []).filter(entraEnResumen);
   if (!delResumen.length) return { alertas: 0, message: 'sin eventos' };
 
   const porUsuario = {};
@@ -324,22 +323,31 @@ async function modoQuinceMinAntes() {
   return { alertas, marcados: claimed.length, candidatos: candidatos.length, hoyCol };
 }
 
-// ─── MODO F: eventos antes de las 8 am ──────────────────────────────
-// El aviso puede caer el día anterior, así que también se miran los eventos de mañana.
-async function modoEventosTempranos() {
+// ─── MODO F: avisos propios ─────────────────────────────────────────
+// El aviso elegido, a la hora elegida (ventana amplia: debeSalirAviso decide). Y los eventos
+// antes de las 8 am sin elegir, cuyo aviso puede caer la noche anterior: de ahí mirar mañana.
+async function modoAvisosPropios() {
   const ahora = new Date();
   const nowMs = ahora.getTime();
   const hoyCol = colombiaDateString(ahora);
   const mananaCol = colombiaDateString(new Date(nowMs + 24 * 3600 * 1000));
 
-  const { data: eventos, error } = await supabase
-    .from('events').select('*')
-    .in('fecha', [hoyCol, mananaCol])
-    .lt('hora', '08:00');
-  if (error) { console.error('[reminders-cron temprano] query error:', error.message); return { error: error.message }; }
+  const [tempranos, elegidos] = await Promise.all([
+    supabase.from('events').select('*')
+      .in('fecha', [hoyCol, mananaCol])
+      .lt('hora', '08:00'),
+    supabase.from('events').select('*')
+      .eq('notificado_aviso', false)
+      .lte('aviso_en', ahora.toISOString())
+      .gte('aviso_en', new Date(nowMs - 3 * 3600 * 1000).toISOString())
+  ]);
+  const error = tempranos.error || elegidos.error;
+  if (error) { console.error('[reminders-cron propios] query error:', error.message); return { error: error.message }; }
 
-  const avisos = (eventos || []).filter(e => debeSalirAviso(e, nowMs));
-  const unaHora = (eventos || []).filter(e => debeSalirUnaHoraAntes(e, nowMs));
+  const porId = new Map([...(tempranos.data || []), ...(elegidos.data || [])].map(e => [e.id, e]));
+  const eventos = [...porId.values()];
+  const avisos = eventos.filter(e => debeSalirAviso(e, nowMs));
+  const unaHora = eventos.filter(e => debeSalirUnaHoraAntes(e, nowMs));
   if (!avisos.length && !unaHora.length) return { alertas: 0, candidatos: 0, hoyCol };
 
   const userIds = [...new Set([...avisos, ...unaHora].map(e => e.user_id).filter(Boolean))];
@@ -355,7 +363,7 @@ async function modoEventosTempranos() {
         tipo, mensaje: texto(e), telefono: tels[e.user_id], enviado: false
       });
       if (insErr) {
-        console.error('[reminders-cron temprano] insert failed event', e.id, insErr.message);
+        console.error('[reminders-cron propios] insert failed event', e.id, insErr.message);
         await supabase.from('events').update({ [flag]: false }).eq('id', e.id);
         continue;
       }
@@ -364,8 +372,14 @@ async function modoEventosTempranos() {
     return enviadas;
   };
 
+  const cuando = e => {
+    if (e.fecha === hoyCol) return 'Hoy';
+    if (e.fecha === mananaCol) return 'Mañana';
+    const [, mes, dia] = e.fecha.split('-').map(Number);
+    return `El ${dia}/${mes}`;
+  };
   const alertasAviso = await enviar(avisos, 'notificado_aviso', 'recordatorio_temprano', e =>
-    `🔔 *${e.fecha === hoyCol ? 'Hoy' : 'Mañana'}:* ${formatearEvento(e)}`);
+    `🔔 *${cuando(e)}:* ${formatearEvento(e)}`);
   const alertasHora = await enviar(unaHora, 'notificado_1h', 'recordatorio_1h', e =>
     `⏰ *${textoFaltan(minutosFaltantes(e, nowMs))}:* ${formatearEvento(e)}`);
   return { alertas: alertasAviso + alertasHora, candidatos: avisos.length + unaHora.length, hoyCol };
@@ -484,9 +498,9 @@ module.exports = async function handler(req, res) {
 
     const results = {};
 
-    // Modo forzado (testing): ?modo=diario|1h|15min|temprano|pagos|recordatorios
+    // Modo forzado (testing): ?modo=diario|1h|15min|propios|pagos|recordatorios
     if (force) {
-      if (force === 'temprano')      results.temprano      = await modoEventosTempranos();
+      if (force === 'propios')       results.propios       = await modoAvisosPropios();
       if (force === 'diario')        results.diario        = await modoResumenDiario();
       if (force === '1h')            results.h1            = await modoUnaHoraAntes();
       if (force === '15min')         results.q15           = await modoQuinceMinAntes();
@@ -497,7 +511,7 @@ module.exports = async function handler(req, res) {
       // Rolling cada tick (cron-job.org cada 15 min): 15-min + 1h
       results.q15 = await modoQuinceMinAntes();
       results.h1  = await modoUnaHoraAntes();
-      results.temprano = await modoEventosTempranos();
+      results.propios = await modoAvisosPropios();
       results.renovaciones = await modoRenovaciones();
       // Resumen de agenda: una vez al día a las 8am Col.
       if (utcHour === DAILY_UTC_HOUR) {
