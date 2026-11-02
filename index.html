@@ -1330,34 +1330,9 @@ select.form-inp option{background:var(--card2);}
           <div style="font-size:12.5px;color:var(--t3);margin-top:8px;line-height:1.4">Se abre WhatsApp con el mensaje listo: solo toca enviar.</div>
         </div>
 
-        <!-- IA -->
-        <div class="config-section">
-          <div class="config-section-ttl">IA / Proveedor</div>
-          <div class="config-row" style="margin-bottom:8px">
-            <div class="config-row-info"><div class="config-row-lbl">Proveedor</div></div>
-            <select class="form-inp" id="ia-proveedor" style="width:auto;padding:5px 10px" onchange="onIAProveedorChange()">
-              <option value="local">Gratis (local)</option>
-              <option value="groq">Groq (gratis + visión)</option>
-              <option value="claude">Claude (Anthropic)</option>
-              <option value="openai">ChatGPT (OpenAI)</option>
-              <option value="gemini">Gemini (Google)</option>
-            </select>
-          </div>
-          <div id="ia-config-fields"></div>
-          <div style="display:flex;gap:8px;margin-top:8px">
-            <button class="btn-secondary" style="flex:1" onclick="probarConexionIA()">Probar</button>
-            <button class="btn-primary" style="flex:1" onclick="guardarConfigIA()">Guardar IA</button>
-          </div>
-          <div id="ia-test-result" style="font-size:12px;margin-top:6px;text-align:center"></div>
-        </div>
-
         <!-- Preferencias IA -->
         <div class="config-section">
           <div class="config-section-ttl">Preferencias IA</div>
-          <div class="form-group">
-            <label class="form-label">Nombre del asistente</label>
-            <input class="form-inp" id="ia-nombre" placeholder="Kontrol"/>
-          </div>
           <div class="form-group">
             <label class="form-label">¿Cómo te llama la IA?</label>
             <input class="form-inp" id="ia-usuario-nombre" placeholder="Tu nombre"/>
@@ -1366,6 +1341,7 @@ select.form-inp option{background:var(--card2);}
             <div class="config-row-info"><div class="config-row-lbl">Responder con voz</div><div class="config-row-sub">Kontrol te habla de vuelta</div></div>
             <div class="toggle on" id="toggle-tts" onclick="toggleTTSConfig()"><div class="toggle-thumb"></div></div>
           </div>
+          <button class="btn-primary" style="margin-top:8px" onclick="guardarPreferenciasIA()">Guardar preferencias</button>
         </div>
 
         <!-- Voz de la IA -->
@@ -1782,6 +1758,12 @@ function load(){
     // Limpia la caché local de módulos retirados, incluidos los tokens de correo
     // que versiones anteriores guardaban aquí. Las tablas no se tocan.
     for(const k of ['cuentas','movimientos','cajas','cajaMovimientos','emailAccounts','inboxDetected','correos']) delete db[k];
+    // El asistente usa la clave del servidor y se llama Ana: esto guardado aquí no servía para nada.
+    const retirados = ['apiKey','proveedor','modelo','nombre'];
+    if(db.ia && retirados.some(k=>k in db.ia)){
+      retirados.forEach(k=>delete db.ia[k]);
+      try { localStorage.setItem(DB_KEY, JSON.stringify(db)); } catch(e){ /* se reintenta al abrir otra vez */ }
+    }
     return db;
   }catch(e){ return defaultDB(); }
 }
@@ -1875,7 +1857,7 @@ function defaultDB(){
     eventos: [],
     recordatorios: [],
     ia: {
-      proveedor:'local', apiKey:'', modelo:'', nombre:'Kontrol', usuarioNombre:'',
+      usuarioNombre:'',
       notif:true
     },
     nextId: 1
@@ -4702,52 +4684,13 @@ function renderConfig(){
 
   // IA
   const cfg = DB.ia;
-  document.getElementById('ia-proveedor').value = cfg.proveedor||'local';
-  document.getElementById('ia-nombre').value = cfg.nombre||'Kontrol';
   document.getElementById('ia-usuario-nombre').value = cfg.usuarioNombre||'';
-  onIAProveedorChange();
 
 }
 
 
 // (guardarCorreo, eliminarCorreo y la version stub de sincronizarCorreo fueron
 //  reemplazados por conectarGmail / desconectarCorreo / sincronizarCorreo OAuth)
-
-function onIAProveedorChange(){
-  const prov = document.getElementById('ia-proveedor').value;
-  const el = document.getElementById('ia-config-fields');
-  if(!el) return;
-  if(prov==='local'){
-    el.innerHTML='<div style="font-size:12px;color:var(--t3);padding:6px 0">Funciona sin internet con comandos básicos. Para escaneo de facturas necesitas Groq (gratuito).</div>';
-    return;
-  }
-  if(prov==='groq'){
-    el.innerHTML=`
-      <div style="background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);border-radius:10px;padding:10px;margin-bottom:10px">
-        <div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:4px">✅ Groq es 100% gratuito</div>
-        <div style="font-size:12.5px;color:var(--t3);line-height:1.5">1. Ve a <b style="color:var(--t1)">console.groq.com</b><br/>2. Inicia sesión con Gmail<br/>3. API Keys → Create API Key<br/>4. Pega la key aquí</div>
-      </div>
-      <div class="form-group"><label class="form-label">API Key de Groq</label><input class="form-inp" id="ia-apikey" type="password" placeholder="gsk_…" value="${escAttr(DB.ia.apiKey||'')}"/></div>
-      <div class="form-group"><label class="form-label">Modelo</label>
-        <select class="form-inp" id="ia-modelo">
-          <option value="llama-3.2-11b-vision-preview" ${DB.ia.modelo==='llama-3.2-11b-vision-preview'?'selected':''}>Llama 3.2 11B Vision ⭐ (facturas)</option>
-          <option value="llama-3.2-90b-vision-preview" ${DB.ia.modelo==='llama-3.2-90b-vision-preview'?'selected':''}>Llama 3.2 90B Vision (más preciso)</option>
-          <option value="llama-3.3-70b-versatile" ${DB.ia.modelo==='llama-3.3-70b-versatile'?'selected':''}>Llama 3.3 70B (chat)</option>
-          <option value="llama-3.1-8b-instant" ${DB.ia.modelo==='llama-3.1-8b-instant'?'selected':''}>Llama 3.1 8B (rápido)</option>
-        </select>
-      </div>`;
-    return;
-  }
-  const modelos = {
-    claude:['claude-haiku-4-5','claude-sonnet-4-5','claude-opus-4-5'],
-    openai:['gpt-4o-mini','gpt-4o','gpt-4.1-mini'],
-    gemini:['gemini-2.0-flash','gemini-2.0-flash-lite','gemini-1.5-flash','gemini-1.5-pro']
-  };
-  const opts = (modelos[prov]||[]).map(m=>`<option value="${m}" ${DB.ia.modelo===m?'selected':''}>${m}</option>`).join('');
-  el.innerHTML = `
-    <div class="form-group"><label class="form-label">API Key</label><input class="form-inp" id="ia-apikey" type="password" placeholder="sk-…" value="${escAttr(DB.ia.apiKey||'')}"/></div>
-    <div class="form-group"><label class="form-label">Modelo</label><select class="form-inp" id="ia-modelo">${opts}</select></div>`;
-}
 
 // ════════════════════════════════════════
 // ADMIN — solo visible para el user_id configurado
@@ -4911,61 +4854,11 @@ async function guardarPerfil(){
   toast('✅ Perfil guardado','var(--green)');
 }
 
-function guardarConfigIA(){
-  const prov = document.getElementById('ia-proveedor').value;
-  DB.ia.proveedor = prov;
-  DB.ia.nombre = document.getElementById('ia-nombre').value||'Kontrol';
+function guardarPreferenciasIA(){
   DB.ia.usuarioNombre = document.getElementById('ia-usuario-nombre').value||'';
-  if(prov!=='local'){
-    DB.ia.apiKey = document.getElementById('ia-apikey')?.value||'';
-    DB.ia.modelo = document.getElementById('ia-modelo')?.value||'';
-  }
   save();
-  toast('✅ Configuración guardada','var(--green)');
+  toast('✅ Preferencias guardadas','var(--green)');
 }
-
-async function probarConexionIA(){
-  const prov = document.getElementById('ia-proveedor').value;
-  const resEl = document.getElementById('ia-test-result');
-  if(prov==='local'){ resEl.style.color='var(--blue)'; resEl.textContent='Modo local activo ✓'; return; }
-  const key = document.getElementById('ia-apikey')?.value;
-  if(!key){ toast('⚠️ Ingresa tu API key primero','var(--amber)'); return; }
-  resEl.style.color='var(--t3)'; resEl.textContent='Probando…';
-  try{
-    if(prov==='groq'){
-      const r = await fetch('https://api.groq.com/openai/v1/chat/completions',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-        body:JSON.stringify({model:'llama-3.1-8b-instant',max_tokens:5,messages:[{role:'user',content:'hi'}]})
-      });
-      const d = await r.json();
-      if(d.choices){ resEl.style.color='var(--green)'; resEl.textContent='✅ Groq conectado correctamente'; }
-      else { resEl.style.color='var(--red)'; resEl.textContent='❌ '+(d.error?.message||'Error'); }
-    } else if(prov==='claude'){
-      const r = await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01'},body:JSON.stringify({model:'claude-haiku-4-5',max_tokens:5,messages:[{role:'user',content:'hi'}]})});
-      const d = await r.json();
-      if(d.content){ resEl.style.color='var(--green)'; resEl.textContent='✅ Claude conectado'; }
-      else { resEl.style.color='var(--red)'; resEl.textContent='❌ '+(d.error?.message||'Error'); }
-    } else if(prov==='openai'){
-      const r = await fetch('https://api.openai.com/v1/models',{headers:{'Authorization':'Bearer '+key}});
-      if(r.ok){ resEl.style.color='var(--green)'; resEl.textContent='✅ OpenAI conectado'; }
-      else { resEl.style.color='var(--red)'; resEl.textContent='❌ API key inválida'; }
-    } else if(prov==='gemini'){
-      const modelo = document.getElementById('ia-modelo')?.value||'gemini-2.0-flash';
-      const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+modelo+':generateContent?key='+key,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({contents:[{role:'user',parts:[{text:'hola'}]}],generationConfig:{maxOutputTokens:5}})
-      });
-      const d = await r.json();
-      if(d.error){ resEl.style.color='var(--red)'; resEl.textContent='❌ '+d.error.message; }
-      else { resEl.style.color='var(--green)'; resEl.textContent='✅ Gemini conectado correctamente'; }
-    } else {
-      resEl.style.color='var(--blue)'; resEl.textContent='Prueba usando el chat IA';
-    }
-  } catch(e){ resEl.style.color='var(--red)'; resEl.textContent='❌ Error: '+e.message; }
-}
-
 
 function comprimirImagen(dataUrl, maxSize, quality){
   return new Promise(resolve=>{
