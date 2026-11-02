@@ -1,6 +1,6 @@
 // /api/ai-chat.js — Claude + Mem0 memoria profesional
 const supabase = require('../lib/supabase');
-const { leerListaDeImagen } = require('../lib/lista-foto');
+const { leerListaDeImagen, leerFacturaDeImagen, interpretarFactura } = require('../lib/lista-foto');
 const { colombiaDateString, colombiaDateLongEs, colombiaTimeString, colombiaDateParts } = require('../lib/datetime');
 
 const MEM0_API_KEY = process.env.MEM0_API_KEY;
@@ -93,6 +93,16 @@ module.exports = async function handler(req, res) {
 
   // Foto de una lista: solo se lee. Sin el asistente ni sus acciones, lo escrito en la
   // foto no puede crear pagos ni borrar nada.
+  if (req.body.modo === 'foto_factura') {
+    if (!imagen_base64) return res.status(400).json({ error: 'Falta la foto' });
+    try {
+      const factura = interpretarFactura(await leerFacturaDeImagen(imagen_base64, colombiaDateString()));
+      return res.json({ ok: true, factura });
+    } catch (e) {
+      console.error('[ai-chat] foto_factura:', e.message);
+      return res.status(502).json({ error: 'No se pudo leer la factura. Intenta de nuevo.' });
+    }
+  }
   if (req.body.modo === 'foto_listado') {
     if (!imagen_base64) return res.status(400).json({ error: 'Falta la foto' });
     try {

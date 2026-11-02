@@ -8,7 +8,8 @@
 //   1. Identificar usuario por profiles.telefono (E.164, sin "whatsapp:")
 //   2. Branch por tipo:
 //        - Audio → /api/transcribe (Groq Whisper) → ai-chat
-//        - Imagen → lee la lista de la foto (solo lectura) y crea un listado o la agrega a uno
+//        - Imagen → solo lectura: una lista crea un listado o se agrega a uno; una factura
+//          pregunta y crea el pago si responden sí
 //        - Texto → /api/ai-chat (mismo Claude/Mem0/acciones que el chat web)
 //   3. Responder vía Twilio REST API (no TwiML — evita el timeout de 5s)
 //
@@ -19,7 +20,7 @@ const supabase = require('../lib/supabase');
 const { colombiaDateString } = require('../lib/datetime');
 const { firmaValida, urlDelWebhook } = require('../lib/twilio-signature');
 const { STATUS_URL } = require('../lib/whatsapp-estado');
-const { leerListaDeImagen, interpretarLectura, destinoDelTexto, elegirLista } = require('../lib/lista-foto');
+const { leerListaDeImagen, leerFotoDeImagen, interpretarLectura, interpretarFoto, destinoDelTexto, elegirLista } = require('../lib/lista-foto');
 
 const TWILIO_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_TOKEN = process.env.TWILIO_AUTH_TOKEN;
@@ -117,6 +118,9 @@ async function findUserByPhone(rawFrom) {
 }
 
 // ─── Estado conversacional (multi-turno) ──────────────────────
+const FACTURA_ESPERA = 'factura_confirmar';
+const FACTURA_VENCIDA = 'factura_vencida';
+const FACTURA_ATENDIDA = 'factura_atendida';
 // Tabla whatsapp_state: phone (PK), user_id, awaiting, context jsonb, expires_at.
 // Solo se usa para flujos multi-turno (date-postpone, photo-match).
 // El SI/NO/1/2 simple se resuelve sin estado consultando payments.
@@ -130,7 +134,8 @@ async function loadState(phone) {
   if (!data) return null;
   if (new Date(data.expires_at) < new Date()) {
     await clearState(phone);
-    return null;
+    // Un "sí" tardío a una factura no debe marcar como pagado otro pago.
+    return data.awaiting === FACTURA_ESPERA ? { awaiting: FACTURA_VENCIDA, context: data.context } : null;
   }
   return data;
 }
@@ -141,6 +146,7 @@ async function saveState(phone, userId, awaiting, context, ttlMin = 30) {
     { onConflict: 'phone' }
   );
   if (error) console.warn('[whatsapp] saveState error:', error.message);
+  return !error;
 }
 async function clearState(phone) {
   await supabase.from('whatsapp_state').delete().eq('phone', phone);
@@ -280,15 +286,18 @@ async function transcribirAudio(buf, contentType) {
   return data.texto || '';
 }
 
-// ─── Foto de una lista ────────────────────────────────────────
-// Usa el lector de "Crear desde foto": solo lee. Ni la foto ni su texto pasan por el
-// asistente, así que no pueden ejecutar acciones; el texto solo elige la lista destino.
+// ─── Fotos: listas y facturas ─────────────────────────────────
+// Usa los lectores de la app: solo leen. Ni la foto ni su texto pasan por el asistente,
+// así que no pueden ejecutar acciones; el texto solo elige la lista destino.
+const FACTURA_TTL_MIN = 24 * 60;
 const FOTO_TIPOS = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const FOTO_MAX_BYTES = 3.7 * 1024 * 1024; // en base64 queda bajo el límite de 5 MB del lector
 const SIN_LISTA = '🔍 No encontré ninguna lista en esa foto. Prueba con más luz y de cerca.';
+const NI_FACTURA_NI_LISTA = '🔍 Esa foto no parece una factura ni una lista. Prueba con más luz y de cerca, o escríbeme lo que necesitas.';
 const cuentaItems = (n) => `${n} ${n === 1 ? 'ítem' : 'ítems'}`;
 
-async function leerFotoLista(mediaUrl, mediaCt) {
+// El lector se elige afuera: con destino se lee como lista; sin destino, se clasifica.
+async function leerFoto(mediaUrl, mediaCt, lector) {
   const tipo = String(mediaCt).split(';')[0].trim().toLowerCase();
   if (!FOTO_TIPOS.includes(tipo)) return { error: 'No pude abrir ese tipo de imagen. Mándala como foto normal de WhatsApp.' };
   let buf;
@@ -299,7 +308,7 @@ async function leerFotoLista(mediaUrl, mediaCt) {
   }
   if (buf.length > FOTO_MAX_BYTES) return { error: 'Esa foto es muy pesada. Mándala otra vez como foto normal, no como documento.' };
   try {
-    return interpretarLectura(await leerListaDeImagen(buf.toString('base64'), tipo));
+    return await lector(buf.toString('base64'), tipo);
   } catch (e) {
     console.error('[whatsapp] foto: lectura falló:', e.message);
     return { error: 'No pude leer la foto. Intenta de nuevo.' };
@@ -339,7 +348,7 @@ async function agregarAListaDeFoto(userId, lista, items) {
   return `📋 Listo, agregué ${cuentaItems(items.length)} a la lista ${lista.titulo}.`;
 }
 
-async function responderFotoLista(userId, mediaUrl, mediaCt, caption) {
+async function responderFoto(userId, phone, mediaUrl, mediaCt, caption) {
   const destino = destinoDelTexto(caption);
   let lista = null;
   // La lista se resuelve antes de leer: si hay que preguntar, no se gasta la lectura.
@@ -361,21 +370,112 @@ async function responderFotoLista(userId, mediaUrl, mediaCt, caption) {
     }
     lista = opciones[0];
   }
-  const leida = await leerFotoLista(mediaUrl, mediaCt);
-  if (leida.error) return leida.error;
-  if (!leida.items.length) return SIN_LISTA;
-  console.log('[whatsapp] foto: ítems leídos=', leida.items.length, 'destino=', lista ? 'existente' : 'nueva');
-  return lista ? agregarAListaDeFoto(userId, lista, leida.items) : crearListaDeFoto(userId, leida.titulo, leida.items);
+  if (lista) {
+    const leida = await leerFoto(mediaUrl, mediaCt, async (b64, tipo) => interpretarLectura(await leerListaDeImagen(b64, tipo)));
+    if (leida.error) return leida.error;
+    if (!leida.items.length) return SIN_LISTA;
+    console.log('[whatsapp] foto: ítems agregados=', leida.items.length);
+    return agregarAListaDeFoto(userId, lista, leida.items);
+  }
+  const foto = await leerFoto(mediaUrl, mediaCt, async (b64, tipo) => interpretarFoto(await leerFotoDeImagen(b64, colombiaDateString(), tipo)));
+  if (foto.error) return foto.error;
+  console.log('[whatsapp] foto: tipo=', foto.tipo);
+  if (foto.tipo === 'lista') return crearListaDeFoto(userId, foto.titulo, foto.items);
+  if (foto.tipo === 'factura') return prepararFactura(userId, phone, foto, mediaUrl, mediaCt);
+  return NI_FACTURA_NI_LISTA;
 }
 
-async function procesarFotoLista(userId, phone, mediaUrl, mediaCt, caption) {
-  const respuesta = await responderFotoLista(userId, mediaUrl, mediaCt, caption);
-  // Para que el bot sepa de qué lista hablan si le escriben justo después.
+// ─── Factura: pregunta y solo crea el pago si responden sí ─────
+// Mientras espera se guarda la dirección de la foto en Twilio, no el archivo: con "no" no
+// queda nada. "sí" y "no" son de la factura; 1 y 2 siguen siendo de los avisos de pago.
+const FACTURA_SI = /^(s[ií]|sip|dale|ok|okay|claro|de una|gu[aá]rdalo)(?:[\s,]+(?:gu[aá]rdalo|por favor|porfa|gracias|claro|dale))*\s*[.!]*$/i;
+const FACTURA_NO = /^(no|nop|nope|cancela|cancelar|d[eé]jalo|ol[vb][ií]dalo)(?:[\s,]+(?:lo guardes|gracias|por favor|porfa))*\s*[.!]*$/i;
+const RESPUESTA_AVISO = /^(1|1️⃣|2|2️⃣|listo|pagu[eé]|ya\s+pagu[eé]|aplazar|despu[eé]s)\s*[.,!]?\s*$/i;
+const fmtPesos = (n) => '$' + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+function fmtDiaCorto(iso) {
+  const [a, m, d] = iso.split('-').map(Number);
+  const mes = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'][m - 1];
+  return `${d} ${mes}${a === Number(colombiaDateString().slice(0, 4)) ? '' : ' ' + a}`;
+}
+function resumenFactura(f) {
+  const vence = f.fecha < colombiaDateString() ? 'venció' : 'vence';
+  return `${f.nombre} · ${fmtPesos(f.valor)} · ${vence} ${fmtDiaCorto(f.fecha)}`;
+}
+
+async function prepararFactura(userId, phone, f, mediaUrl, mediaCt) {
+  const faltan = [!f.nombre && 'quién cobra', !f.valor && 'el valor', !f.fecha && 'la fecha límite'].filter(Boolean);
+  if (faltan.length) {
+    const leido = [f.nombre, f.valor && fmtPesos(f.valor), f.fecha && `vence ${fmtDiaCorto(f.fecha)}`].filter(Boolean).join(' · ');
+    return `🧾 ${leido ? `Leí: ${leido}. ` : ''}No encontré ${faltan.join(' ni ')}, así que no guardé nada. Mándala con más luz o créala en la app: Pagos → Desde factura.`;
+  }
+  const anterior = await loadState(phone);
+  // Sin el estado guardado no se pregunta: un "sí" caería en los avisos de pago y podría
+  // marcar otro pago como pagado.
+  const ok = await saveState(phone, userId, FACTURA_ESPERA, { nombre: f.nombre, valor: f.valor, fecha: f.fecha, media_url: mediaUrl, media_ct: mediaCt }, FACTURA_TTL_MIN);
+  if (!ok) return '⚠️ Leí la factura, pero no pude dejarla pendiente. Mándala otra vez.';
+  const aviso = anterior?.awaiting === FACTURA_ESPERA ? `Dejé sin guardar la factura anterior (${anterior.context?.nombre || 'sin nombre'}).\n\n` : '';
+  return `${aviso}🧾 ${resumenFactura(f)}. ¿Lo guardo? Responde sí o no`;
+}
+
+async function adjuntarFactura(userId, pagoId, ctx) {
+  try {
+    const buf = await fetchTwilioMedia(ctx.media_url);
+    const tipo = String(ctx.media_ct).split(';')[0].trim().toLowerCase();
+    const ext = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }[tipo];
+    if (!ext) throw new Error('tipo no admitido: ' + tipo);
+    // soporte_url guarda la ruta, no una URL: el bucket es privado.
+    const ruta = `${userId}/${pagoId}-${Date.now()}.${ext}`;
+    const { error: e1 } = await supabase.storage.from('facturas').upload(ruta, buf, { contentType: tipo });
+    if (e1) throw new Error(e1.message);
+    const { error: e2 } = await supabase.from('payments').update({ soporte_url: ruta }).eq('id', pagoId).eq('user_id', userId);
+    if (e2) {
+      await supabase.storage.from('facturas').remove([ruta]);
+      throw new Error(e2.message);
+    }
+    return true;
+  } catch (e) {
+    console.error('[whatsapp] factura: no se adjuntó la foto:', e.message);
+    return false;
+  }
+}
+
+async function confirmarFactura(userId, phone, ctx) {
+  // Se reclama borrando el estado: dos "sí" seguidos no crean dos pagos.
+  const { data: reclamado, error: e0 } = await supabase.from('whatsapp_state').delete()
+    .eq('phone', phone).eq('awaiting', FACTURA_ESPERA).select('phone');
+  if (e0) {
+    console.error('[whatsapp] factura: no se reclamó el estado:', e0.message);
+    return '❌ No pude guardar el pago. Responde sí otra vez.';
+  }
+  if (!reclamado?.length) return 'Esa factura ya la atendí.';
+  const { data: pago, error } = await supabase.from('payments').insert({
+    user_id: userId, nombre: ctx.nombre, monto: ctx.valor, fecha_limite: ctx.fecha, status: 'pendiente'
+  }).select('id').single();
+  if (error || !pago) {
+    console.error('[whatsapp] factura: no se creó el pago:', error?.message);
+    await saveState(phone, userId, FACTURA_ESPERA, ctx, FACTURA_TTL_MIN);
+    return '❌ No pude guardar el pago. Responde sí otra vez.';
+  }
+  // Un segundo "sí" seguido no debe caer en los avisos y marcar otro pago como pagado.
+  await saveState(phone, userId, FACTURA_ATENDIDA, { nombre: ctx.nombre }, 2);
+  const conFoto = await adjuntarFactura(userId, pago.id, ctx);
+  return conFoto
+    ? `✅ Guardé ${resumenFactura(ctx)}, con su factura.`
+    : `✅ Guardé ${resumenFactura(ctx)}, pero no pude guardar la foto. Agrégala en la app, en el detalle del pago.`;
+}
+
+async function guardarTurno(userId, phone, entrada, respuesta) {
   const { error } = await supabase.from('whatsapp_conversations').insert([
-    { user_id: userId, phone, role: 'user', content: caption ? `[Foto de una lista] ${caption}` : '[Foto de una lista]' },
+    { user_id: userId, phone, role: 'user', content: entrada },
     { user_id: userId, phone, role: 'assistant', content: respuesta }
   ]);
   if (error) console.warn('[whatsapp] save history error:', error.message);
+}
+
+async function procesarFoto(userId, phone, mediaUrl, mediaCt, caption) {
+  const respuesta = await responderFoto(userId, phone, mediaUrl, mediaCt, caption);
+  // Para que el bot sepa de qué se habla si le escriben justo después.
+  await guardarTurno(userId, phone, caption ? `[Foto] ${caption}` : '[Foto]', respuesta);
   return respuesta;
 }
 
@@ -523,10 +623,12 @@ module.exports = async function handler(req, res) {
         respuesta = 'No pude entender el audio, intenta de nuevo.';
       } else {
         console.log('[whatsapp] audio transcrito, longitud=', texto.length);
-        respuesta = await procesarConIA(usuario.id, phone, texto);
+        const estado = await loadState(phone);
+        const flujo = estado?.awaiting === FACTURA_ESPERA ? await despacharRespuestaPago(usuario.id, phone, texto, estado) : null;
+        respuesta = flujo || await procesarConIA(usuario.id, phone, texto);
       }
     } else if (numMedia > 0 && mediaUrl && mediaCt.startsWith('image/')) {
-      respuesta = await procesarFotoLista(usuario.id, phone, mediaUrl, mediaCt, text);
+      respuesta = await procesarFoto(usuario.id, phone, mediaUrl, mediaCt, text);
     } else if (text) {
       respuesta = await procesarConIA(usuario.id, phone, text);
     } else {
@@ -548,6 +650,34 @@ module.exports = async function handler(req, res) {
 async function despacharRespuestaPago(userId, phone, text, estado) {
   const lower = text.toLowerCase().trim();
   const cop = n => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n);
+
+  // 0. Factura esperando respuesta. Va primero: aquí "sí" guarda la factura y NO marca
+  //    como pagado el último pago avisado.
+  const facturaPendiente = estado?.awaiting === FACTURA_ESPERA ? estado.context : null;
+  if (facturaPendiente) {
+    const t = text.trim();
+    if (FACTURA_SI.test(t)) {
+      const r = await confirmarFactura(userId, phone, facturaPendiente);
+      await guardarTurno(userId, phone, t, r);
+      return r;
+    }
+    if (FACTURA_NO.test(t)) {
+      await clearState(phone);
+      const r = '👍 Listo, no guardé nada.';
+      await guardarTurno(userId, phone, t, r);
+      return r;
+    }
+    // Otra cosa la atiende la IA y la factura sigue pendiente.
+    if (!RESPUESTA_AVISO.test(t)) return null;
+    // 1, 2, "listo"… son de los avisos. Sin aviso pendiente, se aclara y no se adivina.
+    if (!(await pagoEnEspera(userId))) return `Para la factura de ${facturaPendiente.nombre} responde sí o no.`;
+  }
+  if (estado?.awaiting === FACTURA_ATENDIDA && (FACTURA_SI.test(text.trim()) || FACTURA_NO.test(text.trim()))) {
+    return `La factura de ${estado.context?.nombre || 'tu foto'} ya quedó guardada. Si respondías un aviso de pago, usa 1 o 2.`;
+  }
+  if (estado?.awaiting === FACTURA_VENCIDA && (FACTURA_SI.test(text.trim()) || FACTURA_NO.test(text.trim()))) {
+    return `La factura de ${estado.context?.nombre || 'tu foto'} ya venció y no guardé nada. Mándala otra vez si la quieres registrar. Si respondías un aviso de pago, usa 1 o 2.`;
+  }
 
   // 1d. Estado event_1h_response: respuesta a "¿necesitas recordatorio de salida?"
   //     1 = sí (no hacemos nada — el modoQuinceMinAntes automático lo enviará)
@@ -571,17 +701,23 @@ async function despacharRespuestaPago(userId, phone, text, estado) {
 
   // 2. Estado payment_date: usuario está dando la nueva fecha para un pago aplazado
   if (estado?.awaiting === 'payment_date') {
-    const { payment_id } = estado.context || {};
+    const { payment_id, factura } = estado.context || {};
     await clearState(phone);
+    // Si había una factura pendiente vuelve a quedar esperando su respuesta.
+    const conFactura = async (msg) => {
+      if (!factura) return msg;
+      const ok = await saveState(phone, userId, FACTURA_ESPERA, factura, FACTURA_TTL_MIN);
+      return ok ? `${msg}\n\n🧾 Sigo con tu factura: ${resumenFactura(factura)}. ¿La guardo? Responde sí o no` : `${msg}\n\n⚠️ Perdí la factura pendiente de ${factura.nombre}. Mándala otra vez.`;
+    };
     const nuevaFecha = await parsearFechaEspanol(text);
-    if (!nuevaFecha) return 'No entendí la fecha. Cámbiala desde la app cuando puedas.';
+    if (!nuevaFecha) return conFactura('No entendí la fecha. Cámbiala desde la app cuando puedas.');
     // Reseteamos las flags de notificación para que vuelva a recordar en la nueva fecha.
     // notificado_fecha=null limpia el dedup diario del recordatorio de pagos.
     const { error } = await supabase.from('payments')
       .update({ fecha_limite: nuevaFecha, notificado_pago: false, notificado_6pm: false, notificado_fecha: null })
       .eq('id', payment_id).eq('user_id', userId);
-    if (error) { console.error('[whatsapp] postpone error:', error.message); return '⚠️ No pude posponer el pago.'; }
-    return `🗓️ Listo, lo aplacé para ${nuevaFecha}.`;
+    if (error) { console.error('[whatsapp] postpone error:', error.message); return conFactura('⚠️ No pude posponer el pago.'); }
+    return conFactura(`🗓️ Listo, lo aplacé para ${nuevaFecha}.`);
   }
 
   // 2b. Estado location_name: usuario mandó ubicación, le pedimos el nombre.
@@ -722,7 +858,7 @@ async function despacharRespuestaPago(userId, phone, text, estado) {
   }
 
   if (esNo) {
-    await saveState(phone, userId, 'payment_date', { payment_id: pago.id }, 60);
+    await saveState(phone, userId, 'payment_date', { payment_id: pago.id, ...(facturaPendiente ? { factura: facturaPendiente } : {}) }, 60);
     return `OK, ¿para cuándo lo pospones? Dime la fecha (ej: "25 de mayo" o "el viernes").`;
   }
 

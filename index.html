@@ -79,6 +79,10 @@ svg.rel{fill:currentColor;stroke:none;}
 .lt-botones>.b-pri,.lt-botones>.b-sec{flex:1 1 auto;padding:0 10px;}
 .b-sec.lt-foto{border-color:var(--mor);cursor:pointer;}
 .lt-foto.cargando{opacity:.7;pointer-events:none;}
+.pf-factura{display:flex;align-items:center;gap:12px;margin-bottom:14px;padding:10px;background:var(--card2);border:1px solid var(--lin2);border-radius:13px;}
+.pf-factura img{width:72px;height:96px;object-fit:cover;border-radius:8px;flex-shrink:0;}
+.pf-factura-tx{flex:1;min-width:0;font-size:14px;line-height:1.4;color:#DCE5F4;}
+.pf-factura-tx b{color:var(--amber);}
 .b-pri{min-height:46px;padding:0 16px;display:inline-flex;align-items:center;justify-content:center;gap:7px;border:none;border-radius:13px;background:var(--mor);color:#fff;font-size:15px;font-weight:700;white-space:nowrap;cursor:pointer;text-decoration:none;box-shadow:0 5px 16px rgba(139,92,246,0.42);}
 .b-sec{min-height:44px;padding:0 13px;display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--lin2);border-radius:12px;background:var(--card3);color:#fff;font-size:14.5px;font-weight:600;white-space:nowrap;cursor:pointer;}
 .b-sec:disabled{opacity:.45;cursor:default;}
@@ -1196,7 +1200,7 @@ select.form-inp option{background:var(--card2);}
     <!-- ══ PAGOS ══ -->
     <div class="scr" id="scr-pagos">
       <div class="scroll">
-        <div class="k-tit"><div class="k-tit-i"><div class="k-tit-ic" style="color:#F2B84B"><svg class="i " aria-hidden="true"><use href="#i-wal"/></svg></div><div><h1>Pagos</h1><p>Organiza tus pagos del mes</p></div></div><div class="k-acc"><button type="button" class="b-sec" onclick="abrirHistorial('payment')"><svg class="i " aria-hidden="true"><use href="#i-car"/></svg>Historial</button><button type="button" class="b-pri" onclick="showModal('modal-nuevo-pago')"><svg class="i " aria-hidden="true"><use href="#i-mas"/></svg>Registrar pago</button></div></div>
+        <div class="k-tit"><div class="k-tit-i"><div class="k-tit-ic" style="color:#F2B84B"><svg class="i " aria-hidden="true"><use href="#i-wal"/></svg></div><div><h1>Pagos</h1><p>Organiza tus pagos del mes</p></div></div><div class="k-acc lt-botones"><button type="button" class="b-pri" onclick="showModal('modal-nuevo-pago')"><svg class="i " aria-hidden="true"><use href="#i-mas"/></svg>Registrar pago</button><label class="b-sec lt-foto" id="pago-foto-btn" for="pago-foto-input" role="button" tabindex="0" onclick="marcarEligiendoFoto()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}"><svg class="i " aria-hidden="true"><use href="#i-cam"/></svg><span id="pago-foto-txt">Desde factura</span></label><input type="file" id="pago-foto-input" class="hj-sr" accept="image/*" tabindex="-1" aria-label="Elegir la foto de la factura" onchange="onFacturaPago(event)" oncancel="soltarEligiendoFoto()"/><button type="button" class="b-sec" onclick="abrirHistorial('payment')"><svg class="i " aria-hidden="true"><use href="#i-car"/></svg>Historial</button></div></div>
         <div id="pagos-resumen"></div>
         <div id="pagos-list"></div>
       </div>
@@ -1237,7 +1241,7 @@ select.form-inp option{background:var(--card2);}
 
     <!-- ══ LISTADO ══ -->
     <div class="scr" id="scr-listado">
-      <div class="k-tit"><div class="k-tit-i"><div class="k-tit-ic" style="color:#22C993"><svg class="i " aria-hidden="true"><use href="#i-list"/></svg></div><div><h1>Listado</h1><p>Tus listas en un solo lugar</p></div></div><div class="k-acc lt-botones"><button type="button" class="b-pri" onclick="abrirModalRecordar('listado')"><svg class="i " aria-hidden="true"><use href="#i-mas"/></svg>Nuevo listado</button><label class="b-sec lt-foto" id="lt-foto-btn" for="lt-foto-input" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}"><svg class="i " aria-hidden="true"><use href="#i-cam"/></svg><span id="lt-foto-txt">Crear desde foto</span></label><input type="file" id="lt-foto-input" class="hj-sr" accept="image/*" tabindex="-1" aria-label="Elegir la foto de la lista" onchange="onFotoListado(event)"/></div></div>
+      <div class="k-tit"><div class="k-tit-i"><div class="k-tit-ic" style="color:#22C993"><svg class="i " aria-hidden="true"><use href="#i-list"/></svg></div><div><h1>Listado</h1><p>Tus listas en un solo lugar</p></div></div><div class="k-acc lt-botones"><button type="button" class="b-pri" onclick="abrirModalRecordar('listado')"><svg class="i " aria-hidden="true"><use href="#i-mas"/></svg>Nuevo listado</button><label class="b-sec lt-foto" id="lt-foto-btn" for="lt-foto-input" role="button" tabindex="0" onclick="marcarEligiendoFoto()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}"><svg class="i " aria-hidden="true"><use href="#i-cam"/></svg><span id="lt-foto-txt">Crear desde foto</span></label><input type="file" id="lt-foto-input" class="hj-sr" accept="image/*" tabindex="-1" aria-label="Elegir la foto de la lista" onchange="onFotoListado(event)" oncancel="soltarEligiendoFoto()"/></div></div>
       <div class="rt-tools">
         <label class="rt-search"><svg class="i " aria-hidden="true"><use href="#i-bus"/></svg><input id="lt-buscar" type="text" placeholder="Buscar…" aria-label="Buscar en listados" oninput="renderRecordar()"/></label>
       </div>
@@ -1580,6 +1584,10 @@ select.form-inp option{background:var(--card2);}
       <span class="modal-ttl">Nuevo pago</span>
       <button class="modal-close" onclick="hideModal('modal-nuevo-pago')">✕</button>
     </div>
+    <div class="pf-factura" id="pago-factura-box" style="display:none">
+      <img id="pago-factura-prev" alt="Factura"/>
+      <div class="pf-factura-tx" id="pago-factura-aviso" role="status"></div>
+    </div>
     <div class="form-group">
       <label class="form-label">Nombre del pago</label>
       <input class="form-inp" id="pago-nombre" placeholder="Ej: Internet, Arriendo, Netflix…"/>
@@ -1612,7 +1620,7 @@ select.form-inp option{background:var(--card2);}
       <span id="pago-fijo-label" style="font-size:13px;color:var(--t2)">Una sola vez</span>
       <div class="toggle" id="pago-fijo-toggle" onclick="onPagoFijoToggle(this)"><div class="toggle-thumb"></div></div>
     </div>
-    <button class="btn-primary" onclick="guardarPago()">Crear pago</button>
+    <button class="btn-primary" id="pago-crear" onclick="guardarPago()">Crear pago</button>
     <button class="btn-secondary" onclick="hideModal('modal-nuevo-pago')">Cancelar</button>
   </div>
 </div>
@@ -2102,7 +2110,10 @@ function showModal(id){
   }
   document.getElementById(id).classList.remove('hidden');
 }
-function hideModal(id){ document.getElementById(id).classList.add('hidden'); }
+function hideModal(id){
+  document.getElementById(id).classList.add('hidden');
+  if(id==='modal-nuevo-pago') limpiarFacturaNueva();
+}
 function closeModalOutside(e,id){ if(e.target===document.getElementById(id)) hideModal(id); }
 
 // ════════════════════════════════════════
@@ -2225,33 +2236,114 @@ function onPagoFijoToggle(el){
 }
 
 async function guardarPago(){
-  if (!(await sesionLista())) { toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
-  const nombre = document.getElementById('pago-nombre').value.trim();
-  const monto = parseCOP(document.getElementById('pago-monto').value);
-  const fechaLimite = document.getElementById('pago-fecha').value;
-  const categoria = document.getElementById('pago-categoria').value;
-  const fijo = document.getElementById('pago-fijo-toggle').classList.contains('on');
-  const nota = document.getElementById('pago-nota').value.trim();
+  // El seguro va antes de cualquier espera: un doble toque no crea dos pagos.
+  if(guardandoPago) return;
+  const boton = document.getElementById('pago-crear');
+  guardandoPago = true; boton.disabled = true;
+  try {
+    if (!(await sesionLista())) { toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
+    const nombre = document.getElementById('pago-nombre').value.trim();
+    const monto = parseCOP(document.getElementById('pago-monto').value);
+    const fechaLimite = document.getElementById('pago-fecha').value;
+    const categoria = document.getElementById('pago-categoria').value;
+    const fijo = document.getElementById('pago-fijo-toggle').classList.contains('on');
+    const nota = document.getElementById('pago-nota').value.trim();
 
-  if(!nombre){ toast('⚠️ Escribe un nombre','var(--amber)'); return; }
-  if(!monto){ toast('⚠️ Ingresa un monto','var(--amber)'); return; }
-  if(!fechaLimite){ toast('⚠️ Selecciona fecha','var(--amber)'); return; }
+    if(!nombre){ toast('⚠️ Escribe un nombre','var(--amber)'); return; }
+    if(!monto){ toast('⚠️ Ingresa un monto','var(--amber)'); return; }
+    if(!fechaLimite){ toast('⚠️ Selecciona fecha','var(--amber)'); return; }
 
-  const { error } = await supa.from('payments').insert({
-    user_id: currentUser.id, nombre, monto,
-    fecha_limite: fechaLimite, categoria, fijo, status: 'pendiente',
-    nota: nota || null
-  });
-  if(error){ toast('❌ Error: '+error.message,'var(--red)'); return; }
+    const { data: creado, error } = await supa.from('payments').insert({
+      user_id: currentUser.id, nombre, monto,
+      fecha_limite: fechaLimite, categoria, fijo, status: 'pendiente',
+      nota: nota || null
+    }).select('id').single();
+    if(error || !creado){ toast('❌ Error: '+(error?.message||'sin confirmación'),'var(--red)'); return; }
 
-  hideModal('modal-nuevo-pago');
-  document.getElementById('pago-nombre').value='';
-  document.getElementById('pago-monto').value='';
-  document.getElementById('pago-nota').value='';
-  document.getElementById('pago-fijo-toggle').classList.remove('on');
-  document.getElementById('pago-fijo-label').textContent = PAGO_FIJO_TXT(false);
-  toast('✅ Pago creado','var(--green)');
-  await syncDesdeSupabase();
+    let mensaje = '✅ Pago creado';
+    if(facturaNueva){
+      try { await subirFacturaPago(creado.id, facturaNueva); mensaje = '✅ Pago creado con su factura'; }
+      catch(e){ console.error('[factura] subida:', e); mensaje = '⚠️ Pago creado, pero sin la foto. Agrégala en el detalle del pago'; }
+    }
+    hideModal('modal-nuevo-pago');
+    document.getElementById('pago-nombre').value='';
+    document.getElementById('pago-monto').value='';
+    document.getElementById('pago-nota').value='';
+    document.getElementById('pago-fijo-toggle').classList.remove('on');
+    document.getElementById('pago-fijo-label').textContent = PAGO_FIJO_TXT(false);
+    toast(mensaje, mensaje.startsWith('✅') ? 'var(--green)' : 'var(--amber)');
+    await syncDesdeSupabase();
+  } finally {
+    guardandoPago = false; boton.disabled = false;
+  }
+}
+
+// ─── Pago desde la foto de una factura ───
+// Solo llena el formulario: el pago se crea cuando el usuario confirma.
+let facturaNueva = null;   // foto lista para guardarse con el pago
+let facturaLeyendo = false;
+let guardandoPago = false;
+let eligiendoFotoHasta = 0;
+// Con la cámara abierta la app queda en segundo plano: no debe recargarse por una actualización.
+function marcarEligiendoFoto(){ eligiendoFotoHasta = Date.now() + 5*60*1000; }
+function soltarEligiendoFoto(){ eligiendoFotoHasta = 0; }
+function pintarFacturaLeyendo(){
+  const b = document.getElementById('pago-foto-btn');
+  b.classList.toggle('cargando', facturaLeyendo);
+  b.setAttribute('aria-busy', String(facturaLeyendo));
+  document.getElementById('pago-foto-txt').textContent = facturaLeyendo ? 'Leyendo factura…' : 'Desde factura';
+}
+async function onFacturaPago(event){
+  soltarEligiendoFoto();
+  const file = event.target.files[0];
+  event.target.value = '';
+  if(!file || facturaLeyendo) return;
+  facturaLeyendo = true;
+  pintarFacturaLeyendo();
+  try{
+    if(!(await sesionLista())) throw new Error('Sesión no lista. Recarga la página');
+    const comprimida = await comprimirImagen(await leerArchivoComoDataUrl(file), 1568, 0.85);
+    if(!comprimida.startsWith('data:image/jpeg')) throw new Error('No pude abrir esa imagen. Prueba con otra foto');
+    toast('🧾 Leyendo la factura…','var(--t2)');
+    const res = await fetch('/api/ai-chat', {
+      method: 'POST',
+      headers: await headersIA(),
+      body: JSON.stringify({ modo: 'foto_factura', imagen_base64: comprimida.split(',')[1] })
+    });
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok) throw new Error(data.error || 'No se pudo leer la factura. Intenta de nuevo');
+    const f = data.factura || {};
+    if(!f.nombre && !f.valor && !f.fecha){ toast('❌ No encontré datos de una factura en la foto. Prueba con más luz y de cerca','var(--red)'); return; }
+    abrirPagoDesdeFactura(f, comprimida);
+  }catch(e){
+    console.error('[factura] error:', e);
+    toast('⚠️ ' + e.message, 'var(--red)');
+  }finally{
+    facturaLeyendo = false;
+    pintarFacturaLeyendo();
+  }
+}
+function abrirPagoDesdeFactura(f, dataUrl){
+  showModal('modal-nuevo-pago');
+  facturaNueva = dataUrl;
+  document.getElementById('pago-nombre').value = f.nombre || '';
+  document.getElementById('pago-monto').value = f.valor ? Math.round(f.valor).toLocaleString('es-CO') : '';
+  // Lo que no se leyó queda vacío: nunca la fecha de hoy por defecto.
+  document.getElementById('pago-fecha').value = f.fecha || '';
+  const faltan = [!f.nombre && 'el nombre', !f.valor && 'el valor', !f.fecha && 'la fecha límite'].filter(Boolean);
+  document.getElementById('pago-factura-prev').src = dataUrl;
+  document.getElementById('pago-factura-aviso').innerHTML = faltan.length
+    ? `Revisa los datos. <b>No encontré ${faltan.join(' ni ')}.</b>`
+    : 'Revisa los datos antes de guardar. La foto queda con el pago.';
+  document.getElementById('pago-factura-box').style.display = '';
+}
+// Cerrar el formulario descarta la foto y lo leído: no se cuela en el siguiente pago.
+function limpiarFacturaNueva(){
+  if(!facturaNueva) return;
+  facturaNueva = null;
+  ['pago-nombre','pago-monto','pago-fecha'].forEach(id=>{ document.getElementById(id).value = ''; });
+  document.getElementById('pago-factura-box').style.display = 'none';
+  document.getElementById('pago-factura-prev').removeAttribute('src');
 }
 
 function renderPagos(){
@@ -2332,7 +2424,7 @@ function filaPago(p){
     if(!p.fijo) partes.push('una sola vez');
     linea = partes.join(' · ');
   }
-  const foto = p.pagado && p.soporteUrl
+  const foto = p.soporteUrl
     ? `<div><button type="button" class="pago-foto" onclick="event.stopPropagation();verSoportePago(${p.id})">${icono('cam')}Ver factura</button></div>`
     : '';
   const pill = p.pagado
@@ -2361,12 +2453,9 @@ function abrirPagoDetalle(id){
   const avisoVence = esPagado || diff===null ? ''
     : diff<0 ? '· <span class="txt-red">Vencido</span>'
     : diff===0 ? '· <span class="txt-amber">Hoy</span>' : '';
-  let fotoBtn = '';
-  if(esPagado){
-    fotoBtn = p.soporteUrl
+  const fotoBtn = p.soporteUrl
       ? `<button class="btn-secondary" onclick="verSoportePago(${p.id})">Ver factura</button>`
       : `<label class="btn-secondary" for="pago-soporte-file" style="display:block;text-align:center;box-sizing:border-box;cursor:pointer" onclick="pagoSoporteId=${p.id}">Agregar foto de la factura</label>`;
-  }
   document.getElementById('pago-detalle-body').innerHTML = `
     <div style="margin-bottom:12px">
       <div style="font-size:28px;font-weight:800;color:var(--t1)">${fmtCOP(p.monto)}</div>
@@ -2453,6 +2542,7 @@ async function marcarPagoPagado(id){
   await syncDesdeSupabase();
   renderPagos();
   if(!data || !data.length){ toast('Este pago ya estaba pagado','var(--amber)'); return; }
+  if(p.soporteUrl){ toast('✅ Pago marcado','var(--green)'); return; }
   pagoSoporteId = p.id;
   showModal('modal-pago-foto');
 }
@@ -2474,6 +2564,20 @@ function leerArchivoComoDataUrl(file){
   });
 }
 
+async function subirFacturaPago(id, dataUrl){
+  // soporte_url guarda la ruta, no una URL: el bucket es privado.
+  const ruta = `${currentUser.id}/${id}-${Date.now()}.jpg`;
+  const blob = dataUrlABlob(dataUrl);
+  const { error: errSubida } = await supa.storage.from('facturas')
+    .upload(ruta, blob, { contentType: blob.type });
+  if(errSubida) throw errSubida;
+  const { error: errPago } = await supa.from('payments').update({ soporte_url: ruta }).eq('id', id).eq('user_id', currentUser.id);
+  if(errPago){
+    await supa.storage.from('facturas').remove([ruta]);
+    throw errPago;
+  }
+}
+
 async function onSoporteSeleccionado(event){
   const file = event.target.files[0];
   event.target.value = '';
@@ -2481,21 +2585,10 @@ async function onSoporteSeleccionado(event){
   if(!file || id==null) return;
   hideModal('modal-pago-detalle');
   toast('📤 Subiendo factura…','var(--t2)');
-  // soporte_url guarda la ruta, no una URL: el bucket es privado.
-  const ruta = `${currentUser.id}/${id}-${Date.now()}.jpg`;
   try{
-    const comprimida = await comprimirImagen(await leerArchivoComoDataUrl(file), 1600, 0.8);
     // comprimirImagen devuelve el original si no pudo decodificarlo (p. ej. HEIC):
     // se manda su tipo real para que el bucket lo rechace en vez de guardarlo mal.
-    const blob = dataUrlABlob(comprimida);
-    const { error: errSubida } = await supa.storage.from('facturas')
-      .upload(ruta, blob, { contentType: blob.type });
-    if(errSubida) throw errSubida;
-    const { error: errPago } = await supa.from('payments').update({ soporte_url: ruta }).eq('id', id).eq('user_id', currentUser.id);
-    if(errPago){
-      await supa.storage.from('facturas').remove([ruta]);
-      throw errPago;
-    }
+    await subirFacturaPago(id, await comprimirImagen(await leerArchivoComoDataUrl(file), 1600, 0.8));
     toast('✅ Factura guardada','var(--green)');
     await syncDesdeSupabase();
     renderPagos();
@@ -4313,6 +4406,7 @@ function pintarFotoListado(){
   document.getElementById('lt-foto-txt').textContent = fotoListadoOcupada ? 'Leyendo la foto…' : 'Crear desde foto';
 }
 async function onFotoListado(event){
+  soltarEligiendoFoto();
   const file = event.target.files[0];
   event.target.value = '';
   if(!file || fotoListadoOcupada) return;
@@ -5328,7 +5422,7 @@ function usuarioOcupado(){
   const activo = document.activeElement;
   if(activo && (/^(INPUT|TEXTAREA|SELECT)$/.test(activo.tagName) || activo.isContentEditable)) return true;
   if(document.querySelector('.modal-overlay:not(.hidden)')) return true;
-  if(hjOcupado() || isRecording || ttsSpeaking || pagoSoporteId !== null || fotoListadoOcupada) return true;
+  if(hjOcupado() || isRecording || ttsSpeaking || pagoSoporteId !== null || fotoListadoOcupada || facturaLeyendo || Date.now() < eligiendoFotoHasta) return true;
   if(document.getElementById('ia-typing')) return true;
   // Texto a medio escribir aunque el campo ya no tenga el foco.
   const auth = document.getElementById('auth-screen');
