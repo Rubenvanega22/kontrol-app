@@ -75,6 +75,10 @@ svg.rel{fill:currentColor;stroke:none;}
 .k-tit h1{font:700 24px/1.12 'Syne',sans-serif;color:#fff;}
 .k-tit p{font-size:15px;color:var(--t2);margin-top:2px;}
 .k-acc{display:flex;gap:8px;flex-wrap:wrap;}
+.lt-botones{width:100%;}
+.lt-botones>.b-pri,.lt-botones>.b-sec{flex:1 1 auto;padding:0 10px;}
+.b-sec.lt-foto{border-color:var(--mor);cursor:pointer;}
+.lt-foto.cargando{opacity:.7;pointer-events:none;}
 .b-pri{min-height:46px;padding:0 16px;display:inline-flex;align-items:center;justify-content:center;gap:7px;border:none;border-radius:13px;background:var(--mor);color:#fff;font-size:15px;font-weight:700;white-space:nowrap;cursor:pointer;text-decoration:none;box-shadow:0 5px 16px rgba(139,92,246,0.42);}
 .b-sec{min-height:44px;padding:0 13px;display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--lin2);border-radius:12px;background:var(--card3);color:#fff;font-size:14.5px;font-weight:600;white-space:nowrap;cursor:pointer;}
 .b-sec:disabled{opacity:.45;cursor:default;}
@@ -920,6 +924,8 @@ select.form-inp option{background:var(--card2);}
   .pago-right{flex-direction:row;align-items:center;gap:14px;}
   .pago-amt{min-width:112px;text-align:right;}
   .est{min-width:116px;}
+  .lt-botones{width:auto;}
+  .lt-botones>.b-pri,.lt-botones>.b-sec{flex:0 0 auto;padding:0 20px;}
   .lt-wrap{grid-template-columns:repeat(2,minmax(0,1fr));}
   .lt-titulo{flex:1 1 0;}
   .hj-col-fecha{width:100px;}.hj-col-valor{width:130px;}.hj-col-nota{width:32%;}.hj-col-menu{width:58px;}
@@ -1231,7 +1237,7 @@ select.form-inp option{background:var(--card2);}
 
     <!-- ══ LISTADO ══ -->
     <div class="scr" id="scr-listado">
-      <div class="k-tit"><div class="k-tit-i"><div class="k-tit-ic" style="color:#22C993"><svg class="i " aria-hidden="true"><use href="#i-list"/></svg></div><div><h1>Listado</h1><p>Tus listas en un solo lugar</p></div></div><button type="button" class="b-pri" onclick="abrirModalRecordar('listado')"><svg class="i " aria-hidden="true"><use href="#i-mas"/></svg>Nuevo listado</button></div>
+      <div class="k-tit"><div class="k-tit-i"><div class="k-tit-ic" style="color:#22C993"><svg class="i " aria-hidden="true"><use href="#i-list"/></svg></div><div><h1>Listado</h1><p>Tus listas en un solo lugar</p></div></div><div class="k-acc lt-botones"><button type="button" class="b-pri" onclick="abrirModalRecordar('listado')"><svg class="i " aria-hidden="true"><use href="#i-mas"/></svg>Nuevo listado</button><label class="b-sec lt-foto" id="lt-foto-btn" for="lt-foto-input" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}"><svg class="i " aria-hidden="true"><use href="#i-cam"/></svg><span id="lt-foto-txt">Crear desde foto</span></label><input type="file" id="lt-foto-input" class="hj-sr" accept="image/*" tabindex="-1" aria-label="Elegir la foto de la lista" onchange="onFotoListado(event)"/></div></div>
       <div class="rt-tools">
         <label class="rt-search"><svg class="i " aria-hidden="true"><use href="#i-bus"/></svg><input id="lt-buscar" type="text" placeholder="Buscar…" aria-label="Buscar en listados" oninput="renderRecordar()"/></label>
       </div>
@@ -4297,49 +4303,62 @@ async function procesarTextoRecordar(texto){
 }
 
 // ── FOTO → LISTADO (OCR con Claude Vision vía /api/ai-chat) ──
-// La cámara de la barra inferior comprime la foto y la manda aquí.
+// El botón de Listado y la cámara de la barra de la IA comprimen la foto y la mandan aquí.
+let fotoListadoOcupada = false;
+function pintarFotoListado(){
+  const b = document.getElementById('lt-foto-btn');
+  if(!b) return;
+  b.classList.toggle('cargando', fotoListadoOcupada);
+  b.setAttribute('aria-busy', String(fotoListadoOcupada));
+  document.getElementById('lt-foto-txt').textContent = fotoListadoOcupada ? 'Leyendo la foto…' : 'Crear desde foto';
+}
 async function onFotoListado(event){
   const file = event.target.files[0];
   event.target.value = '';
-  if(!file) return;
+  if(!file || fotoListadoOcupada) return;
+  fotoListadoOcupada = true;
+  pintarFotoListado();
   try{
-    const comprimida = await comprimirImagen(await leerArchivoComoDataUrl(file), 1024, 0.85);
+    const comprimida = await comprimirImagen(await leerArchivoComoDataUrl(file), 1568, 0.85);
+    if(!comprimida.startsWith('data:image/jpeg')) throw new Error('No pude abrir esa imagen. Prueba con otra foto');
     await analizarFotoListado(comprimida.split(',')[1]);
   }catch(e){
     console.error('[foto-listado] error:', e);
     toast('⚠️ ' + e.message, 'var(--red)');
+  }finally{
+    fotoListadoOcupada = false;
+    pintarFotoListado();
   }
 }
 
 async function analizarFotoListado(b64){
   if(!(await sesionLista())){ toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
   toast('📷 Leyendo la lista…','var(--t2)');
-  const prompt = `Eres un lector de listas escritas (manuscritas o impresas). Lee la imagen y extrae el TÍTULO de la lista (si aparece uno arriba) y los ÍTEMS (cada renglón o viñeta es un ítem). Responde SOLO JSON válido, sin markdown ni texto extra: {"titulo":"nombre de la lista o null","items":["item1","item2"]}. Si no hay título claro, usa null.`;
-  try {
-    const res = await fetch('/api/ai-chat', {
-      method: 'POST',
-      headers: await headersIA(),
-      body: JSON.stringify({ message: prompt, imagen_base64: b64, history: [], user_id: currentUser?.id || null })
-    });
-    const data = await res.json();
-    if(!res.ok) throw new Error(data.error || 'Error del servidor');
-    const r = parseIAJson(data.respuesta || '{}');
-    const items = (r && Array.isArray(r.items) ? r.items : [])
-      .map(t => ({ text: String(t).trim(), done: false }))
-      .filter(it => it.text);
-    if(!items.length){ toast('❌ No pude leer ítems en la foto','var(--red)'); return; }
-    const titulo = (r && r.titulo && String(r.titulo).trim()) || 'Lista escaneada';
-    const { data: row, error } = await supa.from('reminders')
-      .insert({ user_id: currentUser.id, tipo: 'listado', titulo, content: { items }, fecha: todayStr() })
-      .select().single();
-    if(error || !row){ toast('❌ Error al guardar: '+(error?.message||'sin confirmación'),'var(--red)'); return; }
-    await syncDesdeSupabase();
-    goTab('listado');
-    toast(`✅ Listado "${titulo}" con ${items.length} ${items.length===1?'ítem':'ítems'}`,'var(--green)');
-  } catch(e){
-    console.error('[foto-listado] error:', e);
-    toast('⚠️ ' + e.message, 'var(--red)');
-  }
+  const res = await fetch('/api/ai-chat', {
+    method: 'POST',
+    headers: await headersIA(),
+    body: JSON.stringify({ modo: 'foto_listado', imagen_base64: b64 })
+  });
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(data.error || 'No se pudo leer la foto. Intenta de nuevo');
+  const r = parseIAJson(data.respuesta || '{}');
+  const items = (r && Array.isArray(r.items) ? r.items : [])
+    .map(t => ({ text: String(t).trim(), done: false }))
+    .filter(it => it.text);
+  if(!items.length){ toast('❌ No encontré una lista en la foto. Prueba con más luz y de cerca','var(--red)'); return; }
+  const leido = r.titulo ? String(r.titulo).trim() : '';
+  const titulo = leido && leido.toLowerCase() !== 'null' ? leido : 'Lista escaneada';
+  const { data: row, error } = await supa.from('reminders')
+    .insert({ user_id: currentUser.id, tipo: 'listado', titulo, content: { items }, fecha: todayStr() })
+    .select().single();
+  if(error || !row){ toast('❌ Error al guardar: '+(error?.message||'sin confirmación'),'var(--red)'); return; }
+  // Que el listado nuevo se vea aunque hubiera una búsqueda escrita.
+  const buscar = document.getElementById('lt-buscar');
+  if(buscar) buscar.value = '';
+  await syncDesdeSupabase();
+  goTab('listado');
+  document.getElementById('listado-list').scrollTop = 0;
+  toast(`✅ Listado "${titulo}" con ${items.length} ${items.length===1?'ítem':'ítems'}`,'var(--green)');
 }
 
 // Fin push-to-talk
@@ -5309,7 +5328,7 @@ function usuarioOcupado(){
   const activo = document.activeElement;
   if(activo && (/^(INPUT|TEXTAREA|SELECT)$/.test(activo.tagName) || activo.isContentEditable)) return true;
   if(document.querySelector('.modal-overlay:not(.hidden)')) return true;
-  if(hjOcupado() || isRecording || ttsSpeaking || pagoSoporteId !== null) return true;
+  if(hjOcupado() || isRecording || ttsSpeaking || pagoSoporteId !== null || fotoListadoOcupada) return true;
   if(document.getElementById('ia-typing')) return true;
   // Texto a medio escribir aunque el campo ya no tenga el foco.
   const auth = document.getElementById('auth-screen');
