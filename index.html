@@ -4193,11 +4193,6 @@ async function intentLocal(msg){
   var m = msg.toLowerCase();
   if(/^(anota|ap[uú]nta|guarda|busca|qu[eé] d[ií]a|cu[aá]ndo|ya\s|marca)/i.test(m)) return null;
 
-  var agendaM = msg.match(/^ag[e\u00e9]nda(?:me)?\s+(.+?)\s+(?:para\s+el|el|para)\s+(\d{1,2})\s*\.?$/i);
-  if(agendaM){
-    var fechaEv = proximaFechaDelDia(parseInt(agendaM[2],10));
-    if(fechaEv) return await agendarSinHora(agendaM[1].trim(), fechaEv);
-  }
   var comprarM = msg.match(/^comprar\s+(.+)/i);
   if(comprarM){
     var items = comprarM[1].split(/,|\s+y\s+/).map(function(s){return s.trim().replace(/\.$/,'');}).filter(Boolean);
@@ -4212,28 +4207,6 @@ async function intentLocal(msg){
     if(/config/i.test(m)){goTab('config');return 'Aqui esta la configuracion.';}
   }
   return null;
-}
-
-// Próxima fecha con ese día del mes (hoy cuenta). null si ese día no existe en ese mes.
-function proximaFechaDelDia(dia){
-  var hoy = todayStr();
-  var y = parseInt(hoy.slice(0,4),10), mes = parseInt(hoy.slice(5,7),10);
-  if(dia < parseInt(hoy.slice(8,10),10)){ mes++; if(mes>12){ mes=1; y++; } }
-  if(dia < 1 || dia > new Date(y, mes, 0).getDate()) return null;
-  return y+'-'+String(mes).padStart(2,'0')+'-'+String(dia).padStart(2,'0');
-}
-
-async function agendarSinHora(titulo, fecha){
-  if(!(await sesionLista())) return '⚠️ Sesión no lista. Recarga la página e intenta de nuevo.';
-  const { data, error } = await supa.from('events')
-    .insert({ user_id: currentUser.id, titulo, fecha, hora: null, nota: null })
-    .select().single();
-  if(error || !data) return '❌ No pude guardar el evento. Intenta de nuevo.';
-  await syncDesdeSupabase();
-  agendaDiaSel = fecha;
-  goTab('agenda');
-  const aviso = fecha === todayStr() ? 'Queda en tu agenda de hoy.' : 'Como no dijiste hora, te aviso ese día en el resumen de las 8 am.';
-  return '✅ Agendé "'+titulo+'" para el '+fmtDiaMes(fecha)+'. '+aviso;
 }
 
 // Suma a la "Lista de compras" si ya existe, para no crear una lista por cada frase.

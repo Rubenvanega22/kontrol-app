@@ -3,7 +3,7 @@ const supabase = require('../lib/supabase');
 const { leerListaDeImagen, leerFacturaDeImagen, interpretarFactura } = require('../lib/lista-foto');
 const { colombiaDateString, colombiaDateLongEs, colombiaTimeString, colombiaDateParts } = require('../lib/datetime');
 const { esTemprano, hhmm, momentoAviso } = require('../lib/avisos-evento');
-const { horasHabladas, dudaSobreEventos } = require('../lib/horas-habladas');
+const { preguntaAntesDeGuardar, horasDelPedido } = require('../lib/evento-completo');
 
 const MEM0_API_KEY = process.env.MEM0_API_KEY;
 const MEM0_BASE = 'https://api.mem0.ai/v1';
@@ -135,9 +135,9 @@ module.exports = async function handler(req, res) {
     if (voz) {
       systemPrompt = `MODO VOZ: responde máximo 2 oraciones cortas y directas.\n\n${systemPrompt}`;
     }
-    const dichas = horasHabladas(message);
+    const dichas = horasDelPedido(message, history);
     if (dichas.length) {
-      systemPrompt += `\n\n⚠️ HORAS YA INTERPRETADAS EN ESTE MENSAJE (son definitivas, ver regla 11B):\n${dichas.map(d => `• "${d.dicho}" = ${d.hora}, UNA sola hora`).join('\n')}`;
+      systemPrompt += `\n\n⚠️ HORAS YA INTERPRETADAS EN ESTE PEDIDO (son definitivas, ver regla 11B):\n${dichas.map(d => `• "${d.dicho}" = ${d.hora}, UNA sola hora`).join('\n')}`;
     }
 
     // 4. Llamar al LLM — siempre Claude Haiku (fiabilidad sobre velocidad)
@@ -152,18 +152,16 @@ module.exports = async function handler(req, res) {
       respuesta = await llamarClaude(correccion, history, message, null, voz ? 200 : 600);
       if (afirmaHaberHecho(respuesta)) {
         console.warn('[ai-chat] volvió a confirmar sin acción');
-        respuesta = 'No alcancé a guardar eso. ¿Me lo repites con el qué y el día?';
+        respuesta = 'No alcancé a guardar eso. ¿Me lo repites con el qué, el día y la hora?';
       }
     }
 
-    // Antes de guardar: dos eventos iguales que el usuario no pidió, o una hora distinta
-    // a la que dijo, se preguntan. Si no, "las 9 y 10" termina en dos citas.
-    if (!imagen_base64) {
-      const duda = dudaSobreEventos(message, respuesta);
-      if (duda) {
-        console.warn('[ai-chat] eventos en duda; se pregunta en vez de guardar');
-        respuesta = duda;
-      }
+    // Antes de guardar: un evento sin qué, día u hora, dos iguales que no pidió, o una hora
+    // distinta a la que dijo, se preguntan en vez de crearse.
+    const pregunta = preguntaAntesDeGuardar({ mensaje: message, respuesta, history, conImagen: !!imagen_base64 });
+    if (pregunta) {
+      console.warn('[ai-chat] evento incompleto o en duda; se pregunta en vez de guardar');
+      respuesta = pregunta;
     }
 
     const respuestaLimpia = respuesta
@@ -207,11 +205,8 @@ module.exports = async function handler(req, res) {
         partesUbicacion.push(`✅ Guardé "${a.nombre}".\n${a.url}`);
       // BUG 2/3: respuesta DETERMINÍSTICA para eventos — el ✅ solo si el insert
       // se confirmó, y SIEMPRE con día + hora exacta + qué. Salta la verification pass.
-      } else if (a.accion === 'evento' && a.ok && !a.hora) {
-        const aviso = a.fecha === colombiaDateString()
-          ? 'Queda en tu agenda de hoy.'
-          : 'Como no dijiste hora, te aviso ese día a las 8 am.';
-        partesEvento.push(`✅ Listo, agendé ${a.titulo} para ${formatearDia(a.fecha)}. ${aviso}`);
+      } else if (a.accion === 'evento' && a.error === 'sin_hora') {
+        partesEvento.push('¿A qué hora?');
       } else if (a.accion === 'evento' && a.ok && a.temprano && !a.aviso_hora) {
         const porDefecto = a.noche_vigente ? 'te aviso el día anterior a las 8 pm y 1 hora antes' : 'te aviso 1 hora antes';
         partesEvento.push(`✅ Listo, agendé ${a.titulo} para ${formatearCuando(a.fecha, a.hora)}. ¿A qué hora quieres que te avise? Si no me dices, ${porDefecto}.`);
@@ -228,7 +223,7 @@ module.exports = async function handler(req, res) {
         else if (a.error === 'no_encontrado') partesEvento.push('No encontré ese evento en tu agenda.');
         else partesEvento.push('❌ Hubo un error guardando. Por favor intenta de nuevo.');
       } else if (a.accion === 'evento' && a.error === 'sin_fecha') {
-        partesEvento.push('❌ No lo agendé porque me faltó el qué o el día. ¿Qué agendo y para qué día?');
+        partesEvento.push(a.titulo ? '¿Para qué día?' : '¿Qué quieres agendar?');
       } else if (a.accion === 'evento' && a.error === 'fecha_pasada') {
         partesEvento.push('❌ No lo agendé porque esa fecha ya pasó. ¿Para qué día lo dejo?');
       } else if (a.accion === 'evento' && a.error === 'hora_pasada') {
@@ -444,7 +439,7 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
 [ACCION:borrar_pago|ID]
 — Eventos y recordatorios
 [ACCION:evento|titulo|YYYY-MM-DD|HH:MM]
-  Sin hora, deja ese campo vacío: [ACCION:evento|titulo|YYYY-MM-DD|]
+  Título, día y hora son obligatorios (regla 10). Si falta uno, pregúntalo sin emitir la acción.
   Si dio un detalle (dirección, qué llevar), agrégalo como nota: [ACCION:evento|titulo|YYYY-MM-DD|HH:MM|nota]
   Evento ANTES de las 8:00 am: el sistema le pregunta a qué hora avisar; tú no lo preguntes. Si ya dijo cuándo avisarle, va en el último campo: [ACCION:evento|titulo|YYYY-MM-DD|HH:MM|nota|HH:MM aviso]
 [ACCION:aviso_evento|ID|HH:MM]
@@ -534,13 +529,18 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
        UNA acción. Aplica aun si la frase incluye "pagar"/"pago"/"factura"
        — la hora gana sobre la palabra "pago".
 
-    A2) Hay un QUÉ y un DÍA pero NO hora ("agéndame para mañana bañar a Luffy",
-       "recuérdame el viernes llamar a Juan") → CREA el evento SIN hora:
-       [ACCION:evento|titulo|YYYY-MM-DD|]. No preguntes la hora y NUNCA te la
-       inventes. El sistema le avisa ese día a las 8 am.
+    A2) ⚠️ TODO EVENTO NECESITA TRES COSAS: QUÉ es, qué DÍA y a qué HORA.
+       Si el usuario ya dio las tres, créalo de una, sin preguntar nada.
+       Si falta alguna, pregunta SOLO lo que falta, UNA cosa a la vez y en este orden:
+       qué → día → hora. No emitas ninguna acción hasta tener las tres.
+       Lo que ya dijo en mensajes anteriores de esta conversación NO se vuelve a preguntar.
+       NUNCA inventes un día ni una hora: ni "hoy" ni 08:00 por defecto.
+       El título debe decir de qué se trata, con los detalles que dio: "Cita con el
+       dentista", "Reunión con Juan". NUNCA un título genérico como "Cita", "Reunión",
+       "Evento" o "Algo": pregunta "¿De qué es la cita?". La nota es opcional: nunca la pidas.
 
-    B) "Recuérdame X" / "Avísame X" sin hora Y sin día → pregunta "¿Para cuándo
-       te aviso?" antes de emitir cualquier acción.
+    B) "Recuérdame X" / "Avísame X" sin día → pregunta "¿Para qué día?". Con día y sin
+       hora → pregunta "¿A qué hora?". Siguen la regla A2.
 
     C) "Agéndame pago de X para el día Y" SIN hora → [ACCION:pago|...].
        El batch matutino de las 8am Col le avisará ese día.
@@ -550,7 +550,16 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
 
     EJEMPLOS DETERMINANTES:
 
-    Usuario: "recuérdame a las 7am pagar la factura $170.000"
+    Usuario: "agéndame una cita hoy a las 9 y 20"
+    Tu respuesta:
+      ¿De qué es la cita?
+    Usuario: "con el dentista"
+    Tu respuesta:
+      ✅ Listo.
+      [ACCION:evento|Cita con el dentista|<hoy>|09:20]
+    (El día y la hora ya los había dicho: no se vuelven a preguntar.)
+
+    Usuario: "recuérdame mañana a las 7am pagar la factura $170.000"
     Tu respuesta:
       ✅ Listo, te aviso mañana a las 7:00 am sobre el pago de $170.000.
       [ACCION:evento|Pagar factura $170.000|2026-05-28|07:00||07:00]
@@ -565,14 +574,13 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
 
     Usuario: "recuérdame comprar pan"
     Tu respuesta:
-      ¿Para cuándo te aviso?
-    (NO emites ninguna acción hasta saber cuándo.)
+      ¿Para qué día?
+    (NO emites ninguna acción hasta tener qué, día y hora.)
 
     Usuario: "agéndame para mañana bañar a Luffy"
     Tu respuesta:
-      ✅ Listo.
-      [ACCION:evento|Bañar a Luffy|<mañana>|]
-    (Sin hora: campo vacío. NO uses 08:00 ni ninguna otra hora inventada.)
+      ¿A qué hora?
+    (Falta la hora. NO uses 08:00 ni ninguna otra hora inventada.)
 
     Usuario: "agéndame pago luz $80.000 el 15 de junio"
     Tu respuesta:
@@ -618,7 +626,7 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
     HORA actual = 14:30. Usuario: "avísame en 2 horas hacer la llamada"
     Tu respuesta:
       ✅ Te aviso a las 16:30 sobre la llamada.
-      [ACCION:evento|Llamada|<hoy>|16:30]
+      [ACCION:evento|Hacer la llamada|<hoy>|16:30]
 
     HORA actual = 23:50. Usuario: "recuérdame en 30 minutos cerrar la ventana"
     Tu respuesta:
@@ -645,17 +653,17 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
     Crea DOS eventos solo si dijo claramente que son dos: "dos citas, a las 9 y a las 10",
     "una a las 9 y otra a las 10". Si hay duda, pregunta sin emitir ninguna acción.
 
-    Usuario: "agéndame una cita hoy a las 9 y 10"
+    Usuario: "agéndame una cita con el dentista hoy a las 9 y 10"
     Tu respuesta:
       ✅ Listo.
-      [ACCION:evento|Cita|<hoy>|09:10]
+      [ACCION:evento|Cita con el dentista|<hoy>|09:10]
     (UNA acción. NUNCA una a las 09:00 y otra a las 10:00.)
 
-    Usuario: "una cita a las 9 y otra a las 10"
+    Usuario: "hoy una cita con el dentista a las 9 y otra a las 10"
     Tu respuesta:
       ✅ Listo.
-      [ACCION:evento|Cita|<hoy>|09:00]
-      [ACCION:evento|Cita|<hoy>|10:00]
+      [ACCION:evento|Cita con el dentista|<hoy>|09:00]
+      [ACCION:evento|Cita con el dentista|<hoy>|10:00]
 
     Si corrige algo ya creado ("no, era a las 9:10"), borra lo equivocado con
     [ACCION:borrar_evento|ID] usando los ID de "Eventos próximos" y crea SOLO lo correcto.
@@ -695,7 +703,7 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
          "listado mercado: pan, leche"          → [ACCION:crear_lista|mercado|pan;leche]
          "listado tareas"                        → [ACCION:crear_lista|tareas|]  (listado vacío)
          "recordatorio mi clave es 1234"        → [ACCION:recordatorio|mi clave es 1234]
-       (Si es evento aplica la regla 10: con QUÉ y DÍA se crea, con o sin hora; si falta el día, pídelo.)
+       (Si es evento aplica la regla 10 A2: con QUÉ, DÍA y HORA se crea; si falta algo, pregúntalo.)
 
     B) Empieza con un VERBO DE VER o una pregunta → CONSULTAR, NO crear:
          "dime qué tengo en agenda" / "qué hay en agenda mañana" → responde con los datos (regla 20)
@@ -711,11 +719,11 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
        • CUALQUIER OTRA palabra (para, algo, una, un, el…) PERO sin un QUÉ concreto
          o sin un DÍA → NO crees ni muestres: PREGUNTA lo que falte.
          "agenda para mañana" / "agenda algo mañana" → responde: "¿Qué quieres agendar?"
-         "agenda una cita" → responde: "¿Para qué día?"
+         "agenda una cita" → responde: "¿De qué es la cita?"
        REGLA FINA: "agenda" + <palabra de tiempo SOLA> = mostrar.
                    "agenda" + (relleno como "para"/"algo"/"una"…) = intención de crear
-                   → si falta el QUÉ o el DÍA, PREGUNTA (nunca muestres la agenda).
-                   "agenda" + objeto concreto + día (con o sin hora) = CREAR evento (regla 10).
+                   → si falta el QUÉ, el DÍA o la HORA, PREGUNTA (nunca muestres la agenda).
+                   "agenda" + objeto concreto + día + hora = CREAR evento (regla 10 A2).
 
     D) Operar sobre un listado EXISTENTE (sin importar la primera palabra):
          "agrega arroz a mi lista de mercado" → [ACCION:agregar_item|mercado|arroz]
@@ -1209,8 +1217,8 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
       } else if (accion === 'evento') {
         const titulo = (parts[1] || '').trim();
         const fecha = (parts[2] || '').trim();
-        // Sin hora el evento es válido: no tiene aviso a hora exacta, pero sale en la
-        // Agenda y en el resumen de las 8 am de ese día. Normalizar H:MM → HH:MM.
+        // Normalizar H:MM → HH:MM. Por la IA la hora es obligatoria; solo el formulario
+        // de la app permite eventos sin hora.
         const mHora = (parts[3] || '').trim().match(/^(\d{1,2}):(\d{2})$/);
         const hora = mHora ? `${mHora[1].padStart(2, '0')}:${mHora[2]}` : null;
         const fechaValida = /^\d{4}-\d{2}-\d{2}$/.test(fecha) && !isNaN(new Date(`${fecha}T12:00:00-05:00`).getTime());
@@ -1224,15 +1232,17 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
           ejecutadas.push({ accion: 'evento', error: 'fecha_pasada', titulo });
           continue;
         }
+        if (!hora) {
+          ejecutadas.push({ accion: 'evento', error: 'sin_hora', titulo });
+          continue;
+        }
         // BUG 2 (REGLA 3): el cron notifica con ventanas relativas a "ahora" hacia
         // adelante; una hora ya pasada (>15 min) nunca dispararía. No la programamos.
-        if (hora) {
-          const cuando = new Date(`${fecha}T${hora}:00-05:00`);
-          if (isNaN(cuando.getTime()) || cuando.getTime() < Date.now() - 15 * 60 * 1000) {
-            console.warn('[evento] hora pasada o inválida, no se crea:', fecha, hora);
-            ejecutadas.push({ accion: 'evento', error: 'hora_pasada', titulo });
-            continue;
-          }
+        const cuando = new Date(`${fecha}T${hora}:00-05:00`);
+        if (isNaN(cuando.getTime()) || cuando.getTime() < Date.now() - 15 * 60 * 1000) {
+          console.warn('[evento] hora pasada o inválida, no se crea:', fecha, hora);
+          ejecutadas.push({ accion: 'evento', error: 'hora_pasada', titulo });
+          continue;
         }
         const temprano = esTemprano({ hora });
         // Una hora de aviso que ya pasó se descarta: el usuario recibe la pregunta de siempre.

@@ -683,7 +683,8 @@ async function despacharRespuestaPago(userId, phone, text, estado) {
   //     1 = sí (no hacemos nada — el modoQuinceMinAntes automático lo enviará)
   //     2 = no (marca notificado_15min=true para suprimir el aviso automático)
   if (estado?.awaiting === 'event_1h_response') {
-    const num = parseInt(lower, 10);
+    // Solo "1" o "2" exactos: "2 pm" puede ser la respuesta a "¿A qué hora?" de otro evento.
+    const num = /^[12](️?⃣)?\s*[.,!]?$/.test(lower) ? parseInt(lower, 10) : NaN;
     const { event_id, titulo } = estado.context || {};
     await clearState(phone);
     if (num === 1) {
