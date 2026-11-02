@@ -2,7 +2,8 @@
 const supabase = require('../lib/supabase');
 const { leerListaDeImagen, leerFacturaDeImagen, interpretarFactura } = require('../lib/lista-foto');
 const { colombiaDateString, colombiaDateLongEs, colombiaTimeString, colombiaDateParts } = require('../lib/datetime');
-const { esTemprano, hhmm, momentoAviso, debeSalirAviso } = require('../lib/avisos-evento');
+const { esTemprano, hhmm, momentoAviso } = require('../lib/avisos-evento');
+const { horasHabladas, dudaSobreEventos } = require('../lib/horas-habladas');
 
 const MEM0_API_KEY = process.env.MEM0_API_KEY;
 const MEM0_BASE = 'https://api.mem0.ai/v1';
@@ -134,6 +135,10 @@ module.exports = async function handler(req, res) {
     if (voz) {
       systemPrompt = `MODO VOZ: responde máximo 2 oraciones cortas y directas.\n\n${systemPrompt}`;
     }
+    const dichas = horasHabladas(message);
+    if (dichas.length) {
+      systemPrompt += `\n\n⚠️ HORAS YA INTERPRETADAS EN ESTE MENSAJE (son definitivas, ver regla 11B):\n${dichas.map(d => `• "${d.dicho}" = ${d.hora}, UNA sola hora`).join('\n')}`;
+    }
 
     // 4. Llamar al LLM — siempre Claude Haiku (fiabilidad sobre velocidad)
     //    Groq llama-3.1-8b no seguía consistentemente el formato [ACCION:...]
@@ -148,6 +153,16 @@ module.exports = async function handler(req, res) {
       if (afirmaHaberHecho(respuesta)) {
         console.warn('[ai-chat] volvió a confirmar sin acción');
         respuesta = 'No alcancé a guardar eso. ¿Me lo repites con el qué y el día?';
+      }
+    }
+
+    // Antes de guardar: dos eventos iguales que el usuario no pidió, o una hora distinta
+    // a la que dijo, se preguntan. Si no, "las 9 y 10" termina en dos citas.
+    if (!imagen_base64) {
+      const duda = dudaSobreEventos(message, respuesta);
+      if (duda) {
+        console.warn('[ai-chat] eventos en duda; se pregunta en vez de guardar');
+        respuesta = duda;
       }
     }
 
@@ -616,6 +631,34 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
     Tu respuesta:
       ¿En cuánto tiempo? Dame los minutos exactos.
     (Frase vaga sin tiempo concreto → pregunta antes de actuar.)
+
+11B. ⚠️ FORMAS DE DECIR LA HORA EN COLOMBIA. Son UNA sola hora, nunca dos eventos:
+    "las 9 y 10" = 9:10
+    "las 9 y media" = 9:30
+    "las 9 y cuarto" = 9:15
+    "un cuarto para las 10" = 9:45
+    "5 para las 10" = 9:55
+    "las 10 menos 5" = 9:55
+    "las 10 menos cuarto" = 9:45
+    "de 9 a 10" = un solo evento que empieza a las 9:00
+
+    Crea DOS eventos solo si dijo claramente que son dos: "dos citas, a las 9 y a las 10",
+    "una a las 9 y otra a las 10". Si hay duda, pregunta sin emitir ninguna acción.
+
+    Usuario: "agéndame una cita hoy a las 9 y 10"
+    Tu respuesta:
+      ✅ Listo.
+      [ACCION:evento|Cita|<hoy>|09:10]
+    (UNA acción. NUNCA una a las 09:00 y otra a las 10:00.)
+
+    Usuario: "una cita a las 9 y otra a las 10"
+    Tu respuesta:
+      ✅ Listo.
+      [ACCION:evento|Cita|<hoy>|09:00]
+      [ACCION:evento|Cita|<hoy>|10:00]
+
+    Si corrige algo ya creado ("no, era a las 9:10"), borra lo equivocado con
+    [ACCION:borrar_evento|ID] usando los ID de "Eventos próximos" y crea SOLO lo correcto.
 
 12. ⚠️ INTENCIÓN: CREAR vs CONSULTAR (desambiguación de "agenda").
 
