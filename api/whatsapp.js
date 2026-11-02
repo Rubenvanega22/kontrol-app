@@ -20,6 +20,7 @@ const supabase = require('../lib/supabase');
 const { colombiaDateString } = require('../lib/datetime');
 const { firmaValida, urlDelWebhook } = require('../lib/twilio-signature');
 const { STATUS_URL } = require('../lib/whatsapp-estado');
+const { esPreguntaDeAgenda } = require('../lib/evento-completo');
 const { leerListaDeImagen, leerFotoDeImagen, interpretarLectura, interpretarFoto, destinoDelTexto, elegirLista } = require('../lib/lista-foto');
 
 const TWILIO_SID = process.env.TWILIO_ACCOUNT_SID;
@@ -166,6 +167,28 @@ async function pagoEnEspera(userId) {
     .maybeSingle();
   if (error) { console.warn('[whatsapp] pagoEnEspera error:', error.message); return null; }
   return data;
+}
+
+// ─── ¿Ana acaba de preguntar algo de un evento? ───────────────
+// Si es así y no ha llegado un aviso de pago después, la respuesta corta es para ella.
+const ESPERA_PREGUNTA_AGENDA_MS = 60 * 60 * 1000;
+
+async function anaEsperaRespuesta(phone) {
+  const { data: ultimo, error } = await supabase
+    .from('whatsapp_conversations').select('role, content, created_at')
+    .eq('phone', phone)
+    .order('id', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) { console.warn('[whatsapp] anaEsperaRespuesta error:', error.message); return false; }
+  if (!ultimo || ultimo.role !== 'assistant' || !esPreguntaDeAgenda(ultimo.content)) return false;
+  if (Date.now() - new Date(ultimo.created_at).getTime() > ESPERA_PREGUNTA_AGENDA_MS) return false;
+  const { data: avisos } = await supabase
+    .from('whatsapp_alerts').select('id')
+    .eq('telefono', phone).eq('tipo', 'pago_recordatorio')
+    .gt('created_at', ultimo.created_at)
+    .limit(1);
+  return !avisos?.length;
 }
 
 // ─── Parser de fechas en español (delegado a Claude — corto y robusto) ───
@@ -845,6 +868,7 @@ async function despacharRespuestaPago(userId, phone, text, estado) {
   // que aclare (solo si el msg es corto, para no interceptar comandos largos).
   const esSi = /^(s[ií]|1|1️⃣|listo|ok|pagu[eé]|ya\s+pagu[eé])\s*[.,!]?\s*$/i.test(lower);
   const esNo = /^(no|2|2️⃣|aplazar|despu[ée]s)\s*[.,!]?\s*$/i.test(lower);
+  if ((esSi || esNo) && await anaEsperaRespuesta(phone)) return null;
 
   const pago = await pagoEnEspera(userId);
   if (!pago) return null; // No hay pago esperando → procesar como AI normal
