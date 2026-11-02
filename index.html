@@ -1661,7 +1661,12 @@ select.form-inp option{background:var(--card2);}
     </div>
     <div class="form-group">
       <label class="form-label">Hora (opcional)</label>
-      <input class="form-inp" id="evento-hora" type="time"/>
+      <input class="form-inp" id="evento-hora" type="time" oninput="actualizarAvisoEvento()"/>
+    </div>
+    <div class="form-group" id="evento-aviso-grupo" style="display:none">
+      <label class="form-label">¿A qué hora quieres que te avise? (opcional)</label>
+      <input class="form-inp" id="evento-aviso" type="time" oninput="actualizarAvisoEvento()"/>
+      <div id="evento-aviso-ayuda" style="font-size:12px;color:var(--t3);margin-top:6px"></div>
     </div>
     <div class="form-group">
       <label class="form-label">Nota (opcional)</label>
@@ -2628,25 +2633,52 @@ async function toggleRecurrenciaPago(id, el){
 // ════════════════════════════════════════
 let eventoEditId = null;
 
-function llenarModalEvento(ttl, boton, titulo, fecha, hora, nota){
+// Un evento antes de las 8 am no entra en el resumen de las 8 am: tiene su propio aviso.
+const eventoEsTemprano = hora => !!hora && hora < '08:00';
+
+function horaEventoCorta(hora){
+  const [h, m] = hora.split(':').map(Number);
+  return `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2,'0')} ${h < 12 ? 'am' : 'pm'}`;
+}
+
+// La hora elegida cae en la última vez que ocurre antes del evento (igual que lib/avisos-evento.js).
+function momentoAvisoEvento(fecha, hora, aviso){
+  if(aviso <= hora) return new Date(`${fecha}T${aviso}:00-05:00`);
+  return new Date(new Date(`${fecha}T${aviso}:00-05:00`).getTime() - 24*3600*1000);
+}
+
+function actualizarAvisoEvento(){
+  const hora = document.getElementById('evento-hora').value;
+  const aviso = document.getElementById('evento-aviso').value;
+  const temprano = eventoEsTemprano(hora);
+  document.getElementById('evento-aviso-grupo').style.display = temprano ? '' : 'none';
+  if(!temprano) return;
+  document.getElementById('evento-aviso-ayuda').textContent = !aviso
+    ? 'Si lo dejas vacío, te aviso el día anterior a las 8 pm y 1 hora antes.'
+    : `Te aviso ${aviso <= hora ? 'el mismo día' : 'el día anterior'} a las ${horaEventoCorta(aviso)}.`;
+}
+
+function llenarModalEvento(ttl, boton, titulo, fecha, hora, nota, aviso){
   document.getElementById('evento-modal-ttl').textContent = ttl;
   document.getElementById('evento-guardar').textContent = boton;
   document.getElementById('evento-titulo').value = titulo;
   document.getElementById('evento-fecha').value = fecha;
   document.getElementById('evento-hora').value = hora;
+  document.getElementById('evento-aviso').value = aviso || '';
   document.getElementById('evento-nota').value = nota;
+  actualizarAvisoEvento();
   showModal('modal-nuevo-evento');
 }
 function abrirNuevoEvento(fecha){
   eventoEditId = null;
-  llenarModalEvento('Nueva actividad','Agendar','',fecha||hoyISO(),'','');
+  llenarModalEvento('Nueva actividad','Agendar','',fecha||hoyISO(),'','','');
 }
 function abrirEditarEvento(id){
   const e = DB.eventos.find(x=>String(x.id)===String(id));
   if(!e) return;
   eventoEditId = e.id;
   hideModal('modal-vista-diaria');
-  llenarModalEvento('Editar actividad','Guardar',e.titulo||'',e.fecha||'',(e.hora||'').slice(0,5),e.nota||'');
+  llenarModalEvento('Editar actividad','Guardar',e.titulo||'',e.fecha||'',(e.hora||'').slice(0,5),e.nota||'',(e.aviso_hora||'').slice(0,5));
 }
 
 async function guardarEvento(){
@@ -2657,18 +2689,29 @@ async function guardarEvento(){
   const nota = document.getElementById('evento-nota').value.trim() || null;
   if(!titulo){ toast('⚠️ Escribe un título','var(--amber)'); return; }
   if(!fecha){ toast('⚠️ Selecciona una fecha','var(--amber)'); return; }
+  const aviso_hora = eventoEsTemprano(hora) ? (document.getElementById('evento-aviso').value || null) : null;
 
   let error;
   if(eventoEditId){
     const original = DB.eventos.find(x=>String(x.id)===String(eventoEditId));
-    const campos = { titulo, fecha, hora, nota };
+    const avisoCambio = !original || (original.aviso_hora||'').slice(0,5) !== (aviso_hora||'');
+    const cuandoCambio = !original || original.fecha !== fecha || (original.hora||'').slice(0,5) !== (hora||'');
+    if(aviso_hora && (avisoCambio || cuandoCambio) && momentoAvisoEvento(fecha, hora, aviso_hora).getTime() <= Date.now()){
+      toast('⚠️ Esa hora de aviso ya pasó. Elige otra o déjala vacía','var(--amber)'); return;
+    }
+    const campos = { titulo, fecha, hora, nota, aviso_hora };
     // Con otro día u hora vuelve a tocar aviso; cambiar el texto no repite uno ya enviado.
-    if(!original || original.fecha !== fecha || (original.hora||'').slice(0,5) !== (hora||'')){
-      Object.assign(campos, { notificado_agenda:false, notificado_1h:false, notificado_15min:false });
+    if(cuandoCambio){
+      Object.assign(campos, { notificado_agenda:false, notificado_1h:false, notificado_15min:false, notificado_aviso:false });
+    } else if(avisoCambio){
+      campos.notificado_aviso = false;
     }
     ({ error } = await supa.from('events').update(campos).eq('id', eventoEditId).eq('user_id', currentUser.id));
   } else {
-    ({ error } = await supa.from('events').insert({ user_id: currentUser.id, titulo, fecha, hora, nota }));
+    if(aviso_hora && momentoAvisoEvento(fecha, hora, aviso_hora).getTime() <= Date.now()){
+      toast('⚠️ Esa hora de aviso ya pasó. Elige otra o déjala vacía','var(--amber)'); return;
+    }
+    ({ error } = await supa.from('events').insert({ user_id: currentUser.id, titulo, fecha, hora, nota, aviso_hora }));
   }
   if(error){ toast('❌ Error: '+error.message,'var(--red)'); return; }
 

@@ -3,7 +3,9 @@
 // crons sub-diarios). En cada tick ejecuta los modos "rolling":
 //   • modoQuinceMinAntes — ventana [-15, +30] min vs hora del evento
 //   • modoUnaHoraAntes  — ventana [+15, +90] min vs hora del evento
-// Dedup garantizado por los flags notificado_15min / notificado_1h de events.
+//   • modoEventosTempranos — eventos antes de las 8 am, reglas en lib/avisos-evento.js
+// Dedup garantizado por los flags notificado_* de events. Los modos rolling corren a
+// cualquier hora, también de madrugada: solo el resumen, pagos y recordatorios tienen horario.
 //
 // En horas específicas Colombia se disparan además modos diarios:
 //   • 13:00 UTC (8am Col) → resumen agenda + recordatorio matutino de pagos
@@ -12,6 +14,7 @@
 
 const supabase = require('../lib/supabase');
 const { colombiaDateString } = require('../lib/datetime');
+const { esTemprano, eventoADate, debeSalirAviso, debeSalirUnaHoraAntes, horaCorta } = require('../lib/avisos-evento');
 
 const DAILY_UTC_HOUR = 13;   // 13:00 UTC = 8:00 am Colombia
 const EVENING_UTC_HOUR = 23; // 23:00 UTC = 6:00 pm Colombia
@@ -22,18 +25,8 @@ function lineaNotaEvento(e) {
 }
 
 function formatearEvento(e) {
-  const hora = e.hora ? ` a las ${e.hora}` : '';
+  const hora = e.hora ? ` a las ${horaCorta(e.hora)}` : '';
   return `${e.titulo}${hora}${lineaNotaEvento(e)}`;
-}
-
-// Postgres TIME llega como "HH:MM:SS" vía PostgREST; toleramos "HH:MM" por si
-// algún cliente lo guardó corto. Sin esto, concatenar ":00" producía
-// "HH:MM:SS:00-05:00" y new Date(...) devolvía Invalid Date.
-function eventToDate(e) {
-  if (!e.hora) return null;
-  const h = /^\d{2}:\d{2}$/.test(e.hora) ? `${e.hora}:00` : e.hora;
-  const t = new Date(`${e.fecha}T${h}-05:00`);
-  return isNaN(t.getTime()) ? null : t;
 }
 
 async function disparoSendWhatsApp() {
@@ -68,10 +61,12 @@ async function modoResumenDiario() {
     .eq('notificado_agenda', false);
   if (error) { console.error('[reminders-cron daily] query error:', error.message); return { error: error.message }; }
 
-  if (!eventos || !eventos.length) return { alertas: 0, message: 'sin eventos' };
+  // Un evento antes de las 8 am ya pasó cuando sale el resumen.
+  const delResumen = (eventos || []).filter(e => !esTemprano(e));
+  if (!delResumen.length) return { alertas: 0, message: 'sin eventos' };
 
   const porUsuario = {};
-  for (const e of eventos) {
+  for (const e of delResumen) {
     if (!e.user_id) continue;
     if (!porUsuario[e.user_id]) porUsuario[e.user_id] = [];
     porUsuario[e.user_id].push(e);
@@ -251,8 +246,8 @@ async function modoUnaHoraAntes() {
   // durante el outage entra ahora, igual se notifica. El flag
   // notificado_1h previene duplicados en ticks subsiguientes.
   const candidatos = (eventos || []).filter(e => {
-    const t = eventToDate(e);
-    if (!t) return false;
+    const t = eventoADate(e);
+    if (!t || esTemprano(e)) return false;
     const diff = (t.getTime() - nowMs) / 60000;
     return diff >= 15 && diff <= 90;
   });
@@ -270,7 +265,7 @@ async function modoUnaHoraAntes() {
   for (const e of claimed) {
     const tel = tels[e.user_id];
     const mensaje =
-      `⏰ *En 1 hora:* ${e.titulo}${e.hora ? ` a las ${e.hora}` : ''}${lineaNotaEvento(e)}\n` +
+      `⏰ *En 1 hora:* ${formatearEvento(e)}\n` +
       `\n¿Necesitas recordatorio de salida?\n` +
       `1. Sí, avísame en 15 min\n` +
       `2. No es necesario`;
@@ -309,8 +304,8 @@ async function modoQuinceMinAntes() {
   // El flag notificado_15min previene duplicados — un mismo evento no
   // se notifica dos veces aunque entre en múltiples ticks consecutivos.
   const candidatos = (eventos || []).filter(e => {
-    const t = eventToDate(e);
-    if (!t) return false;
+    const t = eventoADate(e);
+    if (!t || esTemprano(e)) return false;
     const diff = (t.getTime() - nowMs) / 60000;
     return diff >= -15 && diff <= 30;
   });
@@ -327,7 +322,7 @@ async function modoQuinceMinAntes() {
   let alertas = 0;
   for (const e of claimed) {
     const tel = tels[e.user_id];
-    const mensaje = `🕐 *En ~15 min:* ${e.titulo}${e.hora ? ` a las ${e.hora}` : ''}${lineaNotaEvento(e)}`;
+    const mensaje = `🕐 *En ~15 min:* ${formatearEvento(e)}`;
     const { error: insErr } = await supabase.from('whatsapp_alerts').insert({
       tipo: 'recordatorio_15min', mensaje, telefono: tel, enviado: false
     });
@@ -339,6 +334,55 @@ async function modoQuinceMinAntes() {
     alertas++;
   }
   return { alertas, marcados: claimed.length, candidatos: candidatos.length, hoyCol };
+}
+
+// ─── MODO F: eventos antes de las 8 am ──────────────────────────────
+// El aviso puede caer el día anterior, así que también se miran los eventos de mañana.
+async function modoEventosTempranos() {
+  const ahora = new Date();
+  const nowMs = ahora.getTime();
+  const hoyCol = colombiaDateString(ahora);
+  const mananaCol = colombiaDateString(new Date(nowMs + 24 * 3600 * 1000));
+
+  const { data: eventos, error } = await supabase
+    .from('events').select('*')
+    .in('fecha', [hoyCol, mananaCol])
+    .lt('hora', '08:00');
+  if (error) { console.error('[reminders-cron temprano] query error:', error.message); return { error: error.message }; }
+
+  const avisos = (eventos || []).filter(e => debeSalirAviso(e, nowMs));
+  const unaHora = (eventos || []).filter(e => debeSalirUnaHoraAntes(e, nowMs));
+  if (!avisos.length && !unaHora.length) return { alertas: 0, candidatos: 0, hoyCol };
+
+  const userIds = [...new Set([...avisos, ...unaHora].map(e => e.user_id).filter(Boolean))];
+  const tels = await telefonosPorUsuario(userIds);
+
+  const enviar = async (lista, flag, tipo, texto) => {
+    const destinatarios = lista.filter(e => tels[e.user_id]);
+    const claimed = await reclamar('events', destinatarios.map(e => e.id),
+      { [flag]: true }, q => q.eq(flag, false));
+    let enviadas = 0;
+    for (const e of claimed) {
+      const { error: insErr } = await supabase.from('whatsapp_alerts').insert({
+        tipo, mensaje: texto(e), telefono: tels[e.user_id], enviado: false
+      });
+      if (insErr) {
+        console.error('[reminders-cron temprano] insert failed event', e.id, insErr.message);
+        await supabase.from('events').update({ [flag]: false }).eq('id', e.id);
+        continue;
+      }
+      enviadas++;
+    }
+    return enviadas;
+  };
+
+  const alertasAviso = await enviar(avisos, 'notificado_aviso', 'recordatorio_temprano', e =>
+    `🔔 *${e.fecha === hoyCol ? 'Hoy' : 'Mañana'}:* ${formatearEvento(e)}`);
+  const alertasHora = await enviar(unaHora, 'notificado_1h', 'recordatorio_1h', e => {
+    const faltan = Math.round((eventoADate(e).getTime() - nowMs) / 60000);
+    return `⏰ *En ${faltan >= 50 ? '1 hora' : `${faltan} min`}:* ${formatearEvento(e)}`;
+  });
+  return { alertas: alertasAviso + alertasHora, candidatos: avisos.length + unaHora.length, hoyCol };
 }
 
 // ─── PAGOS: recordatorio diario hasta que se pague (BUG 1) ──────────
@@ -454,8 +498,9 @@ module.exports = async function handler(req, res) {
 
     const results = {};
 
-    // Modo forzado (testing): ?modo=diario|1h|15min|pagos|recordatorios
+    // Modo forzado (testing): ?modo=diario|1h|15min|temprano|pagos|recordatorios
     if (force) {
+      if (force === 'temprano')      results.temprano      = await modoEventosTempranos();
       if (force === 'diario')        results.diario        = await modoResumenDiario();
       if (force === '1h')            results.h1            = await modoUnaHoraAntes();
       if (force === '15min')         results.q15           = await modoQuinceMinAntes();
@@ -466,6 +511,7 @@ module.exports = async function handler(req, res) {
       // Rolling cada tick (cron-job.org cada 15 min): 15-min + 1h
       results.q15 = await modoQuinceMinAntes();
       results.h1  = await modoUnaHoraAntes();
+      results.temprano = await modoEventosTempranos();
       results.renovaciones = await modoRenovaciones();
       // Resumen de agenda: una vez al día a las 8am Col.
       if (utcHour === DAILY_UTC_HOUR) {

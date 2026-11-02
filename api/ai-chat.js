@@ -2,6 +2,7 @@
 const supabase = require('../lib/supabase');
 const { leerListaDeImagen, leerFacturaDeImagen, interpretarFactura } = require('../lib/lista-foto');
 const { colombiaDateString, colombiaDateLongEs, colombiaTimeString, colombiaDateParts } = require('../lib/datetime');
+const { esTemprano, hhmm, momentoAviso, debeSalirAviso } = require('../lib/avisos-evento');
 
 const MEM0_API_KEY = process.env.MEM0_API_KEY;
 const MEM0_BASE = 'https://api.mem0.ai/v1';
@@ -196,8 +197,21 @@ module.exports = async function handler(req, res) {
           ? 'Queda en tu agenda de hoy.'
           : 'Como no dijiste hora, te aviso ese día a las 8 am.';
         partesEvento.push(`✅ Listo, agendé ${a.titulo} para ${formatearDia(a.fecha)}. ${aviso}`);
+      } else if (a.accion === 'evento' && a.ok && a.temprano && !a.aviso_hora) {
+        const porDefecto = a.noche_vigente ? 'te aviso el día anterior a las 8 pm y 1 hora antes' : 'te aviso 1 hora antes';
+        partesEvento.push(`✅ Listo, agendé ${a.titulo} para ${formatearCuando(a.fecha, a.hora)}. ¿A qué hora quieres que te avise? Si no me dices, ${porDefecto}.`);
+      } else if (a.accion === 'evento' && a.ok && a.temprano && a.aviso_hora !== a.hora) {
+        partesEvento.push(`✅ Listo, agendé ${a.titulo} para ${formatearCuando(a.fecha, a.hora)}. Te aviso ${formatearCuando(a.aviso_fecha, a.aviso_hora)}.`);
       } else if (a.accion === 'evento' && a.ok) {
         partesEvento.push(`✅ Listo, te aviso ${formatearCuando(a.fecha, a.hora)} sobre ${a.titulo}.`);
+      } else if (a.accion === 'aviso_evento') {
+        if (a.ok && a.aviso_hora) partesEvento.push(`✅ Listo, te aviso de ${a.titulo} ${formatearCuando(a.aviso_fecha, a.aviso_hora)}.`);
+        else if (a.ok) partesEvento.push(`✅ Listo, de ${a.titulo} te aviso ${a.noche_vigente ? 'el día anterior a las 8 pm y 1 hora antes' : '1 hora antes'}.`);
+        else if (a.error === 'aviso_pasado') partesEvento.push('❌ Esa hora de aviso ya pasó. ¿A qué otra hora te aviso?');
+        else if (a.error === 'no_temprano') partesEvento.push(`${a.titulo} es a las 8 am o después, así que te aviso en el resumen de las 8 am, 1 hora antes y 15 minutos antes.`);
+        else if (a.error === 'hora_invalida') partesEvento.push('No entendí la hora. ¿A qué hora te aviso?');
+        else if (a.error === 'no_encontrado') partesEvento.push('No encontré ese evento en tu agenda.');
+        else partesEvento.push('❌ Hubo un error guardando. Por favor intenta de nuevo.');
       } else if (a.accion === 'evento' && a.error === 'sin_fecha') {
         partesEvento.push('❌ No lo agendé porque me faltó el qué o el día. ¿Qué agendo y para qué día?');
       } else if (a.accion === 'evento' && a.error === 'fecha_pasada') {
@@ -373,7 +387,7 @@ Pagos pendientes:
 ${ctx.pagos.map(p => `• ${p.nombre}: ${fmt(p.monto)} vence ${p.fecha_limite} [ID:${p.id}]`).join('\n') || 'ninguno'}
 
 Eventos próximos:
-${ctx.eventos.map(e => `• ${e.titulo} — ${e.fecha} ${e.hora||''}${e.nota ? ` (nota: ${e.nota})` : ''} [ID:${e.id}]`).join('\n') || 'ninguno'}
+${ctx.eventos.map(e => `• ${e.titulo} — ${e.fecha} ${e.hora||''}${e.nota ? ` (nota: ${e.nota})` : ''}${e.aviso_hora ? ` (aviso: ${hhmm(e.aviso_hora)})` : ''} [ID:${e.id}]`).join('\n') || 'ninguno'}
 
 Recordatorios (notas sin ítems):
 ${ctx.recordatorios.filter(r => r.tipo === 'nota' || r.tipo === 'definicion').map(r => `• ${r.titulo}${r.recordar_fecha ? ` (aviso ${r.recordar_fecha})` : ''}${r.hecho ? ' (hecho)' : ''} [ID:${r.id}]`).join('\n') || 'ninguno'}
@@ -417,6 +431,11 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
 [ACCION:evento|titulo|YYYY-MM-DD|HH:MM]
   Sin hora, deja ese campo vacío: [ACCION:evento|titulo|YYYY-MM-DD|]
   Si dio un detalle (dirección, qué llevar), agrégalo como nota: [ACCION:evento|titulo|YYYY-MM-DD|HH:MM|nota]
+  Evento ANTES de las 8:00 am: el sistema le pregunta a qué hora avisar; tú no lo preguntes. Si ya dijo cuándo avisarle, va en el último campo: [ACCION:evento|titulo|YYYY-MM-DD|HH:MM|nota|HH:MM aviso]
+[ACCION:aviso_evento|ID|HH:MM]
+  Fija la hora de aviso de un evento antes de las 8:00 am, con el ID de "Eventos próximos".
+  Si tu mensaje anterior preguntó "¿A qué hora quieres que te avise?" y responde con una hora, emite esta acción. Si dice "a las 9" y no se sabe si es mañana o noche, pregunta cuál, sin emitirla.
+  Si responde que no quiere elegir ("no", "así está bien", "como sea"), deja la hora vacía: [ACCION:aviso_evento|ID|]
 [ACCION:recordatorio|qué recordar|YYYY-MM-DD|valor|nota]
   Solo "qué recordar" es obligatorio; deja vacíos los demás campos que no dijo.
   Con fecha, ese día le llega aviso por WhatsApp a las 8 am. Sin fecha queda como registro.
@@ -519,8 +538,15 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
     Usuario: "recuérdame a las 7am pagar la factura $170.000"
     Tu respuesta:
       ✅ Listo, te aviso mañana a las 7:00 am sobre el pago de $170.000.
-      [ACCION:evento|Pagar factura $170.000|2026-05-28|07:00]
-    (UNA sola acción. NO crear [ACCION:pago] en paralelo.)
+      [ACCION:evento|Pagar factura $170.000|2026-05-28|07:00||07:00]
+    (UNA sola acción. NO crear [ACCION:pago] en paralelo. Pidió el aviso a una hora
+    antes de las 8 am: esa misma hora va también en el último campo.)
+
+    Usuario: "tengo vuelo mañana a las 5am"
+    Tu respuesta:
+      ✅ Listo.
+      [ACCION:evento|Vuelo|<mañana>|05:00]
+    (Dijo a qué hora es, no cuándo avisarle: último campo vacío, el sistema le pregunta.)
 
     Usuario: "recuérdame comprar pan"
     Tu respuesta:
@@ -582,8 +608,9 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
     HORA actual = 23:50. Usuario: "recuérdame en 30 minutos cerrar la ventana"
     Tu respuesta:
       ✅ Te aviso a las 00:20 (ya cruzaste medianoche) que cierres la ventana.
-      [ACCION:evento|Cerrar ventana|<mañana>|00:20]
-    (Cruza medianoche → fecha avanza al día siguiente.)
+      [ACCION:evento|Cerrar ventana|<mañana>|00:20||00:20]
+    (Cruza medianoche → fecha avanza al día siguiente. Antes de las 8 am: la hora
+    calculada va también en el último campo, porque es la hora del aviso.)
 
     HORA actual = 14:30. Usuario: "en un rato me acuerdas comprar pan"
     Tu respuesta:
@@ -857,6 +884,13 @@ function formatearDia(fecha) {
   // colombiaDateLongEs → "lunes, 3 de junio de 2026"; lo dejamos "el lunes 3 de junio".
   const largo = colombiaDateLongEs(new Date(`${fecha}T12:00:00-05:00`));
   return 'el ' + largo.replace(/,/g, '').replace(/ de \d{4}$/, '');
+}
+
+// "5:30" → "05:30"; lo que no sea una hora válida → null.
+function normalizarHora(texto) {
+  const m = (texto || '').trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!m || Number(m[1]) > 23 || Number(m[2]) > 59) return null;
+  return `${m[1].padStart(2, '0')}:${m[2]}`;
 }
 
 function formatearCuando(fecha, hora) {
@@ -1157,15 +1191,55 @@ async function ejecutarAcciones(respuesta, contexto, userId) {
             continue;
           }
         }
+        const temprano = esTemprano({ hora });
+        // Una hora de aviso que ya pasó se descarta: el usuario recibe la pregunta de siempre.
+        let aviso_hora = temprano ? normalizarHora(parts[5]) : null;
+        if (aviso_hora && aviso_hora !== hora && momentoAviso({ fecha, hora, aviso_hora }).getTime() <= Date.now()) aviso_hora = null;
         const { data: ev, error } = await supabase.from('events').insert({
-          user_id: userId, titulo, fecha, hora, nota: (parts[4] || '').trim() || null
+          user_id: userId, titulo, fecha, hora, nota: (parts[4] || '').trim() || null, aviso_hora
         }).select().single();
         if (error || !ev) {
           console.error('[evento] insert events falló:', error?.message);
           ejecutadas.push({ accion: 'evento', error: 'db', titulo });
         } else {
-          ejecutadas.push({ accion: 'evento', ok: true, id: ev.id, titulo, fecha, hora });
+          ejecutadas.push({
+            accion: 'evento', ok: true, id: ev.id, titulo, fecha, hora, temprano, aviso_hora,
+            aviso_fecha: aviso_hora ? colombiaDateString(momentoAviso(ev)) : null,
+            noche_vigente: temprano && !aviso_hora && momentoAviso(ev).getTime() > Date.now()
+          });
         }
+
+      } else if (accion === 'aviso_evento') {
+        const id = (parts[1] || '').trim();
+        const { data: ev } = /^\d+$/.test(id)
+          ? await supabase.from('events').select('*').eq('id', id).eq('user_id', userId).maybeSingle()
+          : { data: null };
+        if (!ev) { ejecutadas.push({ accion, error: 'no_encontrado' }); continue; }
+        if (!esTemprano(ev)) { ejecutadas.push({ accion, error: 'no_temprano', titulo: ev.titulo }); continue; }
+        const texto = (parts[2] || '').trim();
+        const aviso_hora = normalizarHora(texto);
+        if (texto && !aviso_hora) { ejecutadas.push({ accion, error: 'hora_invalida' }); continue; }
+        if (aviso_hora && momentoAviso({ ...ev, aviso_hora }).getTime() <= Date.now()) {
+          ejecutadas.push({ accion, error: 'aviso_pasado' });
+          continue;
+        }
+        // "No quiero elegir" sobre un evento sin hora elegida no cambia nada: si se
+        // tocara el flag, el aviso de las 8 pm ya enviado podría repetirse.
+        if (aviso_hora || ev.aviso_hora) {
+          const { error } = await supabase.from('events')
+            .update({ aviso_hora, notificado_aviso: false }).eq('id', ev.id).eq('user_id', userId);
+          if (error) {
+            console.error('[aviso_evento] update falló:', error.message);
+            ejecutadas.push({ accion, error: 'db' });
+            continue;
+          }
+        }
+        const actualizado = { ...ev, aviso_hora };
+        ejecutadas.push({
+          accion, ok: true, titulo: ev.titulo, aviso_hora,
+          aviso_fecha: aviso_hora ? colombiaDateString(momentoAviso(actualizado)) : null,
+          noche_vigente: !aviso_hora && momentoAviso(actualizado).getTime() > Date.now()
+        });
 
       } else if (accion === 'recordatorio') {
         const titulo = (parts[1] || '').trim();
