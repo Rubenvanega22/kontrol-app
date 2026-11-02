@@ -1,8 +1,8 @@
 // /api/reminders-cron.js
 // Diseñado para correr cada 1 min en cron-job.org (Vercel Hobby no permite
 // crons sub-diarios). En cada tick ejecuta los modos "rolling":
-//   • modoQuinceMinAntes — ventana [-15, +30] min vs hora del evento
-//   • modoUnaHoraAntes  — ventana [+15, +90] min vs hora del evento
+//   • modoQuinceMinAntes — ventana [-15, +15] min vs hora del evento
+//   • modoUnaHoraAntes  — ventana (+15, +60] min vs hora del evento
 //   • modoEventosTempranos — eventos antes de las 8 am, reglas en lib/avisos-evento.js
 // Dedup garantizado por los flags notificado_* de events. Los modos rolling corren a
 // cualquier hora, también de madrugada: solo el resumen, pagos y recordatorios tienen horario.
@@ -14,7 +14,10 @@
 
 const supabase = require('../lib/supabase');
 const { colombiaDateString } = require('../lib/datetime');
-const { esTemprano, eventoADate, debeSalirAviso, debeSalirUnaHoraAntes, horaCorta } = require('../lib/avisos-evento');
+const {
+  esTemprano, debeSalirAviso, debeSalirUnaHoraAntes, horaCorta,
+  minutosFaltantes, tocaUnaHoraNormal, tocaQuinceNormal, textoFaltan
+} = require('../lib/avisos-evento');
 
 const DAILY_UTC_HOUR = 13;   // 13:00 UTC = 8:00 am Colombia
 const EVENING_UTC_HOUR = 23; // 23:00 UTC = 6:00 pm Colombia
@@ -241,16 +244,9 @@ async function modoUnaHoraAntes() {
     .eq('notificado_1h', false);
   if (error) { console.error('[reminders-cron 1h] query error:', error.message); return { error: error.message }; }
 
-  // Ventana 15-90 min desde ahora. El borde -15 (ahora 15) tolera que el
-  // cron se haya caído ~15 min y vuelva: si un evento cuya hora-1h cayó
-  // durante el outage entra ahora, igual se notifica. El flag
-  // notificado_1h previene duplicados en ticks subsiguientes.
-  const candidatos = (eventos || []).filter(e => {
-    const t = eventoADate(e);
-    if (!t || esTemprano(e)) return false;
-    const diff = (t.getTime() - nowMs) / 60000;
-    return diff >= 15 && diff <= 90;
-  });
+  // Sale al llegar a los 60 min. Hasta los 15 min tolera que el cron se haya caído o
+  // que el evento se creara tarde. El flag notificado_1h evita repetirlo.
+  const candidatos = (eventos || []).filter(e => tocaUnaHoraNormal(e, nowMs));
   if (!candidatos.length) return { alertas: 0, candidatos: 0, hoyCol };
 
   const userIds = [...new Set(candidatos.map(e => e.user_id).filter(Boolean))];
@@ -265,9 +261,9 @@ async function modoUnaHoraAntes() {
   for (const e of claimed) {
     const tel = tels[e.user_id];
     const mensaje =
-      `⏰ *En 1 hora:* ${formatearEvento(e)}\n` +
+      `⏰ *${textoFaltan(minutosFaltantes(e, nowMs))}:* ${formatearEvento(e)}\n` +
       `\n¿Necesitas recordatorio de salida?\n` +
-      `1. Sí, avísame en 15 min\n` +
+      `1. Sí, avísame 15 min antes\n` +
       `2. No es necesario`;
     const { error: insErr } = await supabase.from('whatsapp_alerts').insert({
       tipo: 'recordatorio_1h', mensaje, telefono: tel, enviado: false
@@ -298,17 +294,9 @@ async function modoQuinceMinAntes() {
     .eq('notificado_15min', false);
   if (error) { console.error('[reminders-cron 15m] query error:', error.message); return { error: error.message }; }
 
-  // Ventana -15 a +30 min desde ahora. Asume cron cada 1 min (cron-job.org).
-  // El borde -15 tolera eventos creados "en 5 minutos" que el cron alcanzó
-  // a procesar tarde (ej. tick se saltó 10 min por outage de cron-job.org).
-  // El flag notificado_15min previene duplicados — un mismo evento no
-  // se notifica dos veces aunque entre en múltiples ticks consecutivos.
-  const candidatos = (eventos || []).filter(e => {
-    const t = eventoADate(e);
-    if (!t || esTemprano(e)) return false;
-    const diff = (t.getTime() - nowMs) / 60000;
-    return diff >= -15 && diff <= 30;
-  });
+  // Sale al llegar a los 15 min. Asume cron cada 1 min (cron-job.org). El flag
+  // notificado_15min evita repetirlo aunque entre en varios ticks seguidos.
+  const candidatos = (eventos || []).filter(e => tocaQuinceNormal(e, nowMs));
   if (!candidatos.length) return { alertas: 0, candidatos: 0, hoyCol };
 
   const userIds = [...new Set(candidatos.map(e => e.user_id).filter(Boolean))];
@@ -322,7 +310,7 @@ async function modoQuinceMinAntes() {
   let alertas = 0;
   for (const e of claimed) {
     const tel = tels[e.user_id];
-    const mensaje = `🕐 *En ~15 min:* ${formatearEvento(e)}`;
+    const mensaje = `🕐 *${textoFaltan(minutosFaltantes(e, nowMs))}:* ${formatearEvento(e)}`;
     const { error: insErr } = await supabase.from('whatsapp_alerts').insert({
       tipo: 'recordatorio_15min', mensaje, telefono: tel, enviado: false
     });
@@ -378,10 +366,8 @@ async function modoEventosTempranos() {
 
   const alertasAviso = await enviar(avisos, 'notificado_aviso', 'recordatorio_temprano', e =>
     `🔔 *${e.fecha === hoyCol ? 'Hoy' : 'Mañana'}:* ${formatearEvento(e)}`);
-  const alertasHora = await enviar(unaHora, 'notificado_1h', 'recordatorio_1h', e => {
-    const faltan = Math.round((eventoADate(e).getTime() - nowMs) / 60000);
-    return `⏰ *En ${faltan >= 50 ? '1 hora' : `${faltan} min`}:* ${formatearEvento(e)}`;
-  });
+  const alertasHora = await enviar(unaHora, 'notificado_1h', 'recordatorio_1h', e =>
+    `⏰ *${textoFaltan(minutosFaltantes(e, nowMs))}:* ${formatearEvento(e)}`);
   return { alertas: alertasAviso + alertasHora, candidatos: avisos.length + unaHora.length, hoyCol };
 }
 
