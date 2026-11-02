@@ -145,6 +145,11 @@ button.wa{cursor:pointer;}
 .pf-quien{margin:-6px 0 12px;font-size:14px;color:var(--t2);overflow-wrap:anywhere;}
 .pf-f{display:flex;align-items:center;gap:13px;width:100%;min-height:54px;padding:0 4px;background:transparent;border:none;border-top:1px solid var(--bd);color:#fff;font-size:16px;font-weight:600;text-align:left;cursor:pointer;}
 .pf-f.rojo{color:#FF8087;}
+.adm-u{padding:12px;background:var(--card2);border:1px solid var(--bd);border-radius:12px;margin-bottom:8px;}
+.adm-n{font-size:15.5px;font-weight:700;color:#fff;margin-bottom:6px;overflow-wrap:anywhere;}
+.adm-f{display:flex;justify-content:space-between;gap:10px;padding:3px 0;font-size:14px;color:var(--t2);}
+.adm-f b{font-weight:600;color:#fff;text-align:right;}
+.adm-s{margin-top:4px;font-size:12.5px;color:var(--t3);}
 .ms-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.25s;z-index:200;}
 .ms-overlay.open{opacity:1;pointer-events:auto;}
 .ms-sheet{width:100%;max-width:480px;background:var(--card2);border:1px solid var(--bd);border-bottom:none;border-radius:22px 22px 0 0;padding:10px 14px calc(18px + var(--k-abajo));transform:translateY(100%);transition:transform 0.28s cubic-bezier(.22,1,.36,1);}
@@ -1418,7 +1423,6 @@ select.form-inp option{background:var(--card2);}
           <div class="config-section-ttl">Avanzado</div>
           <p style="font-size:12.5px;color:var(--t3);margin-bottom:10px;line-height:1.5">Si ves cambios viejos después de una actualización, limpia la caché y recarga.</p>
           <button id="btn-recargar-app" class="btn-secondary" onclick="recargarApp()">Refrescar app (limpiar caché)</button>
-          <div id="diag-pantalla" style="font-size:12.5px;color:var(--t3);margin-top:6px;line-height:1.4"></div>
         </div>
 
         <div style="height:80px"></div>
@@ -1968,7 +1972,6 @@ function goTab(id){
   });
   document.querySelector('.app').dataset.tab = id;
   if(id==='inicio') renderInicio();
-  if(id==='config') ajustarZonaSegura();
   actualizarCampana();
   if(id==='pagos') renderPagos();
   if(id==='agenda') renderAgenda();
@@ -2012,11 +2015,6 @@ function ajustarZonaSegura(){
   const instalada = ['standalone','fullscreen','minimal-ui'].some(m=>matchMedia(`(display-mode: ${m})`).matches);
   const tapada = instalada && /Android/i.test(navigator.userAgent) && !informada && window.innerHeight >= screen.height - 1;
   raiz.style.setProperty('--k-abajo-js', tapada ? K_BARRA_ANDROID+'px' : '0px');
-  const diag = document.getElementById('diag-pantalla');
-  if(diag){
-    const nav = document.querySelector('.nav');
-    diag.textContent = `Pantalla: ${window.innerWidth}×${window.innerHeight} de ${screen.width}×${screen.height} · zona segura informada: ${informada} px · margen abajo: ${Math.round(parseFloat(getComputedStyle(nav).paddingBottom))} px · ${instalada?'app instalada':'navegador'}`;
-  }
 }
 window.addEventListener('resize', ajustarZonaSegura);
 window.addEventListener('orientationchange', ajustarZonaSegura);
@@ -4770,10 +4768,12 @@ async function renderAdmin(){
   // Stats + listas en paralelo
   const [
     { data: profiles, error: profilesError },
-    { data: feedbacks, error: feedbacksError }
+    { data: feedbacks, error: feedbacksError },
+    { data: actividad, error: actividadError }
   ] = await Promise.all([
-    supa.from('profiles').select('id, nombre, telefono, created_at').order('created_at', { ascending: false }),
-    supa.from('feedback').select('id, user_id, mensaje, fecha, resuelto').order('fecha', { ascending: false })
+    supa.from('profiles').select('id, nombre, telefono, created_at, ultima_apertura_at').order('created_at', { ascending: false }),
+    supa.from('feedback').select('id, user_id, mensaje, fecha, resuelto').order('fecha', { ascending: false }),
+    supa.rpc('admin_actividad_usuarios')
   ]);
 
   // Stats
@@ -4789,13 +4789,24 @@ async function renderAdmin(){
   } else if(!profiles?.length){
     usersEl.innerHTML = '<div style="font-size:12px;color:var(--t3)">Sin usuarios.</div>';
   } else {
-    usersEl.innerHTML = profiles.map(p => {
+    if(actividadError) console.warn('[admin] actividad:', actividadError.message);
+    const porUsuario = {};
+    for(const a of (actividad || [])) porUsuario[a.user_id] = a;
+    const ms = iso => iso ? new Date(iso).getTime() : 0;
+    const reciente = p => Math.max(ms(p.ultima_apertura_at), ms(porUsuario[p.id]?.ultima_actividad));
+    usersEl.innerHTML = [...profiles].sort((a,b)=>reciente(b)-reciente(a)).map(p => {
       const fechaReg = p.created_at ? new Date(p.created_at).toLocaleDateString('es-CO') : '—';
       const tel = p.telefono ? ` · 📱 ${escAttr(p.telefono)}` : '';
-      return `<div style="padding:8px 10px;background:var(--card2);border:1px solid var(--bd);border-radius:10px;margin-bottom:6px;font-size:12px">
-        <div style="font-weight:600;color:var(--t1)">${escAttr(p.nombre || '(sin nombre)')}</div>
-        <div style="font-size:12.5px;color:var(--t3);margin-top:2px">Registro: ${fechaReg}${tel}</div>
-        <div style="font-size:12.5px;color:var(--t3);margin-top:2px;font-family:monospace">${p.id}</div>
+      const a = porUsuario[p.id];
+      // La apertura se guarda una vez al día y "Pago marcado" solo trae el día: sin hora.
+      const txtActividad = actividadError ? 'No disponible'
+        : a ? `${diaRelativo(a.ultima_actividad, a.origen !== 'Pago marcado')} · ${escAttr(a.origen)}` : 'Sin registro';
+      return `<div class="adm-u">
+        <div class="adm-n">${escAttr(p.nombre || '(sin nombre)')}</div>
+        <div class="adm-f"><span>Abrió la app</span><b>${p.ultima_apertura_at ? diaRelativo(p.ultima_apertura_at) : 'Sin registro'}</b></div>
+        <div class="adm-f"><span>Última actividad</span><b>${txtActividad}</b></div>
+        <div class="adm-s">Registro: ${fechaReg}${tel}</div>
+        <div class="adm-s" style="font-family:monospace;overflow-wrap:anywhere">${escAttr(p.id)}</div>
       </div>`;
     }).join('');
   }
@@ -4825,6 +4836,17 @@ async function renderAdmin(){
       </div>`;
     }).join('');
   }
+}
+
+// "Hoy", "Ayer", "Hace 3 días" o la fecha, según el día en Colombia.
+function diaRelativo(iso, conHora){
+  const d = new Date(iso);
+  const dia = d.toLocaleDateString('en-CA',{ timeZone:'America/Bogota' });
+  const dias = diasEntre(dia, hoyColombia());
+  const texto = dias <= 0 ? 'Hoy' : dias === 1 ? 'Ayer' : dias < 30 ? `Hace ${dias} días` : fmtFechaFila(dia);
+  if(!conHora) return texto;
+  const hora = new Intl.DateTimeFormat('en-GB',{ timeZone:'America/Bogota', hour:'2-digit', minute:'2-digit', hourCycle:'h23' }).format(d);
+  return `${texto}, ${fmtHora(hora)}`;
 }
 
 async function marcarFeedbackResuelto(id, resuelto){
@@ -5313,6 +5335,7 @@ async function onLogin(user) {
   const syncPromise = syncDesdeSupabase();
   const { data: profile } = await profilePromise;
   currentProfile = profile;
+  registrarApertura();
   if (profile?.nombre) DB.ia.usuarioNombre = profile.nombre;
   mostrarTabAdminSiCorresponde();
   init();
@@ -5321,6 +5344,28 @@ async function onLogin(user) {
     .catch(e => console.error('sync inicial falló:', e))
     .finally(() => { if (loadingEl) loadingEl.style.display = 'none'; });
 }
+
+// Una vez por día como máximo. No se espera: abrir la app no depende de esta escritura,
+// y si falla se reintenta la próxima vez que la abra.
+function registrarApertura(){
+  if(!currentUser || !currentProfile) return;
+  const anterior = currentProfile.ultima_apertura_at || null;
+  const diaColombia = d => new Date(d).toLocaleDateString('en-CA',{ timeZone:'America/Bogota' });
+  if(anterior && diaColombia(anterior) === hoyColombia()) return;
+  const ahora = new Date().toISOString();
+  currentProfile.ultima_apertura_at = ahora;
+  const fallo = (m)=>{
+    console.warn('[apertura] no se guardó:', m);
+    if(currentProfile) currentProfile.ultima_apertura_at = anterior;
+  };
+  // Pase lo que pase aquí, nunca debe impedir que la app abra.
+  try {
+    supa.from('profiles').update({ ultima_apertura_at: ahora }).eq('id', currentUser.id)
+      .then(({ error })=>{ if(error) fallo(error.message); }, e=>fallo(e?.message));
+  } catch(e){ fallo(e?.message); }
+}
+// La app instalada puede seguir abierta varios días sin volver a iniciar.
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState === 'visible') registrarApertura(); });
 
 async function doLogout() {
   hjAlSalirDeTab();
