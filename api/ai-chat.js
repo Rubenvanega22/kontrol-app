@@ -3,7 +3,7 @@ const supabase = require('../lib/supabase');
 const { leerListaDeImagen, leerFacturaDeImagen, interpretarFactura } = require('../lib/lista-foto');
 const { colombiaDateString, colombiaDateLongEs, colombiaTimeString, colombiaDateParts } = require('../lib/datetime');
 const { esTemprano, resolverAviso, fechaHoraColombia, momentoAviso, eventoADate } = require('../lib/avisos-evento');
-const { preguntaAntesDeGuardar, horasDelPedido, avisoDelPedido } = require('../lib/evento-completo');
+const { preguntaAntesDeGuardar, horasDelPedido, avisoDelPedido, fechasDelPedido } = require('../lib/evento-completo');
 
 const MEM0_API_KEY = process.env.MEM0_API_KEY;
 const MEM0_BASE = 'https://api.mem0.ai/v1';
@@ -135,6 +135,10 @@ module.exports = async function handler(req, res) {
     if (voz) {
       systemPrompt = `MODO VOZ: responde máximo 2 oraciones cortas y directas.\n\n${systemPrompt}`;
     }
+    const fechasDichas = fechasDelPedido(message, history);
+    if (fechasDichas.length) {
+      systemPrompt += `\n\n⚠️ FECHAS YA CALCULADAS EN ESTE PEDIDO (son definitivas, no las recalcules):\n${fechasDichas.map(f => `• "${f.dicho}" = ${f.fecha}, ${colombiaDateLongEs(new Date(`${f.fecha}T12:00:00-05:00`)).split(',')[0]}`).join('\n')}`;
+    }
     const dichas = horasDelPedido(message, history);
     if (dichas.length) {
       systemPrompt += `\n\n⚠️ HORAS YA INTERPRETADAS EN ESTE PEDIDO (son definitivas, ver regla 11B):\n${dichas.map(d => `• "${d.dicho}" = ${d.hora}, UNA sola hora`).join('\n')}`;
@@ -173,7 +177,10 @@ module.exports = async function handler(req, res) {
     const accionMatches = [...respuesta.matchAll(/\[ACCION:([^\]]+)\]/g)];
     const accionesIntencion = accionMatches.length;
     console.log('[ai-chat] markers [ACCION:] encontrados:', accionesIntencion);
-    const acciones = await ejecutarAcciones(respuesta, contexto, user_id, avisoDelPedido(message, history));
+    const acciones = await ejecutarAcciones(respuesta, contexto, user_id, {
+      avisoDicho: avisoDelPedido(message, history),
+      fechaDicha: fechasDichas.length === 1 ? fechasDichas[0].fecha : null
+    });
     console.log('[ai-chat] acciones realmente ejecutadas:', acciones.length, acciones.map(a => a.accion));
 
     // 5b. Override determinístico para acciones de ubicación.
@@ -377,7 +384,8 @@ function buildSystemPrompt(ctx, memoria) {
   // Fechas ya resueltas: el modelo se equivoca menos que calculando "mañana" o "el viernes".
   const proximosDias = [...Array(8).keys()].slice(1).map(i => {
     const d = new Date(Date.now() + i * 24 * 3600 * 1000);
-    return `${i === 1 ? 'mañana' : colombiaDateLongEs(d).split(',')[0]} = ${colombiaDateString(d)}`;
+    const dia = colombiaDateLongEs(d).split(',')[0];
+    return `${i === 1 ? `mañana (${dia})` : dia} = ${colombiaDateString(d)}`;
   }).join(' · ');
 
   return `Eres Ana, la asistente personal de Kontrol. Ayudas a consultar y registrar cosas en 4 módulos: Agenda, Listado, Pagos y Recordatorios.
@@ -1046,7 +1054,14 @@ const ACCIONES_RETIRADAS = new Set([
 ]);
 
 // ═══ EJECUTAR ACCIONES — todo queda visible en la app ═══
-async function ejecutarAcciones(respuesta, contexto, userId, avisoDicho = null) {
+async function ejecutarAcciones(respuesta, contexto, userId, { avisoDicho = null, fechaDicha = null } = {}) {
+  // "mañana" o "el viernes" los calcula el código. Queda en los registros qué escribió la IA.
+  const fechaFinal = (tipo, delModelo) => {
+    const propia = (delModelo || '').trim();
+    const final = fechaDicha || propia;
+    console.log(`[fecha] ${tipo}: ia=${propia || '(vacía)'} codigo=${fechaDicha || '(no aplica)'} guardada=${final || '(vacía)'}`);
+    return final;
+  };
   const matches = [...respuesta.matchAll(/\[ACCION:([^\]]+)\]/g)];
   console.log('[ejecutarAcciones] matches encontrados:', matches.length);
   const ejecutadas = [];
@@ -1225,7 +1240,7 @@ async function ejecutarAcciones(respuesta, contexto, userId, avisoDicho = null) 
       } else if (accion === 'pago') {
         const { error } = await supabase.from('payments').insert({
           user_id: userId, nombre: parts[1],
-          monto: parseMontoSeguro(parts[2]), fecha_limite: parts[3], status: 'pendiente'
+          monto: parseMontoSeguro(parts[2]), fecha_limite: fechaFinal('pago', parts[3]), status: 'pendiente'
         });
         if (!error) ejecutadas.push({ accion, detalle: parts[1] });
 
@@ -1235,7 +1250,7 @@ async function ejecutarAcciones(respuesta, contexto, userId, avisoDicho = null) 
 
       } else if (accion === 'evento') {
         const titulo = (parts[1] || '').trim();
-        const fecha = (parts[2] || '').trim();
+        const fecha = fechaFinal('evento', parts[2]);
         // Normalizar H:MM → HH:MM. Por la IA la hora es obligatoria; solo el formulario
         // de la app permite eventos sin hora.
         const mHora = (parts[3] || '').trim().match(/^(\d{1,2}):(\d{2})$/);
@@ -1323,7 +1338,8 @@ async function ejecutarAcciones(respuesta, contexto, userId, avisoDicho = null) 
           continue;
         }
         // Solo una fecha válida de hoy en adelante programa aviso; lo pasado queda como registro.
-        const fechaTxt = (parts[2] || '').trim();
+        // Sin fecha de la IA es una nota sin aviso: "anota que hoy pagué" no programa nada.
+        const fechaTxt = (parts[2] || '').trim() ? fechaFinal('recordatorio', parts[2]) : '';
         const fechaOk = /^\d{4}-\d{2}-\d{2}$/.test(fechaTxt) && !isNaN(new Date(`${fechaTxt}T12:00:00-05:00`).getTime()) && fechaTxt >= colombiaDateString();
         const recordar_fecha = fechaOk ? fechaTxt : null;
         const valor = parseMontoSeguro(parts[3]) || null;
