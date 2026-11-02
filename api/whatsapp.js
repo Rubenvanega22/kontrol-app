@@ -8,7 +8,7 @@
 //   1. Identificar usuario por profiles.telefono (E.164, sin "whatsapp:")
 //   2. Branch por tipo:
 //        - Audio → /api/transcribe (Groq Whisper) → ai-chat
-//        - Imagen → aviso: Kontrol ya no registra gastos por foto
+//        - Imagen → lee la lista de la foto (solo lectura) y crea un listado o la agrega a uno
 //        - Texto → /api/ai-chat (mismo Claude/Mem0/acciones que el chat web)
 //   3. Responder vía Twilio REST API (no TwiML — evita el timeout de 5s)
 //
@@ -19,6 +19,7 @@ const supabase = require('../lib/supabase');
 const { colombiaDateString } = require('../lib/datetime');
 const { firmaValida, urlDelWebhook } = require('../lib/twilio-signature');
 const { STATUS_URL } = require('../lib/whatsapp-estado');
+const { leerListaDeImagen, interpretarLectura, destinoDelTexto, elegirLista } = require('../lib/lista-foto');
 
 const TWILIO_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_TOKEN = process.env.TWILIO_AUTH_TOKEN;
@@ -279,6 +280,105 @@ async function transcribirAudio(buf, contentType) {
   return data.texto || '';
 }
 
+// ─── Foto de una lista ────────────────────────────────────────
+// Usa el lector de "Crear desde foto": solo lee. Ni la foto ni su texto pasan por el
+// asistente, así que no pueden ejecutar acciones; el texto solo elige la lista destino.
+const FOTO_TIPOS = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const FOTO_MAX_BYTES = 3.7 * 1024 * 1024; // en base64 queda bajo el límite de 5 MB del lector
+const SIN_LISTA = '🔍 No encontré ninguna lista en esa foto. Prueba con más luz y de cerca.';
+const cuentaItems = (n) => `${n} ${n === 1 ? 'ítem' : 'ítems'}`;
+
+async function leerFotoLista(mediaUrl, mediaCt) {
+  const tipo = String(mediaCt).split(';')[0].trim().toLowerCase();
+  if (!FOTO_TIPOS.includes(tipo)) return { error: 'No pude abrir ese tipo de imagen. Mándala como foto normal de WhatsApp.' };
+  let buf;
+  try { buf = await fetchTwilioMedia(mediaUrl); }
+  catch (e) {
+    console.error('[whatsapp] foto: descarga falló:', e.message);
+    return { error: 'No pude descargar la foto. Intenta de nuevo.' };
+  }
+  if (buf.length > FOTO_MAX_BYTES) return { error: 'Esa foto es muy pesada. Mándala otra vez como foto normal, no como documento.' };
+  try {
+    return interpretarLectura(await leerListaDeImagen(buf.toString('base64'), tipo));
+  } catch (e) {
+    console.error('[whatsapp] foto: lectura falló:', e.message);
+    return { error: 'No pude leer la foto. Intenta de nuevo.' };
+  }
+}
+
+async function crearListaDeFoto(userId, titulo, items) {
+  const { data, error } = await supabase.from('reminders').insert({
+    user_id: userId, tipo: 'listado', titulo, content: { items: items.map((text) => ({ text, done: false })) },
+    fecha: colombiaDateString()
+  }).select('id').single();
+  if (error || !data) {
+    console.error('[whatsapp] foto: no se creó la lista:', error?.message);
+    return '❌ Leí la lista, pero no pude guardarla. Intenta de nuevo.';
+  }
+  return `📋 Listo, creé la lista ${titulo} con ${cuentaItems(items.length)}.`;
+}
+
+async function agregarAListaDeFoto(userId, lista, items) {
+  const falla = '❌ Leí los ítems, pero no pude guardarlos en la lista. Intenta de nuevo.';
+  // Se relee justo antes de escribir: la lectura de la foto tarda varios segundos.
+  const { data: actual, error: e1 } = await supabase.from('reminders').select('content')
+    .eq('id', lista.id).eq('user_id', userId).maybeSingle();
+  if (e1 || !actual) {
+    console.error('[whatsapp] foto: no se releyó la lista:', e1?.message);
+    return falla;
+  }
+  const content = actual.content || {};
+  const existentes = Array.isArray(content.items) ? content.items : [];
+  const nuevos = items.map((text) => ({ text, done: false }));
+  const { data, error } = await supabase.from('reminders').update({ content: { ...content, items: [...existentes, ...nuevos] } })
+    .eq('id', lista.id).eq('user_id', userId).select('id');
+  if (error || !data?.length) {
+    console.error('[whatsapp] foto: no se agregó a la lista:', error?.message);
+    return falla;
+  }
+  return `📋 Listo, agregué ${cuentaItems(items.length)} a la lista ${lista.titulo}.`;
+}
+
+async function responderFotoLista(userId, mediaUrl, mediaCt, caption) {
+  const destino = destinoDelTexto(caption);
+  let lista = null;
+  // La lista se resuelve antes de leer: si hay que preguntar, no se gasta la lectura.
+  if (destino) {
+    if (!destino.nombre) return '¿A cuál lista lo agrego? Mándame la foto otra vez con el nombre, por ejemplo: "a la lista de mercado".';
+    const { data: listas, error } = await supabase.from('reminders').select('id, titulo')
+      .eq('user_id', userId).in('tipo', ['listado', 'lista']);
+    if (error) {
+      console.error('[whatsapp] foto: no se cargaron las listas:', error.message);
+      return '❌ No pude revisar tus listas. Intenta de nuevo.';
+    }
+    const opciones = elegirLista(listas || [], destino.nombre);
+    if (opciones.length > 1) {
+      return `Tengo varias listas con "${destino.nombre}":\n${opciones.slice(0, 8).map((l) => `• ${l.titulo}`).join('\n')}\n\nMándame la foto otra vez con el nombre completo.`;
+    }
+    if (!opciones.length) {
+      const nombres = (listas || []).slice(0, 8).map((l) => `• ${l.titulo}`).join('\n');
+      return `No encontré la lista "${destino.nombre}" y no agregué nada.${nombres ? `\n\nTus listas:\n${nombres}` : ''}\n\nMándame la foto otra vez con el nombre exacto, o sin texto para crear una lista nueva.`;
+    }
+    lista = opciones[0];
+  }
+  const leida = await leerFotoLista(mediaUrl, mediaCt);
+  if (leida.error) return leida.error;
+  if (!leida.items.length) return SIN_LISTA;
+  console.log('[whatsapp] foto: ítems leídos=', leida.items.length, 'destino=', lista ? 'existente' : 'nueva');
+  return lista ? agregarAListaDeFoto(userId, lista, leida.items) : crearListaDeFoto(userId, leida.titulo, leida.items);
+}
+
+async function procesarFotoLista(userId, phone, mediaUrl, mediaCt, caption) {
+  const respuesta = await responderFotoLista(userId, mediaUrl, mediaCt, caption);
+  // Para que el bot sepa de qué lista hablan si le escriben justo después.
+  const { error } = await supabase.from('whatsapp_conversations').insert([
+    { user_id: userId, phone, role: 'user', content: caption ? `[Foto de una lista] ${caption}` : '[Foto de una lista]' },
+    { user_id: userId, phone, role: 'assistant', content: respuesta }
+  ]);
+  if (error) console.warn('[whatsapp] save history error:', error.message);
+  return respuesta;
+}
+
 // ─── Ubicaciones (lugares guardados) ──────────────────────────
 // Mensaje canónico cuando hay colisión de nombre. Numerado para UX consistente
 // con respuestas rápidas tipo botón.
@@ -426,7 +526,7 @@ module.exports = async function handler(req, res) {
         respuesta = await procesarConIA(usuario.id, phone, texto);
       }
     } else if (numMedia > 0 && mediaUrl && mediaCt.startsWith('image/')) {
-      respuesta = 'Kontrol ya no registra gastos por foto. Escríbeme o mándame una nota de voz con lo que necesitas agendar, listar, pagar o recordar.';
+      respuesta = await procesarFotoLista(usuario.id, phone, mediaUrl, mediaCt, text);
     } else if (text) {
       respuesta = await procesarConIA(usuario.id, phone, text);
     } else {
