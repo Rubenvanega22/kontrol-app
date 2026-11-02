@@ -135,7 +135,7 @@ module.exports = async function handler(req, res) {
     if (voz) {
       systemPrompt = `MODO VOZ: responde máximo 2 oraciones cortas y directas.\n\n${systemPrompt}`;
     }
-    const fechasDichas = fechasDelPedido(message, history);
+    const fechasDichas = fechasDelPedido(message, history).filter(f => f.fecha);
     if (fechasDichas.length) {
       systemPrompt += `\n\n⚠️ FECHAS YA CALCULADAS EN ESTE PEDIDO (son definitivas, no las recalcules):\n${fechasDichas.map(f => `• "${f.dicho}" = ${f.fecha}, ${colombiaDateLongEs(new Date(`${f.fecha}T12:00:00-05:00`)).split(',')[0]}`).join('\n')}`;
     }

@@ -21,7 +21,7 @@ const { colombiaDateString } = require('../lib/datetime');
 const { firmaValida, urlDelWebhook } = require('../lib/twilio-signature');
 const { STATUS_URL } = require('../lib/whatsapp-estado');
 const { esPreguntaDeAgenda } = require('../lib/evento-completo');
-const { fechaUnicaDelTexto } = require('../lib/fechas-habladas');
+const { fechasDelTexto } = require('../lib/fechas-habladas');
 const { leerListaDeImagen, leerFotoDeImagen, interpretarLectura, interpretarFoto, destinoDelTexto, elegirLista } = require('../lib/lista-foto');
 
 const TWILIO_SID = process.env.TWILIO_ACCOUNT_SID;
@@ -193,11 +193,12 @@ async function anaEsperaRespuesta(phone) {
 }
 
 // ─── Parser de fechas en español ───
-// "Mañana" o "el viernes" los calcula el código; una fecha con número la lee Claude.
+// El código calcula lo que entiende; Claude solo lee las formas que no ("en dos semanas").
 async function parsearFechaEspanol(texto) {
   const hoy = colombiaDateString();
-  const calculada = fechaUnicaDelTexto(texto, hoy);
-  if (calculada) return calculada;
+  const dichas = fechasDelTexto(texto, hoy);
+  if (dichas.some(f => f.duda)) return null;
+  if (dichas.length === 1) return dichas[0].fecha;
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
