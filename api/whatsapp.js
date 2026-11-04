@@ -22,6 +22,7 @@ const { firmaValida, urlDelWebhook } = require('../lib/twilio-signature');
 const { STATUS_URL } = require('../lib/whatsapp-estado');
 const { esPreguntaDeAgenda } = require('../lib/evento-completo');
 const { fechasDelTexto } = require('../lib/fechas-habladas');
+const { PREGUNTA_MEDIO, medioDelTexto, avisosDeLimite } = require('../lib/medio-pago');
 const { leerListaDeImagen, leerFotoDeImagen, interpretarLectura, interpretarFoto, destinoDelTexto, elegirLista } = require('../lib/lista-foto');
 
 const TWILIO_SID = process.env.TWILIO_ACCOUNT_SID;
@@ -123,6 +124,25 @@ async function findUserByPhone(rawFrom) {
 const FACTURA_ESPERA = 'factura_confirmar';
 const FACTURA_VENCIDA = 'factura_vencida';
 const FACTURA_ATENDIDA = 'factura_atendida';
+// Pago recién marcado sin medio: la siguiente respuesta ("tarjeta", "con Nequi") es el medio.
+const PAGO_MEDIO = 'pago_medio';
+const PAGO_MEDIO_TTL_MIN = 60;
+// Lo que sobra de "sí, con tarjeta" al quitar el medio: así se reconoce el "sí".
+const PALABRAS_MEDIO = /\b(con|en|por|la|el|de|mi)\b|\b(efectivo|cash|billetes?|tarjeta|tc|cr[eé]dito|d[eé]bito|dat[aá]fono|nequi)\b/gi;
+const sinElMedio = t => t.replace(PALABRAS_MEDIO, ' ').replace(/[\s,.!]+/g, ' ').trim();
+const textoMedio = m => (m === 'nequi' ? 'Nequi' : m);
+
+// Agrega a la respuesta los avisos de límite que toquen (cada uno sale una vez al mes).
+async function conAvisosLimite(userId, respuesta) {
+  const avisos = await avisosDeLimite(userId);
+  return avisos.length ? `${respuesta}\n\n${avisos.map(a => a.texto).join('\n')}` : respuesta;
+}
+
+// Deja a WhatsApp esperando el medio, sin perder una factura que estuviera pendiente.
+async function esperarMedio(phone, userId, pago, factura) {
+  return saveState(phone, userId, PAGO_MEDIO,
+    { payment_id: pago.id, nombre: pago.nombre, ...(factura ? { factura } : {}) }, PAGO_MEDIO_TTL_MIN);
+}
 // Tabla whatsapp_state: phone (PK), user_id, awaiting, context jsonb, expires_at.
 // Solo se usa para flujos multi-turno (date-postpone, photo-match).
 // El SI/NO/1/2 simple se resuelve sin estado consultando payments.
@@ -272,7 +292,16 @@ async function procesarConIA(userId, phone, message) {
     console.error('[whatsapp] ai-chat HTTP', r.status);
     return data.error ? `Error IA: ${data.error}` : 'No pude procesar tu mensaje.';
   }
-  const respuesta = data.respuesta || 'No tengo respuesta para eso.';
+  let respuesta = data.respuesta || 'No tengo respuesta para eso.';
+
+  // "Ya pagué la luz" sin medio: se pregunta. Con medio, se revisan los límites.
+  if (data.pago_sin_medio?.id) {
+    const anterior = await loadState(phone);
+    const factura = anterior?.awaiting === FACTURA_ESPERA ? anterior.context : null;
+    if (await esperarMedio(phone, userId, data.pago_sin_medio, factura)) respuesta += `\n\n${PREGUNTA_MEDIO}`;
+  } else if ((data.acciones || []).some(a => a.accion === 'marcar_pago_pagado' && a.id)) {
+    respuesta = await conAvisosLimite(userId, respuesta);
+  }
 
   // Persistir ambos turnos. Fire-and-forget para no añadir latencia al envío
   // por Twilio — si falla, lo loggeamos pero igual respondemos.
@@ -451,11 +480,11 @@ async function adjuntarFactura(userId, pagoId, ctx) {
     const tipo = String(ctx.media_ct).split(';')[0].trim().toLowerCase();
     const ext = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }[tipo];
     if (!ext) throw new Error('tipo no admitido: ' + tipo);
-    // soporte_url guarda la ruta, no una URL: el bucket es privado.
+    // soportes guarda rutas, no URLs: el bucket es privado. El pago es nuevo: es su primera foto.
     const ruta = `${userId}/${pagoId}-${Date.now()}.${ext}`;
     const { error: e1 } = await supabase.storage.from('facturas').upload(ruta, buf, { contentType: tipo });
     if (e1) throw new Error(e1.message);
-    const { error: e2 } = await supabase.from('payments').update({ soporte_url: ruta }).eq('id', pagoId).eq('user_id', userId);
+    const { error: e2 } = await supabase.from('payments').update({ soportes: [ruta] }).eq('id', pagoId).eq('user_id', userId);
     if (e2) {
       await supabase.storage.from('facturas').remove([ruta]);
       throw new Error(e2.message);
@@ -652,7 +681,7 @@ module.exports = async function handler(req, res) {
       } else {
         console.log('[whatsapp] audio transcrito, longitud=', texto.length);
         const estado = await loadState(phone);
-        const flujo = estado?.awaiting === FACTURA_ESPERA ? await despacharRespuestaPago(usuario.id, phone, texto, estado) : null;
+        const flujo = [FACTURA_ESPERA, PAGO_MEDIO].includes(estado?.awaiting) ? await despacharRespuestaPago(usuario.id, phone, texto, estado) : null;
         respuesta = flujo || await procesarConIA(usuario.id, phone, texto);
       }
     } else if (numMedia > 0 && mediaUrl && mediaCt.startsWith('image/')) {
@@ -678,6 +707,35 @@ module.exports = async function handler(req, res) {
 async function despacharRespuestaPago(userId, phone, text, estado) {
   const lower = text.toLowerCase().trim();
   const cop = n => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n);
+  const medioDicho = medioDelTexto(lower);
+  const sinMedio = medioDicho ? sinElMedio(lower) : lower;
+
+  // 0a. Pago recién marcado esperando su medio. Si la respuesta no es un medio, el pago
+  //     queda "Sin medio" y el mensaje sigue su camino normal.
+  if (estado?.awaiting === PAGO_MEDIO) {
+    const { payment_id, nombre, factura } = estado.context || {};
+    await clearState(phone);
+    if (factura) await saveState(phone, userId, FACTURA_ESPERA, factura, FACTURA_TTL_MIN);
+    if (medioDicho) {
+      const sigueFactura = factura ? `\n\n🧾 Sigo con tu factura: ${resumenFactura(factura)}. ¿La guardo? Responde sí o no` : '';
+      const { error } = await supabase.from('payments').update({ medio_pago: medioDicho })
+        .eq('id', payment_id).eq('user_id', userId);
+      if (error) {
+        console.error('[whatsapp] medio de pago:', error.message);
+        return `⚠️ No pude guardar el medio. Ponlo en la app, en el detalle del pago.${sigueFactura}`;
+      }
+      return (await conAvisosLimite(userId, `👍 Listo, *${nombre}* quedó pagado con ${textoMedio(medioDicho)}.`)) + sigueFactura;
+    }
+    // Un "sí", "no" o "1" suelto aquí no responde un aviso: podría aplazar o marcar otro pago.
+    if (/^(no|nop|ninguno|no s[eé]|d[eé]jalo)\s*[.,!]?\s*$/i.test(lower)) {
+      return `👍 Listo, *${nombre}* queda pagado sin medio.${factura ? `\n\n🧾 Sigo con tu factura: ${resumenFactura(factura)}. ¿La guardo? Responde sí o no` : ''}`;
+    }
+    if (/^(s[ií]|1|2|1️⃣|2️⃣|listo|ok)\s*[.,!]?\s*$/i.test(lower)) {
+      await esperarMedio(phone, userId, { id: payment_id, nombre }, factura);
+      return `*${nombre}* ya quedó pagado. ${PREGUNTA_MEDIO}`;
+    }
+    estado = factura ? { awaiting: FACTURA_ESPERA, context: factura } : null;
+  }
 
   // 0. Factura esperando respuesta. Va primero: aquí "sí" guarda la factura y NO marca
   //    como pagado el último pago avisado.
@@ -696,7 +754,7 @@ async function despacharRespuestaPago(userId, phone, text, estado) {
       return r;
     }
     // Otra cosa la atiende la IA y la factura sigue pendiente.
-    if (!RESPUESTA_AVISO.test(t)) return null;
+    if (!RESPUESTA_AVISO.test(t) && !(medioDicho && (sinMedio === '' || RESPUESTA_AVISO.test(sinMedio)))) return null;
     // 1, 2, "listo"… son de los avisos. Sin aviso pendiente, se aclara y no se adivina.
     if (!(await pagoEnEspera(userId))) return `Para la factura de ${facturaPendiente.nombre} responde sí o no.`;
   }
@@ -871,7 +929,8 @@ async function despacharRespuestaPago(userId, phone, text, estado) {
   // Regex expandida — acepta dígitos, emojis 1️⃣/2️⃣, sí/si/listo/ok/pagué,
   // no/aplazar/después. Mensajes que no encajen y haya pago activo: pedimos
   // que aclare (solo si el msg es corto, para no interceptar comandos largos).
-  const esSi = /^(s[ií]|1|1️⃣|listo|ok|pagu[eé]|ya\s+pagu[eé])\s*[.,!]?\s*$/i.test(lower);
+  // "sí, con tarjeta", "1 Nequi" o solo "efectivo" también son un sí, con su medio.
+  const esSi = /^(s[ií]|1|1️⃣|listo|ok|pagu[eé]|ya\s+pagu[eé])\s*[.,!]?\s*$/i.test(sinMedio) || (!!medioDicho && sinMedio === '');
   const esNo = /^(no|2|2️⃣|aplazar|despu[ée]s)\s*[.,!]?\s*$/i.test(lower);
   if ((esSi || esNo) && await anaEsperaRespuesta(phone)) return null;
 
@@ -881,10 +940,13 @@ async function despacharRespuestaPago(userId, phone, text, estado) {
   if (esSi) {
     const hoy = colombiaDateString();
     const { error } = await supabase.from('payments')
-      .update({ status: 'pagado', fecha_pago: hoy })
+      .update({ status: 'pagado', fecha_pago: hoy, ...(medioDicho ? { medio_pago: medioDicho } : {}) })
       .eq('id', pago.id).eq('user_id', userId);
     if (error) { console.error('[whatsapp] confirm paid error:', error.message); return '⚠️ Error marcando como pagado.'; }
-    return `✅ Marqué *${pago.nombre}* (${cop(pago.monto)}) como pagado hoy.`;
+    const hecho = `✅ Marqué *${pago.nombre}* (${cop(pago.monto)}) como pagado hoy`;
+    if (medioDicho) return conAvisosLimite(userId, `${hecho} con ${textoMedio(medioDicho)}.`);
+    // Sin medio se pregunta con palabras; si no contesta, queda "Sin medio".
+    return (await esperarMedio(phone, userId, pago, facturaPendiente)) ? `${hecho}.\n\n${PREGUNTA_MEDIO}` : `${hecho}.`;
   }
 
   if (esNo) {

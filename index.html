@@ -277,6 +277,56 @@ button.pa-sec{cursor:pointer;}
 .e-ven{color:#FFC4C7;background:#7A2630;border-color:rgba(239,96,103,0.65);}
 .pago-foto{min-height:44px;display:inline-flex;align-items:center;gap:6px;padding:0;border:none;background:transparent;color:#8DB4FF;font-size:14.5px;font-weight:700;cursor:pointer;}
 .pago-foto svg.i{width:18px;height:18px;}
+/* Pagado y Pendiente: icono al lado del título para que quepa la fila de medios */
+.pa-hd{display:flex;align-items:center;gap:7px;min-width:0;}
+.pa-t.pag svg.i,.pa-t.pen svg.i{width:24px;height:24px;flex-shrink:0;}
+.pa-t.pag{cursor:pointer;}
+.pa-t.pag:active{border-color:rgba(34,201,147,0.9);}
+.pa-med{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px;width:100%;margin-top:5px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.16);}
+.pa-med>div{min-width:0;}
+.pa-med-e{font-size:10.5px;font-weight:600;color:#A9C9BE;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pa-med-v{font-size:11.5px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-0.2px;}
+/* Botones de media pantalla (Historial y Límites) */
+.lt-botones>.b-sec.pa-mitad{flex:1 1 calc(50% - 4px);min-width:0;}
+/* Barras de límite */
+.pa-lims{display:flex;flex-direction:column;gap:9px;margin-top:12px;}
+.pa-lim-tx{display:flex;justify-content:space-between;flex-wrap:wrap;gap:2px 10px;font-size:13.5px;color:var(--t2);}
+.pa-lim-tx b{color:#fff;font-weight:700;}
+.pa-lim-bar{height:5px;margin-top:5px;border-radius:99px;background:rgba(255,255,255,0.12);overflow:hidden;}
+.pa-lim-bar i{display:block;height:100%;border-radius:99px;background:var(--green);}
+.pa-lim.alto .pa-lim-bar i{background:var(--amber);}
+.pa-lim.tope .pa-lim-bar i{background:var(--red);}
+.pa-lim.tope .pa-lim-tx span:last-child{color:#FF8087;}
+/* Soporte en la fila del pago pagado */
+.pago-amt-fila{display:flex;align-items:center;gap:6px;}
+.pago-sop{position:relative;flex-shrink:0;width:44px;height:44px;margin:-6px -6px -6px 0;display:inline-flex;align-items:center;justify-content:center;border:none;background:transparent;color:#8DB4FF;cursor:pointer;}
+.pago-sop>span{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border-radius:9px;border:1px solid rgba(141,180,255,0.4);background:rgba(56,123,255,0.14);}
+.pago-sop svg.i{width:18px;height:18px;}
+.pago-sop.con>span{color:#7CF0C8;border-color:rgba(34,201,147,0.55);background:#0D4F3D;}
+.pago-sop b{position:absolute;top:2px;right:0;min-width:17px;height:17px;padding:0 4px;border-radius:99px;background:var(--green);color:#06261C;font-size:11px;font-weight:800;line-height:17px;text-align:center;}
+/* Ventana del medio de pago */
+.medio-b{width:100%;min-height:58px;margin-bottom:10px;display:flex;align-items:center;justify-content:center;border:1px solid var(--lin2);border-radius:14px;background:var(--card3);color:#fff;font:700 18px 'DM Sans',sans-serif;cursor:pointer;}
+.medio-b:active,.medio-b.on{border-color:var(--green);background:#0D4F3D;}
+.medio-chips{display:flex;gap:6px;flex-wrap:wrap;}
+.medio-chips button{flex:1 1 0;min-width:0;min-height:44px;border:1px solid var(--lin2);border-radius:11px;background:var(--card3);color:#fff;font:600 14px 'DM Sans',sans-serif;cursor:pointer;}
+.medio-chips button.on{border-color:var(--green);background:#0D4F3D;color:#7CF0C8;}
+/* Visor de fotos del pago */
+.vis-foto{display:flex;align-items:center;justify-content:center;min-height:200px;max-height:52vh;max-height:52dvh;border-radius:12px;background:#000;overflow:hidden;}
+.vis-foto img{display:block;max-width:100%;max-height:52vh;max-height:52dvh;object-fit:contain;}
+.vis-mini{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0 12px;}
+.vis-mini button{width:52px;height:52px;padding:0;border:2px solid transparent;border-radius:9px;overflow:hidden;background:var(--card3);cursor:pointer;}
+.vis-mini button.on{border-color:var(--green);}
+.vis-mini img{width:100%;height:100%;object-fit:cover;display:block;}
+.vis-acc{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;}
+.vis-acc>*{min-width:0;min-height:46px;display:flex;align-items:center;justify-content:center;gap:5px;padding:0 6px;border:1px solid var(--lin2);border-radius:12px;background:var(--card3);color:#fff;font:600 14px 'DM Sans',sans-serif;cursor:pointer;white-space:nowrap;box-sizing:border-box;}
+.vis-acc svg.i{width:17px;height:17px;flex-shrink:0;}
+.vis-acc .peligro{color:#FF8087;border-color:rgba(239,96,103,0.55);background:rgba(239,96,103,0.14);}
+.vis-acc>*:disabled{opacity:.45;cursor:default;}
+.medios-tabla{display:flex;flex-direction:column;}
+.medios-tabla>div{display:flex;justify-content:space-between;gap:10px;padding:12px 2px;border-bottom:1px solid var(--bd);font-size:15px;color:var(--t2);}
+.medios-tabla>div b{color:#fff;font-weight:800;white-space:nowrap;}
+.medios-tabla>div.tot{border-bottom:none;color:#fff;font-weight:700;}
+#modal-confirm{z-index:110;}
 /* ── Buscador común ── */
 .rt-tools{display:flex;gap:8px;padding:0 14px 10px;flex-shrink:0;}
 .rt-search,.hj-buscar{flex:1;min-width:0;display:flex;align-items:center;gap:8px;height:48px;padding:0 13px;background:var(--card2);border:1px solid var(--lin2);border-radius:13px;color:var(--t2);}
@@ -934,7 +984,7 @@ select.form-inp option{background:var(--card2);}
   .pago-amt{min-width:112px;text-align:right;}
   .est{min-width:116px;}
   .lt-botones{width:auto;}
-  .lt-botones>.b-pri,.lt-botones>.b-sec{flex:0 0 auto;padding:0 20px;}
+  .lt-botones>.b-pri,.lt-botones>.b-sec,.lt-botones>.b-sec.pa-mitad{flex:0 0 auto;padding:0 20px;}
   .lt-wrap{grid-template-columns:repeat(2,minmax(0,1fr));}
   .lt-titulo{flex:1 1 0;}
   .hj-col-fecha{width:100px;}.hj-col-valor{width:130px;}.hj-col-nota{width:32%;}.hj-col-menu{width:58px;}
@@ -996,6 +1046,8 @@ select.form-inp option{background:var(--card2);}
 <symbol id="i-sum" viewBox="0 0 24 24"><path d="M18 5H6l6.5 7L6 19h12"/></symbol>
 <symbol id="i-bor" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14M10 11v6M14 11v6"/></symbol>
 <symbol id="i-cam" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/></symbol>
+<symbol id="i-recibo" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></symbol>
+<symbol id="i-bajar" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
 <symbol id="i-pun" viewBox="0 0 24 24"><path d="M12 5h.01M12 12h.01M12 19h.01"/></symbol>
 <symbol id="i-men" viewBox="0 0 24 24"><path d="M4 6.5h16M4 12h16M4 17.5h16"/></symbol>
 <symbol id="i-rep" viewBox="0 0 24 24"><path d="M17 2l4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 0 1-3 3H3"/></symbol>
@@ -1205,7 +1257,7 @@ select.form-inp option{background:var(--card2);}
     <!-- ══ PAGOS ══ -->
     <div class="scr" id="scr-pagos">
       <div class="scroll">
-        <div class="k-tit"><div class="k-tit-i"><div class="k-tit-ic" style="color:#F2B84B"><svg class="i " aria-hidden="true"><use href="#i-wal"/></svg></div><div><h1>Pagos</h1><p>Organiza tus pagos del mes</p></div></div><div class="k-acc lt-botones"><button type="button" class="b-pri" onclick="showModal('modal-nuevo-pago')"><svg class="i " aria-hidden="true"><use href="#i-mas"/></svg>Registrar pago</button><label class="b-sec lt-foto" id="pago-foto-btn" for="pago-foto-input" role="button" tabindex="0" onclick="marcarEligiendoFoto()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}"><svg class="i " aria-hidden="true"><use href="#i-cam"/></svg><span id="pago-foto-txt">Desde factura</span></label><input type="file" id="pago-foto-input" class="hj-sr" accept="image/*" tabindex="-1" aria-label="Elegir la foto de la factura" onchange="onFacturaPago(event)" oncancel="soltarEligiendoFoto()"/><button type="button" class="b-sec" onclick="abrirHistorial('payment')"><svg class="i " aria-hidden="true"><use href="#i-car"/></svg>Historial</button></div></div>
+        <div class="k-tit"><div class="k-tit-i"><div class="k-tit-ic" style="color:#F2B84B"><svg class="i " aria-hidden="true"><use href="#i-wal"/></svg></div><div><h1>Pagos</h1><p>Organiza tus pagos del mes</p></div></div><div class="k-acc lt-botones"><button type="button" class="b-pri" onclick="showModal('modal-nuevo-pago')"><svg class="i " aria-hidden="true"><use href="#i-mas"/></svg>Registrar pago</button><label class="b-sec lt-foto" id="pago-foto-btn" for="pago-foto-input" role="button" tabindex="0" onclick="marcarEligiendoFoto()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}"><svg class="i " aria-hidden="true"><use href="#i-cam"/></svg><span id="pago-foto-txt">Desde factura</span></label><input type="file" id="pago-foto-input" class="hj-sr" accept="image/*" tabindex="-1" aria-label="Elegir la foto de la factura" onchange="onFacturaPago(event)" oncancel="soltarEligiendoFoto()"/><button type="button" class="b-sec pa-mitad" onclick="abrirHistorial('payment')"><svg class="i " aria-hidden="true"><use href="#i-car"/></svg>Historial</button><button type="button" class="b-sec pa-mitad" onclick="abrirLimites()"><svg class="i " aria-hidden="true"><use href="#i-sum"/></svg>Límites</button></div></div>
         <div id="pagos-resumen"></div>
         <div id="pagos-list"></div>
       </div>
@@ -1618,28 +1670,77 @@ select.form-inp option{background:var(--card2);}
   </div>
 </div>
 
-<!-- Selector único de foto: en el celular ofrece cámara o galería -->
-<input type="file" id="pago-soporte-file" accept="image/*" style="display:none" onchange="onSoporteSeleccionado(event)"/>
+<!-- Fotos de soporte. Se abren con <label for> y no input.click(): el navegador del
+     celular solo abre la cámara con un toque directo. La galería queda para el detalle
+     de un pago pendiente; en la lista de pagados se abre la cámara directo. -->
+<input type="file" id="pago-soporte-file" accept="image/*" style="display:none" onchange="onSoporteSeleccionado(event)" oncancel="soltarSoporte()"/>
+<input type="file" id="pago-camara-file" accept="image/*" capture="environment" style="display:none" onchange="onSoporteSeleccionado(event)" oncancel="soltarSoporte()"/>
 
-<!-- Pregunta de la foto tras marcar pagado. Usa <label for> y no input.click()
-     porque el navegador del celular solo abre la cámara con un toque directo. -->
-<div class="modal-overlay hidden" id="modal-pago-foto" onclick="closeModalOutside(event,'modal-pago-foto')">
+<!-- ¿Cómo lo pagaste? -->
+<div class="modal-overlay hidden" id="modal-pago-medio" onclick="closeModalOutside(event,'modal-pago-medio')">
   <div class="modal">
-    <div class="modal-hdr"><span class="modal-ttl">Pago marcado</span></div>
-    <div style="font-size:14px;color:var(--t2);line-height:1.5;margin:4px 0 18px">¿Quieres guardar foto de la factura como soporte?</div>
-    <label class="btn-primary" for="pago-soporte-file" style="display:block;text-align:center;box-sizing:border-box;cursor:pointer" onclick="hideModal('modal-pago-foto')">Sí, guardar foto</label>
-    <button class="btn-secondary" onclick="hideModal('modal-pago-foto')">Ahora no</button>
+    <div class="modal-hdr">
+      <span class="modal-ttl">¿Cómo lo pagaste?</span>
+      <button class="modal-close" onclick="hideModal('modal-pago-medio')">✕</button>
+    </div>
+    <div id="pago-medio-txt" style="font-size:14px;color:var(--t2);margin:0 0 14px"></div>
+    <button type="button" class="medio-b" onclick="elegirMedioPago('efectivo')">Efectivo</button>
+    <button type="button" class="medio-b" onclick="elegirMedioPago('tarjeta')">Tarjeta</button>
+    <button type="button" class="medio-b" onclick="elegirMedioPago('nequi')">Nequi</button>
+    <button type="button" class="btn-secondary" style="margin-top:4px" onclick="hideModal('modal-pago-medio')">Cancelar</button>
   </div>
 </div>
 
-<!-- Ver la foto de la factura -->
+<!-- Fotos del soporte de un pago -->
 <div class="modal-overlay hidden" id="modal-pago-ver-foto" onclick="closeModalOutside(event,'modal-pago-ver-foto')">
   <div class="modal">
     <div class="modal-hdr">
-      <span class="modal-ttl">Factura</span>
+      <span class="modal-ttl" id="vis-ttl">Soporte</span>
       <button class="modal-close" onclick="hideModal('modal-pago-ver-foto')">✕</button>
     </div>
-    <img id="pago-ver-foto-img" alt="Factura" style="display:block;width:100%;border-radius:10px"/>
+    <div class="vis-foto"><img id="pago-ver-foto-img" alt="Foto del soporte"/></div>
+    <div class="vis-mini" id="vis-mini"></div>
+    <div class="vis-acc">
+      <label for="pago-camara-file" role="button" tabindex="0" onclick="prepararFotoSoporte(visorPagoId)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}"><svg class="i" aria-hidden="true"><use href="#i-cam"/></svg>Otra foto</label>
+      <button type="button" id="vis-bajar" onclick="descargarFotoSoporte()"><svg class="i" aria-hidden="true"><use href="#i-bajar"/></svg>Descargar</button>
+      <button type="button" id="vis-borrar" class="peligro" onclick="borrarFotoSoporte()"><svg class="i" aria-hidden="true"><use href="#i-bor"/></svg>Borrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Pagado por medio, valores exactos -->
+<div class="modal-overlay hidden" id="modal-pago-medios" onclick="closeModalOutside(event,'modal-pago-medios')">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-ttl">Pagado este mes</span>
+      <button class="modal-close" onclick="hideModal('modal-pago-medios')">✕</button>
+    </div>
+    <div class="medios-tabla" id="pago-medios-tabla"></div>
+  </div>
+</div>
+
+<!-- Límites mensuales por medio -->
+<div class="modal-overlay hidden" id="modal-pago-limites" onclick="closeModalOutside(event,'modal-pago-limites')">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-ttl">Límites del mes</span>
+      <button class="modal-close" onclick="hideModal('modal-pago-limites')">✕</button>
+    </div>
+    <div style="font-size:14px;color:var(--t2);line-height:1.5;margin:0 0 14px">Pon un límite a los medios que quieras. Los que dejes vacíos no tienen límite. Te aviso por WhatsApp al llegar al 80 % y al llegar al límite.</div>
+    <div class="form-group">
+      <label class="form-label" for="pago-lim-efectivo">Efectivo</label>
+      <input class="form-inp" id="pago-lim-efectivo" type="text" inputmode="numeric" placeholder="Sin límite" oninput="formatMonto(this)"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="pago-lim-tarjeta">Tarjeta</label>
+      <input class="form-inp" id="pago-lim-tarjeta" type="text" inputmode="numeric" placeholder="Sin límite" oninput="formatMonto(this)"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="pago-lim-nequi">Nequi</label>
+      <input class="form-inp" id="pago-lim-nequi" type="text" inputmode="numeric" placeholder="Sin límite" oninput="formatMonto(this)"/>
+    </div>
+    <button class="btn-primary" id="pago-lim-guardar" onclick="guardarLimites()">Guardar límites</button>
+    <button class="btn-secondary" onclick="hideModal('modal-pago-limites')">Cancelar</button>
   </div>
 </div>
 
@@ -1815,13 +1916,20 @@ async function syncDesdeSupabase() {
       { data: pagos },
       { data: eventos },
       { data: recordatorios },
-      { data: hojas }
+      { data: hojas },
+      { data: limites }
     ] = await Promise.all([
       supa.from('payments').select('*').eq('user_id', uid),
       supa.from('events').select('*').eq('user_id', uid),
       supa.from('reminders').select('*').eq('user_id', uid),
-      supa.from('hojas').select('*').eq('user_id', uid)
+      supa.from('hojas').select('*').eq('user_id', uid),
+      supa.from('profiles').select('limite_efectivo, limite_tarjeta, limite_nequi').eq('id', uid).maybeSingle()
     ]);
+    if (limites) DB.limites = {
+      efectivo: Number(limites.limite_efectivo) || 0,
+      tarjeta: Number(limites.limite_tarjeta) || 0,
+      nequi: Number(limites.limite_nequi) || 0
+    };
 
     // Actualizar DB local con datos de Supabase
     if (pagos) DB.pagos = pagos.map(p => ({
@@ -1834,7 +1942,9 @@ async function syncDesdeSupabase() {
       fijo: p.fijo === true,
       status: p.status,
       nota: p.nota || '',
-      soporteUrl: p.soporte_url || null
+      medio: p.medio_pago || null,
+      // soporte_url es la foto única de antes; una app vieja en caché aún puede escribirla.
+      soportes: [...(p.soporte_url && !(p.soportes||[]).includes(p.soporte_url) ? [p.soporte_url] : []), ...(p.soportes || [])]
     }));
 
     if (eventos) DB.eventos = eventos.map(e => ({
@@ -2340,25 +2450,55 @@ function limpiarFacturaNueva(){
   document.getElementById('pago-factura-prev').removeAttribute('src');
 }
 
-function renderPagos(){
+const MEDIOS_PAGO = ['efectivo','tarjeta','nequi'];
+const NOMBRE_MEDIO = { efectivo:'Efectivo', tarjeta:'Tarjeta', nequi:'Nequi' };
+
+// "300 mil", "1,2 M": cabe en la fila pequeña de la tarjeta verde.
+function fmtCorto(n){
+  const v = Math.round(n||0);
+  if(v < 1000) return '$' + v;
+  if(v < 999500) return Math.round(v/1000) + ' mil';
+  const m = v/1e6;
+  return (m >= 100 ? String(Math.round(m)) : (Math.round(m*10)/10).toString().replace('.', ',')) + ' M';
+}
+
+// Lo pagado del mes por medio. Mismos pagos que suma la tarjeta verde, y los mismos
+// que el servidor usa para los avisos de límite (lib/medio-pago.js).
+function pagadoPorMedio(delMes){
+  const tot = { efectivo:0, tarjeta:0, nequi:0, sin:0 };
+  delMes.filter(p=>p.pagado).forEach(p=>{ tot[MEDIOS_PAGO.includes(p.medio) ? p.medio : 'sin'] += p.monto; });
+  return tot;
+}
+
+function pagosDelMes(){
   const hoyStr = todayStr();
   const mes = mesActualColombia();
   const pagos = DB.pagos.map(p=>({
     ...p,
+    soportes: p.soportes || [],
     pagado: p.status==='pagado',
     mesLimite: (p.fechaLimite||'').slice(0,7),
     diff: p.fechaLimite ? diasEntre(hoyStr, p.fechaLimite) : null
   }));
+  return { mes, pagos, delMes: pagos.filter(p=>p.mesLimite===mes) };
+}
+
+function renderPagos(){
+  const { mes, pagos, delMes } = pagosDelMes();
 
   // Tarjeta: solo pagos con fecha_limite en el mes en curso. Los abonos cuentan
   // como pendientes: la vista nueva no maneja pagos parciales.
-  const delMes = pagos.filter(p=>p.mesLimite===mes);
   const total = delMes.reduce((s,p)=>s+p.monto,0);
   const pagado = delMes.filter(p=>p.pagado).reduce((s,p)=>s+p.monto,0);
+  const porMedio = pagadoPorMedio(delMes);
   document.getElementById('pagos-resumen').innerHTML = `<div class="pa-res">
     <div class="pa-t tot">${icono('sum')}<div class="pa-tx"><div class="pa-e">Total del mes</div><div class="pa-v">${fmtCOP(total)}</div></div></div>
-    <div class="pa-t pag">${icono('okc')}<div class="pa-tx"><div class="pa-e">Pagado</div><div class="pa-v">${fmtCOP(pagado)}</div></div></div>
-    <div class="pa-t pen">${icono('rel')}<div class="pa-tx"><div class="pa-e">Pendiente</div><div class="pa-v">${fmtCOP(total-pagado)}</div></div></div>
+    <div class="pa-t pag" role="button" tabindex="0" aria-label="Pagado ${fmtCOP(pagado)}. Ver cuánto por cada medio" onclick="abrirMediosPagados()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirMediosPagados();}">
+      <div class="pa-hd">${icono('okc')}<div class="pa-e">Pagado</div></div>
+      <div class="pa-tx"><div class="pa-v">${fmtCOP(pagado)}</div></div>
+      <div class="pa-med">${MEDIOS_PAGO.map(m=>`<div><div class="pa-med-e">${NOMBRE_MEDIO[m]}</div><div class="pa-med-v">${fmtCorto(porMedio[m])}</div></div>`).join('')}</div>
+    </div>
+    <div class="pa-t pen"><div class="pa-hd">${icono('rel')}<div class="pa-e">Pendiente</div></div><div class="pa-tx"><div class="pa-v">${fmtCOP(total-pagado)}</div></div></div>
   </div>`;
 
   const porFecha = (a,b)=>(a.fechaLimite||'9999').localeCompare(b.fechaLimite||'9999');
@@ -2371,13 +2511,24 @@ function renderPagos(){
     .filter(p=>p.pagado && (p.mesLimite===mes || (p.fechaPago||'').slice(0,7)===mes))
     .sort((a,b)=>porFecha(b,a));
 
+  // Barras solo de los medios con límite, justo encima de "Pendientes".
+  const lim = DB.limites || {};
+  const barras = MEDIOS_PAGO.filter(m=>lim[m]>0).map(m=>{
+    const pct = porMedio[m]/lim[m]*100;
+    const nivel = pct>=100 ? 'tope' : pct>=80 ? 'alto' : 'ok';
+    return `<div class="pa-lim ${nivel}">
+      <div class="pa-lim-tx"><b>${NOMBRE_MEDIO[m]}</b><span>${fmtCOP(porMedio[m])} de ${fmtCOP(lim[m])}</span></div>
+      <div class="pa-lim-bar" role="progressbar" aria-label="Límite de ${NOMBRE_MEDIO[m]}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.min(100,Math.round(pct))}"><i style="width:${Math.min(100,pct).toFixed(1)}%"></i></div>
+    </div>`;
+  }).join('');
+  let html = barras ? `<div class="pa-lims">${barras}</div>` : '';
+
   const el = document.getElementById('pagos-list');
   if(!pendientes.length && !proximos.length && !pagados.length){
-    el.innerHTML=`<div class="empty"><div class="empty-ico">${icono('wal')}</div><div class="empty-txt">No hay pagos este mes</div></div>`;
+    el.innerHTML = html + `<div class="empty"><div class="empty-ico">${icono('wal')}</div><div class="empty-txt">No hay pagos este mes</div></div>`;
     return;
   }
 
-  let html = '';
   if(pendientes.length) html += `<div class="pa-sec">Pendientes · ${pendientes.length}</div>` + pendientes.map(filaPago).join('');
   if(proximos.length){
     html += `<button type="button" class="pa-sec" onclick="togglePagosProximos()"><span>Próximos meses · ${proximos.length}</span>${icono(pagosProximosAbierto?'arriba':'abajo')}</button>`;
@@ -2392,6 +2543,16 @@ function togglePagosProximos(){
   renderPagos();
 }
 
+function abrirMediosPagados(){
+  const porMedio = pagadoPorMedio(pagosDelMes().delMes);
+  const filas = MEDIOS_PAGO.map(m=>`<div><span>${NOMBRE_MEDIO[m]}</span><b>${fmtCOP(porMedio[m])}</b></div>`);
+  if(porMedio.sin>0) filas.push(`<div><span>Sin medio</span><b>${fmtCOP(porMedio.sin)}</b></div>`);
+  const total = porMedio.efectivo + porMedio.tarjeta + porMedio.nequi + porMedio.sin;
+  filas.push(`<div class="tot"><span>Total pagado</span><b>${fmtCOP(total)}</b></div>`);
+  document.getElementById('pago-medios-tabla').innerHTML = filas.join('');
+  showModal('modal-pago-medios');
+}
+
 function diasEntre(desde, hasta){
   return Math.round((new Date(hasta+'T12:00:00')-new Date(desde+'T12:00:00'))/(1000*60*60*24));
 }
@@ -2403,10 +2564,18 @@ function fmtDiaMes(d){
   return `${dia} ${['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][m-1]}`;
 }
 
+// Botón del soporte en un pago pagado. Sin fotos es un <label> de la cámara: el
+// celular solo la abre con un toque directo sobre el input.
+function botonSoporte(p){
+  const n = (p.soportes||[]).length;
+  if(n) return `<button type="button" class="pago-sop con" onclick="event.stopPropagation();verSoportePago(${p.id})" aria-label="Ver ${n} ${n===1?'foto':'fotos'} del soporte de ${escAttr(p.nombre)}"><span>${icono('recibo')}</span><b>${n}</b></button>`;
+  return `<label class="pago-sop" for="pago-camara-file" role="button" tabindex="0" onclick="event.stopPropagation();prepararFotoSoporte(${p.id})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" aria-label="Tomar foto del soporte de ${escAttr(p.nombre)}"><span>${icono('cam')}</span></label>`;
+}
+
 function filaPago(p){
   let linea;
   if(p.pagado){
-    linea = p.fechaPago ? `Pagado el ${fmtDiaMes(p.fechaPago)}` : 'Pagado';
+    linea = [p.fechaPago ? `Pagado el ${fmtDiaMes(p.fechaPago)}` : 'Pagado', p.medio ? NOMBRE_MEDIO[p.medio] : 'Sin medio'].join(' · ');
   } else {
     const partes = p.fechaLimite ? [`Vence ${fmtDiaMes(p.fechaLimite)}`] : [];
     if(p.diff!==null){
@@ -2418,12 +2587,16 @@ function filaPago(p){
     if(!p.fijo) partes.push('una sola vez');
     linea = partes.join(' · ');
   }
-  const foto = p.soporteUrl
+  // Un pendiente que ya trae su factura (p. ej. creado desde la foto) la deja a la vista.
+  const foto = !p.pagado && p.soportes.length
     ? `<div><button type="button" class="pago-foto" onclick="event.stopPropagation();verSoportePago(${p.id})">${icono('cam')}Ver factura</button></div>`
     : '';
   const pill = p.pagado
     ? `<span class="est e-pag">${icono('ok')}Pagado</span>`
     : `<button type="button" class="est-b" onclick="event.stopPropagation();marcarPagoPagado(${p.id})" aria-label="Marcar ${escAttr(p.nombre)} como pagado"><span class="est ${p.diff!==null&&p.diff<0?'e-ven">Vencido':'e-pen">Pendiente'}</span></button>`;
+  const valor = p.pagado
+    ? `<div class="pago-amt-fila"><div class="pago-amt">${fmtCOP(p.monto)}</div>${botonSoporte(p)}</div>`
+    : `<div class="pago-amt">${fmtCOP(p.monto)}</div>`;
   return `<div class="pago-card${p.pagado?' is-paid':''}" onclick="abrirPagoDetalle(${p.id})">
     <div class="pago-info">
       <div class="pago-name">${escAttr(p.nombre)}${p.fijo?icono('rep'):''}</div>
@@ -2431,7 +2604,7 @@ function filaPago(p){
       ${foto}
     </div>
     <div class="pago-right">
-      <div class="pago-amt">${fmtCOP(p.monto)}</div>
+      ${valor}
       ${pill}
     </div>
   </div>`;
@@ -2441,21 +2614,28 @@ function abrirPagoDetalle(id){
   pagoDetalleId = id;
   const p = DB.pagos.find(x=>String(x.id)===String(id));
   if(!p) return;
+  const soportes = p.soportes || [];
   document.getElementById('pago-detalle-nombre').textContent = p.nombre;
   const esPagado = p.status==='pagado';
   const diff = p.fechaLimite ? diasEntre(todayStr(), p.fechaLimite) : null;
   const avisoVence = esPagado || diff===null ? ''
     : diff<0 ? '· <span class="txt-red">Vencido</span>'
     : diff===0 ? '· <span class="txt-amber">Hoy</span>' : '';
-  const fotoBtn = p.soporteUrl
-      ? `<button class="btn-secondary" onclick="verSoportePago(${p.id})">Ver factura</button>`
-      : `<label class="btn-secondary" for="pago-soporte-file" style="display:block;text-align:center;box-sizing:border-box;cursor:pointer" onclick="pagoSoporteId=${p.id}">Agregar foto de la factura</label>`;
+  const fotoBtn = soportes.length
+      ? `<button class="btn-secondary" onclick="verSoportePago(${p.id})">Ver ${soportes.length===1?'foto':`fotos (${soportes.length})`}</button>`
+      : `<label class="btn-secondary" for="pago-soporte-file" style="display:block;text-align:center;box-sizing:border-box;cursor:pointer" onclick="prepararFotoSoporte(${p.id})">Agregar foto de la factura</label>`;
+  const medioHtml = esPagado ? `<div class="form-group">
+      <label class="form-label">Cómo lo pagaste</label>
+      <div class="medio-chips" id="pago-detalle-medios">${MEDIOS_PAGO.map(m=>`<button type="button" class="${p.medio===m?'on':''}" aria-pressed="${p.medio===m}" onclick="cambiarMedioPago(${p.id},'${m}')">${NOMBRE_MEDIO[m]}</button>`).join('')}</div>
+      ${p.medio ? '' : '<div style="font-size:12.5px;color:var(--t3);margin-top:5px">Sin medio</div>'}
+    </div>` : '';
   document.getElementById('pago-detalle-body').innerHTML = `
     <div style="margin-bottom:12px">
       <div style="font-size:28px;font-weight:800;color:var(--t1)">${fmtCOP(p.monto)}</div>
       <div style="font-size:12.5px;color:var(--t3);margin-top:3px">${p.fechaLimite?`Vence: ${fmtDiaMes(p.fechaLimite)}`:'Sin fecha'} ${avisoVence}</div>
       ${esPagado?`<div style="font-size:12px;font-weight:700;color:var(--green);margin-top:8px">✅ Pagado${p.fechaPago?` el ${fmtDiaMes(p.fechaPago)}`:''}</div>`:''}
     </div>
+    ${medioHtml}
     ${esPagado ? '' : `<div class="form-group">
       <label class="form-label">Nombre</label>
       <input class="form-inp" id="pago-edit-nombre" value="${escAttr(p.nombre)}"/>
@@ -2518,29 +2698,110 @@ async function guardarNotaPago(id){
   toast('✅ Nota guardada','var(--green)');
 }
 
+// ─── Marcar pagado: un toque en el medio y listo ───
 // Marca pagado sin tocar saldos: Kontrol deja de manejarlos, así que no pasa por
 // registrar_pago ni pide cuenta/caja. Si el pago es fijo, el trigger de BD crea
 // el del mes siguiente. El filtro neq evita repetir el cambio si ya estaba pagado.
-async function marcarPagoPagado(id){
+let pagoMedioId = null;
+let marcandoPago = false;
+
+function marcarPagoPagado(id){
   const p = DB.pagos.find(x=>String(x.id)===String(id));
   if(!p){ toast('Pago no encontrado','var(--red)'); return; }
-  const ok = await uiConfirm(`¿Marcar "${p.nombre}" como pagado?`, { titulo:'Confirmar pago', okText:'Sí, ya lo pagué', okColor:'var(--green)' });
-  if(!ok) return;
-  if(!(await sesionLista())){ toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
-  const { data, error } = await supa.from('payments')
-    .update({ status:'pagado', fecha_pago: todayStr() })
-    .eq('id', p.id).eq('user_id', currentUser.id).neq('status','pagado')
-    .select('id');
-  if(error){ toast('❌ No se pudo marcar: '+error.message,'var(--red)'); return; }
-  hideModal('modal-pago-detalle');
-  await syncDesdeSupabase();
-  renderPagos();
-  if(!data || !data.length){ toast('Este pago ya estaba pagado','var(--amber)'); return; }
-  if(p.soporteUrl){ toast('✅ Pago marcado','var(--green)'); return; }
-  pagoSoporteId = p.id;
-  showModal('modal-pago-foto');
+  pagoMedioId = p.id;
+  document.getElementById('pago-medio-txt').textContent = `${p.nombre} · ${fmtCOP(p.monto)}`;
+  showModal('modal-pago-medio');
 }
 
+async function elegirMedioPago(medio){
+  if(marcandoPago || !MEDIOS_PAGO.includes(medio)) return;
+  const p = DB.pagos.find(x=>String(x.id)===String(pagoMedioId));
+  hideModal('modal-pago-medio');
+  if(!p) return;
+  marcandoPago = true;
+  // Se ve pagado al instante; si la base no lo acepta, vuelve como estaba.
+  const antes = { status: p.status, fechaPago: p.fechaPago, fecha_pago: p.fecha_pago, medio: p.medio };
+  Object.assign(p, { status:'pagado', fechaPago: todayStr(), fecha_pago: todayStr(), medio });
+  hideModal('modal-pago-detalle');
+  renderPagos();
+  try {
+    if(!(await sesionLista())) throw new Error('Sesión no lista. Recarga la página.');
+    const { data, error } = await supa.from('payments')
+      .update({ status:'pagado', fecha_pago: todayStr(), medio_pago: medio })
+      .eq('id', p.id).eq('user_id', currentUser.id).neq('status','pagado')
+      .select('id');
+    if(error) throw error;
+    if(!data || !data.length) toast('Este pago ya estaba pagado','var(--amber)');
+    else toast(`✅ Pagado con ${NOMBRE_MEDIO[medio].toLowerCase().replace('nequi','Nequi')}`,'var(--green)');
+  } catch(e){
+    Object.assign(p, antes);
+    renderPagos();
+    toast('❌ No se pudo marcar: '+(e.message||e),'var(--red)');
+  } finally {
+    marcandoPago = false;
+    pagoMedioId = null;
+  }
+  // Trae el pago del mes siguiente que crea la base para los fijos.
+  syncDesdeSupabase();
+}
+
+// Cambia o pone el medio de un pago ya pagado (los de antes quedaron "Sin medio").
+async function cambiarMedioPago(id, medio){
+  const p = DB.pagos.find(x=>String(x.id)===String(id));
+  if(!p || p.medio===medio) return;
+  const antes = p.medio;
+  p.medio = medio;
+  document.querySelectorAll('#pago-detalle-medios button').forEach(b=>{
+    const on = b.textContent===NOMBRE_MEDIO[medio];
+    b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on));
+  });
+  renderPagos();
+  const { error } = await supa.from('payments').update({ medio_pago: medio }).eq('id', id).eq('user_id', currentUser.id);
+  if(error){
+    p.medio = antes;
+    renderPagos();
+    abrirPagoDetalle(id);
+    toast('❌ No se pudo cambiar: '+error.message,'var(--red)');
+    return;
+  }
+  toast('✅ Medio guardado','var(--green)');
+}
+
+// ─── Límites mensuales por medio ───
+function abrirLimites(){
+  const lim = DB.limites || {};
+  MEDIOS_PAGO.forEach(m=>{
+    document.getElementById('pago-lim-'+m).value = lim[m]>0 ? Math.round(lim[m]).toLocaleString('es-CO') : '';
+  });
+  showModal('modal-pago-limites');
+}
+
+async function guardarLimites(){
+  const boton = document.getElementById('pago-lim-guardar');
+  if(boton.disabled) return;
+  const nuevos = {};
+  MEDIOS_PAGO.forEach(m=>{ nuevos[m] = parseCOP(document.getElementById('pago-lim-'+m).value) || 0; });
+  boton.disabled = true;
+  try {
+    if(!(await sesionLista())){ toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
+    const { error } = await supa.from('profiles').update({
+      limite_efectivo: nuevos.efectivo || null,
+      limite_tarjeta: nuevos.tarjeta || null,
+      limite_nequi: nuevos.nequi || null
+    }).eq('id', currentUser.id);
+    if(error){ toast('❌ No se pudo guardar: '+error.message,'var(--red)'); return; }
+    DB.limites = nuevos;
+    save();
+    hideModal('modal-pago-limites');
+    renderPagos();
+    const cuantos = MEDIOS_PAGO.filter(m=>nuevos[m]>0).length;
+    toast(cuantos ? '✅ Límites guardados' : 'Sin límites','var(--green)');
+  } finally {
+    boton.disabled = false;
+  }
+}
+
+// ─── Fotos del soporte ───
 function dataUrlABlob(dataUrl){
   const [cabecera, b64] = dataUrl.split(',');
   const bin = atob(b64);
@@ -2558,48 +2819,133 @@ function leerArchivoComoDataUrl(file){
   });
 }
 
+// Antes de abrir la cámara: a qué pago va la foto y que la app no se actualice mientras.
+function prepararFotoSoporte(id){
+  pagoSoporteId = id;
+  marcarEligiendoFoto();
+}
+function soltarSoporte(){
+  pagoSoporteId = null;
+  soltarEligiendoFoto();
+}
+
+// soportes guarda rutas, no URLs: el bucket es privado. Se lee la lista fresca para no
+// pisar una foto que otro dispositivo haya agregado.
 async function subirFacturaPago(id, dataUrl){
-  // soporte_url guarda la ruta, no una URL: el bucket es privado.
-  const ruta = `${currentUser.id}/${id}-${Date.now()}.jpg`;
   const blob = dataUrlABlob(dataUrl);
+  const ext = { 'image/jpeg':'jpg', 'image/png':'png', 'image/webp':'webp' }[blob.type] || 'jpg';
+  const ruta = `${currentUser.id}/${id}-${Date.now()}.${ext}`;
   const { error: errSubida } = await supa.storage.from('facturas')
     .upload(ruta, blob, { contentType: blob.type });
   if(errSubida) throw errSubida;
-  const { error: errPago } = await supa.from('payments').update({ soporte_url: ruta }).eq('id', id).eq('user_id', currentUser.id);
+  const { data: fila, error: errLee } = await supa.from('payments').select('soportes').eq('id', id).eq('user_id', currentUser.id).single();
+  const { error: errPago } = errLee ? { error: errLee }
+    : await supa.from('payments').update({ soportes: [...(fila.soportes||[]), ruta] }).eq('id', id).eq('user_id', currentUser.id);
   if(errPago){
     await supa.storage.from('facturas').remove([ruta]);
     throw errPago;
   }
+  return ruta;
 }
 
 async function onSoporteSeleccionado(event){
+  soltarEligiendoFoto();
   const file = event.target.files[0];
   event.target.value = '';
   const id = pagoSoporteId;
-  if(!file || id==null) return;
+  if(!file || id==null){ pagoSoporteId = null; return; }
   hideModal('modal-pago-detalle');
-  toast('📤 Subiendo factura…','var(--t2)');
+  toast('📤 Guardando foto…','var(--t2)');
   try{
     // comprimirImagen devuelve el original si no pudo decodificarlo (p. ej. HEIC):
     // se manda su tipo real para que el bucket lo rechace en vez de guardarlo mal.
-    await subirFacturaPago(id, await comprimirImagen(await leerArchivoComoDataUrl(file), 1600, 0.8));
-    toast('✅ Factura guardada','var(--green)');
-    await syncDesdeSupabase();
+    const ruta = await subirFacturaPago(id, await comprimirImagen(await leerArchivoComoDataUrl(file), 1600, 0.8));
+    const p = DB.pagos.find(x=>String(x.id)===String(id));
+    if(p) p.soportes = [...(p.soportes||[]), ruta];
     renderPagos();
+    toast('✅ Foto guardada','var(--green)');
+    const visorAbierto = !document.getElementById('modal-pago-ver-foto').classList.contains('hidden');
+    if(visorAbierto && String(visorPagoId)===String(id)) verSoportePago(id, ruta);
   }catch(e){
-    toast('❌ No se pudo guardar la foto. Reintenta desde el detalle del pago.','var(--red)');
+    console.error('[soporte] subida:', e);
+    toast('❌ No se pudo guardar la foto. Intenta otra vez.','var(--red)');
   }finally{
     pagoSoporteId = null;
   }
 }
 
-async function verSoportePago(id){
+// Visor: foto grande, miniaturas, otra foto, descargar y borrar.
+let visorPagoId = null;
+let visorFotos = [];   // [{ ruta, url }]
+let visorIdx = 0;
+
+async function verSoportePago(id, mostrarRuta){
   const p = DB.pagos.find(x=>String(x.id)===String(id));
-  if(!p || !p.soporteUrl) return;
-  const { data, error } = await supa.storage.from('facturas').createSignedUrl(p.soporteUrl, 300);
-  if(error || !data){ toast('❌ No se pudo abrir la factura','var(--red)'); return; }
-  document.getElementById('pago-ver-foto-img').src = data.signedUrl;
+  const rutas = p ? (p.soportes||[]) : [];
+  if(!rutas.length){ hideModal('modal-pago-ver-foto'); return; }
+  const { data, error } = await supa.storage.from('facturas').createSignedUrls(rutas, 600);
+  if(error || !data){ toast('❌ No se pudieron abrir las fotos','var(--red)'); return; }
+  visorPagoId = p.id;
+  visorFotos = rutas.map((ruta,i)=>({ ruta, url: data[i]?.signedUrl || null }));
+  const i = mostrarRuta ? rutas.indexOf(mostrarRuta) : 0;
+  visorIdx = i >= 0 ? i : 0;
+  document.getElementById('vis-ttl').textContent = p.nombre;
+  pintarVisor();
   showModal('modal-pago-ver-foto');
+}
+
+function pintarVisor(){
+  const actual = visorFotos[visorIdx];
+  const img = document.getElementById('pago-ver-foto-img');
+  if(actual?.url) img.src = actual.url; else img.removeAttribute('src');
+  img.alt = `Foto ${visorIdx+1} de ${visorFotos.length}`;
+  document.getElementById('vis-mini').innerHTML = visorFotos.length > 1
+    ? visorFotos.map((f,i)=>`<button type="button" class="${i===visorIdx?'on':''}" aria-label="Ver foto ${i+1}" aria-pressed="${i===visorIdx}" onclick="visorIdx=${i};pintarVisor()">${f.url?`<img src="${escAttr(f.url)}" alt=""/>`:''}</button>`).join('')
+    : '';
+  document.getElementById('vis-bajar').disabled = !actual?.url;
+}
+
+async function descargarFotoSoporte(){
+  const actual = visorFotos[visorIdx];
+  if(!actual) return;
+  const p = DB.pagos.find(x=>String(x.id)===String(visorPagoId));
+  const ext = (actual.ruta.split('.').pop() || 'jpg').toLowerCase();
+  const nombre = `${(p?.nombre || 'soporte').replace(/[^\p{L}\p{N} _-]/gu,'').trim() || 'soporte'}-${visorIdx+1}.${ext}`;
+  const { data, error } = await supa.storage.from('facturas').createSignedUrl(actual.ruta, 120, { download: nombre });
+  if(error || !data){ toast('❌ No se pudo descargar','var(--red)'); return; }
+  const a = document.createElement('a');
+  a.href = data.signedUrl; a.download = nombre; a.rel = 'noopener';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+async function borrarFotoSoporte(){
+  const actual = visorFotos[visorIdx];
+  const p = DB.pagos.find(x=>String(x.id)===String(visorPagoId));
+  if(!actual || !p) return;
+  if(!(await uiConfirm('¿Borrar esta foto del soporte? No se puede recuperar.', { titulo:'Borrar foto', okText:'Sí, borrar' }))) return;
+  const btn = document.getElementById('vis-borrar');
+  btn.disabled = true;
+  try {
+    // Primero se quita del pago y después el archivo: nunca queda un pago apuntando a nada.
+    const { data: fila, error: errLee } = await supa.from('payments').select('soportes, soporte_url').eq('id', p.id).eq('user_id', currentUser.id).single();
+    if(errLee) throw errLee;
+    const cambios = { soportes: (fila.soportes||[]).filter(r=>r!==actual.ruta) };
+    if(fila.soporte_url===actual.ruta) cambios.soporte_url = null;
+    const { error } = await supa.from('payments').update(cambios).eq('id', p.id).eq('user_id', currentUser.id);
+    if(error) throw error;
+    const { error: errFoto } = await supa.storage.from('facturas').remove([actual.ruta]);
+    if(errFoto) console.warn('[soporte] no se pudo borrar el archivo:', errFoto.message);
+    p.soportes = (p.soportes||[]).filter(r=>r!==actual.ruta);
+    visorFotos.splice(visorIdx, 1);
+    visorIdx = Math.max(0, Math.min(visorIdx, visorFotos.length-1));
+    renderPagos();
+    toast('🗑 Foto borrada','var(--t2)');
+    if(visorFotos.length) pintarVisor(); else hideModal('modal-pago-ver-foto');
+  } catch(e){
+    toast('❌ No se pudo borrar: '+(e.message||e),'var(--red)');
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 
@@ -2609,9 +2955,9 @@ async function eliminarPago(){
   if(!(await uiConfirm(`¿Eliminar el pago "${p.nombre}"?`))) return;
   const { error } = await supa.from('payments').delete().eq('id', p.id).eq('user_id', currentUser.id);
   if(error){ toast('Error: '+error.message,'var(--red)'); return; }
-  if(p.soporteUrl){
-    const { error: errFoto } = await supa.storage.from('facturas').remove([p.soporteUrl]);
-    if(errFoto) console.warn('[pagos] no se pudo borrar la factura:', errFoto.message);
+  if((p.soportes||[]).length){
+    const { error: errFoto } = await supa.storage.from('facturas').remove(p.soportes);
+    if(errFoto) console.warn('[pagos] no se pudieron borrar las fotos:', errFoto.message);
   }
   hideModal('modal-pago-detalle');
   toast('🗑 Pago eliminado','var(--t2)');

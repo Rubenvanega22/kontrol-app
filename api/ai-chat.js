@@ -4,6 +4,7 @@ const { leerListaDeImagen, leerFacturaDeImagen, interpretarFactura } = require('
 const { colombiaDateString, colombiaDateLongEs, colombiaTimeString, colombiaDateParts } = require('../lib/datetime');
 const { esTemprano, resolverAviso, fechaHoraColombia, momentoAviso, eventoADate } = require('../lib/avisos-evento');
 const { preguntaAntesDeGuardar, horasDelPedido, avisoDelPedido, fechasDelPedido } = require('../lib/evento-completo');
+const { MEDIOS, medioDelTexto } = require('../lib/medio-pago');
 
 const MEM0_API_KEY = process.env.MEM0_API_KEY;
 const MEM0_BASE = 'https://api.mem0.ai/v1';
@@ -179,7 +180,8 @@ module.exports = async function handler(req, res) {
     console.log('[ai-chat] markers [ACCION:] encontrados:', accionesIntencion);
     const acciones = await ejecutarAcciones(respuesta, contexto, user_id, {
       avisoDicho: avisoDelPedido(message, history),
-      fechaDicha: fechasDichas.length === 1 ? fechasDichas[0].fecha : null
+      fechaDicha: fechasDichas.length === 1 ? fechasDichas[0].fecha : null,
+      medioDicho: medioDelTexto(message)
     });
     console.log('[ai-chat] acciones realmente ejecutadas:', acciones.length, acciones.map(a => a.accion));
 
@@ -334,7 +336,10 @@ module.exports = async function handler(req, res) {
       { role: 'assistant', content: respuestaFinal }
     ]).catch(e => console.log('Mem0 guardar falló silenciosamente:', e.message));
 
-    return res.json({ ok: true, respuesta: respuestaFinal, acciones });
+    // WhatsApp pregunta el medio de un pago marcado sin él.
+    const sinMedio = acciones.find(a => a.accion === 'marcar_pago_pagado' && a.medio === 'sin decir');
+    return res.json({ ok: true, respuesta: respuestaFinal, acciones,
+      ...(sinMedio ? { pago_sin_medio: { id: sinMedio.id, nombre: sinMedio.nombre } } : {}) });
   } catch (error) {
     console.error('AI chat error:', error);
     return res.status(500).json({ error: error.message });
@@ -446,7 +451,8 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
 
 — Pagos
 [ACCION:pago|nombre|monto|YYYY-MM-DD]
-[ACCION:marcar_pago_pagado|ID]
+[ACCION:marcar_pago_pagado|ID|medio]
+  medio: efectivo, tarjeta o nequi si el usuario lo dijo. Si no lo dijo, déjalo vacío y no lo preguntes: el sistema pregunta.
 [ACCION:borrar_pago|ID]
 — Eventos y recordatorios
 [ACCION:evento|titulo|YYYY-MM-DD|HH:MM]
@@ -826,7 +832,7 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
 19. ⚠️ "YA HICE X". Si el usuario dice que ya hizo, terminó o resolvió algo ("ya hice lo del
     contador", "listo lo del banco"), emite [ACCION:marcar_recordatorio_hecho|contador] con
     las palabras clave, sin "lo del". El sistema responde con el resultado. Si es un pago que
-    aparece en "Pagos pendientes" ("ya pagué la luz"), usa [ACCION:marcar_pago_pagado|ID].
+    aparece en "Pagos pendientes" ("ya pagué la luz con tarjeta"), usa [ACCION:marcar_pago_pagado|ID|tarjeta].
 
 20. ⚠️ CONSULTAS: responde tú mismo con los datos de arriba, corto y sin [ACCION]. Usa PRÓXIMOS
     DÍAS para ubicar las fechas. Si no hay nada, dilo en una línea.
@@ -1054,7 +1060,7 @@ const ACCIONES_RETIRADAS = new Set([
 ]);
 
 // ═══ EJECUTAR ACCIONES — todo queda visible en la app ═══
-async function ejecutarAcciones(respuesta, contexto, userId, { avisoDicho = null, fechaDicha = null } = {}) {
+async function ejecutarAcciones(respuesta, contexto, userId, { avisoDicho = null, fechaDicha = null, medioDicho = null } = {}) {
   // "mañana" o "el viernes" los calcula el código. Queda en los registros qué escribió la IA.
   const fechaFinal = (tipo, delModelo) => {
     const propia = (delModelo || '').trim();
@@ -1245,8 +1251,16 @@ async function ejecutarAcciones(respuesta, contexto, userId, { avisoDicho = null
         if (!error) ejecutadas.push({ accion, detalle: parts[1] });
 
       } else if (accion === 'marcar_pago_pagado') {
-        const { error } = await supabase.from('payments').update({ status: 'pagado' }).eq('id', parts[1]).eq('user_id', userId);
-        if (!error) ejecutadas.push({ accion, id: parts[1] });
+        // El medio lo lee el código del mensaje; el de la IA solo si el código no lo encontró.
+        const delModelo = (parts[2] || '').trim().toLowerCase();
+        const medio = medioDicho || (MEDIOS.includes(delModelo) ? delModelo : null);
+        const { data: marcado, error } = await supabase.from('payments')
+          .update({ status: 'pagado', fecha_pago: colombiaDateString(), medio_pago: medio })
+          .eq('id', parts[1]).eq('user_id', userId).neq('status', 'pagado')
+          .select('id, nombre, monto');
+        if (error) ejecutadas.push({ accion, error: 'db' });
+        else if (!marcado?.length) ejecutadas.push({ accion, error: 'ya_estaba_pagado_o_no_existe' });
+        else ejecutadas.push({ accion, id: marcado[0].id, nombre: marcado[0].nombre, monto: Number(marcado[0].monto), medio: medio || 'sin decir' });
 
       } else if (accion === 'evento') {
         const titulo = (parts[1] || '').trim();

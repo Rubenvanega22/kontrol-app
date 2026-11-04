@@ -14,6 +14,7 @@
 
 const supabase = require('../lib/supabase');
 const { colombiaDateString } = require('../lib/datetime');
+const { avisosDeLimite, soltarAviso } = require('../lib/medio-pago');
 const {
   entraEnResumen, debeSalirAviso, debeSalirUnaHoraAntes, horaCorta,
   minutosFaltantes, tocaUnaHoraNormal, tocaQuinceNormal, textoFaltan
@@ -449,6 +450,28 @@ async function modoPagos() {
   return { alertas, hoy };
 }
 
+// ─── LÍMITES por medio de pago ──────────────────────────────────────
+// Cubre los pagos marcados en la app (WhatsApp avisa en la misma respuesta). Cada nivel
+// (80 % y 100 %) sale una vez al mes: lo garantiza pagos_limite_avisos.
+async function modoLimites() {
+  const { data: perfiles, error } = await supabase.from('profiles')
+    .select('id, telefono, limite_efectivo, limite_tarjeta, limite_nequi')
+    .not('telefono', 'is', null)
+    .or('limite_efectivo.not.is.null,limite_tarjeta.not.is.null,limite_nequi.not.is.null');
+  if (error) { console.error('[reminders-cron limites] query error:', error.message); return { error: error.message }; }
+  let alertas = 0;
+  for (const p of perfiles || []) {
+    for (const aviso of await avisosDeLimite(p.id, p)) {
+      const { error: insErr } = await supabase.from('whatsapp_alerts').insert({
+        tipo: 'limite_pago', mensaje: aviso.texto, telefono: p.telefono, enviado: false
+      });
+      if (insErr) { console.error('[reminders-cron limites] insert fail', insErr.message); await soltarAviso(p.id, aviso); continue; }
+      alertas++;
+    }
+  }
+  return { alertas };
+}
+
 // ─── Confirmar una renovación de WhatsApp ───────────────────────────
 // Twilio atiende el join sin avisar, así que tocar "Renovar" no prueba que se haya enviado.
 // Un solo mensaje lo confirma: si se entrega, /api/twilio-status quita el aviso rojo y
@@ -507,12 +530,14 @@ module.exports = async function handler(req, res) {
       if (force === 'pagos')         results.pagos         = await modoPagos();
       if (force === 'recordatorios') results.recordatorios = await modoRecordatorios();
       if (force === 'renovaciones')  results.renovaciones  = await modoRenovaciones();
+      if (force === 'limites')       results.limites       = await modoLimites();
     } else {
       // Rolling cada tick (cron-job.org cada 15 min): 15-min + 1h
       results.q15 = await modoQuinceMinAntes();
       results.h1  = await modoUnaHoraAntes();
       results.propios = await modoAvisosPropios();
       results.renovaciones = await modoRenovaciones();
+      results.limites = await modoLimites();
       // Resumen de agenda: una vez al día a las 8am Col.
       if (utcHour === DAILY_UTC_HOUR) {
         results.diario = await modoResumenDiario();
