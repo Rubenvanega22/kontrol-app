@@ -18,7 +18,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link rel="preconnect" href="https://unpkg.com" crossorigin/>
 <link rel="preconnect" href="https://nroujbmlfqbwopchijmj.supabase.co" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"/>
 <!-- Supabase UMD se carga al final del body (línea ~3780) en vez de aquí. Antes este
      <script src=...> bloqueaba el parser de HTML hasta descargar/parsear ~50 KiB gzip,
      retrasando el primer pintado del auth-screen 1-3s en data móvil. Ahora el body
@@ -525,6 +525,12 @@ svg.hj-campana{position:absolute;right:2px;top:2px;width:14px;height:14px;color:
 .hj-clave input:focus{box-shadow:inset 0 0 0 2.5px var(--blue);background:rgba(56,123,255,0.22);}
 .hj-copiar{flex-shrink:0;width:28px;height:51px;display:flex;align-items:center;justify-content:center;padding:0;border:none;background:transparent;color:var(--t2);cursor:pointer;}
 .hj-copiar svg.i{width:17px;height:17px;}
+/* Casilla de una clave ya guardada: tocarla abre la ventana. */
+.hj-clave-ver{flex:1;min-width:0;height:51px;padding:0 2px 0 6px;border:none;background:transparent;color:var(--t1);font:600 14px 'DM Sans',sans-serif;text-align:left;white-space:nowrap;overflow:hidden;cursor:pointer;}
+/* Ventana de la clave. Sin ligaduras: "->" o "!=" deben verse tal cual. */
+.modal.cv-modal{display:flex;flex-direction:column;max-height:94vh;max-height:calc(100dvh - var(--k-arriba) - 8px);overflow:hidden;}
+.modal-hdr.cv-hdr{flex-shrink:0;justify-content:flex-end;margin-bottom:10px;}
+.cv-clave{flex:1 1 auto;min-height:0;overflow-x:hidden;overflow-y:auto;font:500 24px/1.35 'JetBrains Mono',ui-monospace,Menlo,Consolas,'Roboto Mono',monospace;font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0;color:var(--t1);white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-all;-webkit-user-select:text;user-select:text;}
 /* ── Listado ── */
 .lt-wrap{flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;padding:0 14px 16px;display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-content:start;-webkit-overflow-scrolling:touch;}
 .lt-card{padding:8px 14px 14px;background:var(--card);border:1px solid var(--bd);border-radius:16px;box-shadow:var(--sombra);min-width:0;}
@@ -1037,7 +1043,7 @@ select.form-inp option{background:var(--card2);}
   input.hj-valor{height:55px;padding-left:12px;padding-right:12px;font-size:16px;}
   input.hj-num{height:55px;}
   .hj-fecha-txt{padding:0 12px;font-size:16px;}
-  .hj-btn-menu,.hj-sino,.hj-clave input,.hj-copiar{height:55px;}
+  .hj-btn-menu,.hj-sino,.hj-clave input,.hj-clave-ver,.hj-copiar{height:55px;}
   .hj-menu-in{display:grid;grid-template-columns:1fr 1fr;gap:6px 26px;padding:16px 20px;}
   .hj-acc{grid-column:1 / -1;max-width:440px;}
   .hj-nueva{padding-left:0;padding-right:0;max-width:700px;}
@@ -1627,6 +1633,14 @@ select.form-inp option{background:var(--card2);}
     <button type="button" class="pf-f" onclick="hideModal('modal-perfil');goTab('config')"><svg class="i " aria-hidden="true"><use href="#i-gear"/></svg>Configuración</button>
     <button type="button" class="pf-f" id="perfil-admin" style="display:none" onclick="hideModal('modal-perfil');goTab('admin')"><svg class="i " aria-hidden="true"><use href="#i-gear"/></svg>Admin</button>
     <button type="button" class="pf-f rojo" onclick="pedirCerrarSesion()"><svg class="i " aria-hidden="true"><use href="#i-sal"/></svg>Cerrar sesión</button>
+  </div>
+</div>
+
+<!-- Ventana para leer una clave de la Caja. Queda vacía mientras está cerrada. -->
+<div class="modal-overlay hidden" id="caja-ver">
+  <div class="modal cv-modal" role="dialog" aria-modal="true" aria-label="Clave">
+    <div class="modal-hdr cv-hdr"><button type="button" class="modal-close" id="cv-x" onclick="cajaVerCerrar();cajaActividad()" aria-label="Cerrar">✕</button></div>
+    <div class="cv-clave" id="cv-clave" translate="no"></div>
   </div>
 </div>
 
@@ -4493,11 +4507,27 @@ function hjIniciar(){
   });
   // La clave se ve mientras se toca; al salir de la casilla queda tapada de nuevo.
   $hj('hj-caja').addEventListener('focusin', e=>{ if(e.target.dataset.clave) e.target.type = 'text'; });
-  $hj('hj-caja').addEventListener('focusout', e=>{ if(e.target.dataset.clave) e.target.type = 'password'; });
+  $hj('hj-caja').addEventListener('focusout', e=>{
+    if(!e.target.dataset.clave) return;
+    const inp = e.target;
+    inp.type = 'password';
+    // Ya escrita, la casilla vuelve a ser la que abre la ventana. Después del evento: un
+    // repintado de la tabla también dispara este blur y el input ya no estaría.
+    setTimeout(()=>{
+      if(!inp.isConnected) return;
+      const f = cajaFilaPor(inp);
+      if(cajaS.cambiaClave===f?.k) cajaS.cambiaClave = null;
+      if(f?.clave) inp.outerHTML = cajaClaveHtml(f);
+    }, 0);
+  });
   window.addEventListener('resize', ()=>{ const w = $hj('hj-wrap'); w.style.setProperty('--hj-ancho-hoja', w.clientWidth+'px'); });
   document.addEventListener('visibilitychange', ()=>{
-    if(document.visibilityState==='hidden'){ hjFlushTodo(); if(cajaS.llave) cajaCerrar(); }
+    if(document.visibilityState==='hidden'){ cajaVerCerrar(); hjFlushTodo(); if(cajaS.llave) cajaCerrar(); }
   });
+  // Por si el sistema descarta la página sin avisar antes que dejó de verse.
+  window.addEventListener('pagehide', ()=>{ cajaVerCerrar(); if(cajaS.llave) cajaCerrar(); });
+  // El foco no sale de la ventana abierta.
+  document.addEventListener('keydown', e=>{ if(cajaVer.abierta && e.key==='Tab'){ e.preventDefault(); $hj('cv-x').focus(); } });
 }
 function hjVer(p){
   hjSoltarFoco();
@@ -4699,7 +4729,7 @@ async function hjNuevaClick(e){
 // descifrado viven solo en cajaS: nunca en DB, localStorage, logs ni mensajes a la IA.
 // ════════════════════════════════════════
 const CAJA_INACTIVA_MS = 5 * 60 * 1000;
-const cajaS = { modo:null, llave:null, filas:[], pin:'', pinUno:'', error:'', ocupado:false, menu:null, confirma:false, timer:null, sec:0 };
+const cajaS = { modo:null, llave:null, filas:[], pin:'', pinUno:'', error:'', ocupado:false, menu:null, confirma:false, cambiaClave:null, timer:null, sec:0 };
 const cajaB64 = { aBytes:s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0)), aTexto:b=>btoa(String.fromCharCode(...new Uint8Array(b))) };
 
 async function cajaApi(accion, datos){
@@ -4765,16 +4795,21 @@ function cajaPintar(){
     <div class="hj-pin-error" id="caja-error">${escAttr(cajaS.error)}</div>
     ${m==='pin'?'<button class="hj-link" type="button" data-c-a="olvido">¿Olvidaste tu PIN?</button>':''}</div>`;
 }
+function cajaClaveHtml(f){
+  // Siempre los mismos puntos: la casilla no deja ver cuánto mide la clave.
+  if(f.clave && cajaS.cambiaClave!==f.k) return `<button type="button" class="hj-clave-ver" data-c-a="ver" aria-label="Ver la clave">••••••</button>`;
+  return `<input type="password" autocomplete="new-password" spellcheck="false" autocapitalize="off" data-clave="1" data-cnav="1" data-campo-c="clave" enterkeyhint="next" aria-label="Clave" placeholder="Clave" value="${escAttr(f.clave||'')}"/>`;
+}
 function cajaFilaHtml(f){
   const celda = (campo,et,clase='hj-celda')=>`<td><div class="${clase}" contenteditable="true" role="textbox" spellcheck="false" autocorrect="off" autocapitalize="off" enterkeyhint="next" data-cnav="1" data-campo-c="${campo}" aria-label="${et}" data-vacio="${et}">${escAttr(f[campo]||'')}</div></td>`;
   const fila = `<tr data-f="${f.k}">${celda('nombre','Nombre')}${celda('usuario','Usuario')}
-    <td><div class="hj-clave"><input type="password" autocomplete="new-password" spellcheck="false" autocapitalize="off" data-clave="1" data-cnav="1" data-campo-c="clave" enterkeyhint="next" aria-label="Clave" placeholder="Clave" value="${escAttr(f.clave||'')}"/><button type="button" class="hj-copiar" data-c-a="copiar" aria-label="Copiar clave">${icono('copia')}</button></div></td>
+    <td><div class="hj-clave">${cajaClaveHtml(f)}<button type="button" class="hj-copiar" data-c-a="copiar" aria-label="Copiar clave">${icono('copia')}</button></div></td>
     ${celda('nota','Nota','hj-celda hj-nota')}
     <td><button type="button" class="hj-btn-menu" aria-label="Menú de la fila" data-c-a="menu">${icono('men')}</button></td></tr>`;
   if(cajaS.menu!==f.k) return fila;
   const acc = cajaS.confirma
     ? '<button type="button" class="hj-m-btn rojo" data-c-a="borrar-si">Sí, borrar</button><button type="button" class="hj-m-btn" data-c-a="borrar-no">No</button>'
-    : '<button type="button" class="hj-m-btn rojo" data-c-a="borrar">Borrar fila</button>';
+    : (f.clave ? '<button type="button" class="hj-m-btn" data-c-a="cambiar">Cambiar clave</button>' : '') + '<button type="button" class="hj-m-btn rojo" data-c-a="borrar">Borrar fila</button>';
   return fila + `<tr class="hj-menu-tr" data-f="${f.k}"><td class="hj-menu-td" colspan="5"><div class="hj-menu-in"><div class="hj-acc" style="margin-top:0">${acc}</div></div></td></tr>`;
 }
 function cajaFilasHtml(){
@@ -4801,7 +4836,8 @@ function cajaPintarAbierta(){
 function cajaRepintarFilas(){ const t = $hj('caja-filas'); if(t) t.innerHTML = cajaFilasHtml(); }
 function cajaActividad(){
   clearTimeout(cajaS.timer);
-  if(cajaS.llave) cajaS.timer = setTimeout(cajaCerrar, CAJA_INACTIVA_MS);
+  // Con la ventana de la clave abierta no corre: solo la cierran la X o salir de la app.
+  if(cajaS.llave && !cajaVer.abierta) cajaS.timer = setTimeout(cajaCerrar, CAJA_INACTIVA_MS);
 }
 async function cajaAbrirCon(llaveB64){
   const bytes = cajaB64.aBytes(llaveB64);
@@ -4940,11 +4976,13 @@ async function cajaBorrarFila(f){
 }
 async function cajaCerrar(){
   clearTimeout(cajaS.timer);
+  cajaVerCerrar();
   const filas = cajaS.filas;
   await Promise.all(filas.filter(f=>f.sucia||f.enCurso).map(cajaGuardar));
+  cajaVerCerrar();   // por si la abrieron mientras terminaba de guardar
   // Si sigue sucia es que no se pudo guardar: se avisó antes y se descarta con la llave.
   cajaS.llave = null; cajaS.filas = []; cajaS.pin = ''; cajaS.pinUno = ''; cajaS.error = '';
-  cajaS.menu = null; cajaS.confirma = false; cajaS.modo = 'pin';
+  cajaS.menu = null; cajaS.confirma = false; cajaS.cambiaClave = null; cajaS.modo = 'pin';
   $hj('hj-caja').innerHTML = '';
   if(hj.actual==='caja') cajaPintar();
 }
@@ -4968,6 +5006,14 @@ function cajaClick(e){
   if(a==='cerrar') return cajaCerrar();
   if(a==='fila') return cajaNuevaFila();
   const f = cajaFilaPor(b); if(!f) return;
+  if(a==='ver') return cajaVerAbrir(f, b);
+  if(a==='cambiar'){
+    cajaS.menu = null; cajaS.confirma = false; cajaS.cambiaClave = f.k;
+    cajaRepintarFilas();
+    const inp = $hj('caja-filas').querySelector(`tr[data-f="${f.k}"] [data-clave]`);
+    if(inp) inp.focus();
+    return;
+  }
   if(a==='menu'){ cajaS.menu = cajaS.menu===f.k ? null : f.k; cajaS.confirma = false; return cajaRepintarFilas(); }
   if(a==='borrar'){ cajaS.confirma = true; return cajaRepintarFilas(); }
   if(a==='borrar-no'){ cajaS.confirma = false; return cajaRepintarFilas(); }
@@ -4978,6 +5024,27 @@ function cajaClick(e){
     if(navigator.clipboard?.writeText) navigator.clipboard.writeText(f.clave).then(()=>toast('✅ Clave copiada','var(--green)'), no);
     else no();
   }
+}
+
+// ─── Ventana para leer una clave ───
+// Solo la cierran la X o salir de la app. Al cerrarse borra lo que mostró.
+const cajaVer = { abierta:false, origen:null };
+function cajaVerAbrir(f, origen){
+  if(document.activeElement?.blur) document.activeElement.blur();   // baja el teclado
+  clearTimeout(cajaS.timer);
+  $hj('cv-clave').textContent = f.clave;
+  cajaVer.abierta = true; cajaVer.origen = origen;
+  $hj('caja-ver').classList.remove('hidden');
+  $hj('cv-clave').scrollTop = 0;
+  $hj('cv-x').focus();
+}
+function cajaVerCerrar(){
+  if(!cajaVer.abierta) return;
+  cajaVer.abierta = false;
+  $hj('caja-ver').classList.add('hidden');
+  $hj('cv-clave').textContent = '';
+  if(cajaVer.origen?.isConnected) cajaVer.origen.focus();
+  cajaVer.origen = null;
 }
 
 // DEPURAR: borra los ítems marcados (done) de un listado y persiste el resto.
