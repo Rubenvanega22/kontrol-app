@@ -15,6 +15,7 @@
 const supabase = require('../lib/supabase');
 const { colombiaDateString } = require('../lib/datetime');
 const { avisosDeLimite, soltarAviso } = require('../lib/medio-pago');
+const { avisosDeTope, soltarAvisoTope } = require('../lib/ingresos');
 const {
   entraEnResumen, debeSalirAviso, debeSalirUnaHoraAntes, horaCorta,
   minutosFaltantes, tocaUnaHoraNormal, tocaQuinceNormal, textoFaltan
@@ -472,6 +473,27 @@ async function modoLimites() {
   return { alertas };
 }
 
+// ─── TOPES de ingresos por medio ────────────────────────────────────
+// Cubre los ingresos registrados en la app (WhatsApp avisa en la misma respuesta).
+async function modoTopes() {
+  const { data: perfiles, error } = await supabase.from('profiles')
+    .select('id, telefono, tope_banco, tope_nequi, tope_efectivo')
+    .not('telefono', 'is', null)
+    .or('tope_banco.not.is.null,tope_nequi.not.is.null,tope_efectivo.not.is.null');
+  if (error) { console.error('[reminders-cron topes] query error:', error.message); return { error: error.message }; }
+  let alertas = 0;
+  for (const p of perfiles || []) {
+    for (const aviso of await avisosDeTope(p.id, p)) {
+      const { error: insErr } = await supabase.from('whatsapp_alerts').insert({
+        tipo: 'tope_ingreso', mensaje: aviso.texto, telefono: p.telefono, enviado: false
+      });
+      if (insErr) { console.error('[reminders-cron topes] insert fail', insErr.message); await soltarAvisoTope(p.id, aviso); continue; }
+      alertas++;
+    }
+  }
+  return { alertas };
+}
+
 // ─── Confirmar una renovación de WhatsApp ───────────────────────────
 // Twilio atiende el join sin avisar, así que tocar "Renovar" no prueba que se haya enviado.
 // Un solo mensaje lo confirma: si se entrega, /api/twilio-status quita el aviso rojo y
@@ -531,6 +553,7 @@ module.exports = async function handler(req, res) {
       if (force === 'recordatorios') results.recordatorios = await modoRecordatorios();
       if (force === 'renovaciones')  results.renovaciones  = await modoRenovaciones();
       if (force === 'limites')       results.limites       = await modoLimites();
+      if (force === 'topes')         results.topes         = await modoTopes();
     } else {
       // Rolling cada tick (cron-job.org cada 15 min): 15-min + 1h
       results.q15 = await modoQuinceMinAntes();
@@ -538,6 +561,7 @@ module.exports = async function handler(req, res) {
       results.propios = await modoAvisosPropios();
       results.renovaciones = await modoRenovaciones();
       results.limites = await modoLimites();
+      results.topes = await modoTopes();
       // Resumen de agenda: una vez al día a las 8am Col.
       if (utcHour === DAILY_UTC_HOUR) {
         results.diario = await modoResumenDiario();

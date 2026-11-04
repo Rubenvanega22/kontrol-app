@@ -326,7 +326,44 @@ button.pa-sec{cursor:pointer;}
 .medios-tabla>div{display:flex;justify-content:space-between;gap:10px;padding:12px 2px;border-bottom:1px solid var(--bd);font-size:15px;color:var(--t2);}
 .medios-tabla>div b{color:#fff;font-weight:800;white-space:nowrap;}
 .medios-tabla>div.tot{border-bottom:none;color:#fff;font-weight:700;}
-#modal-confirm{z-index:110;}
+/* ── Caja fuerte: Ingresos y Claves ── */
+.cj-vista{display:none;flex:1;min-height:0;flex-direction:column;}
+.cj-vista.on{display:flex;}
+.cj-botones{margin-bottom:12px;flex-wrap:nowrap;}
+.cj-botones>*{flex:1 1 0;min-width:0;padding:0 8px;}
+.cj-botones>.b-pri{flex-grow:1.3;}
+.cj-sub{display:flex;gap:6px;padding:7px 14px 6px;flex-shrink:0;border-top:1px solid var(--bd);background:var(--bg);}
+.cj-tab{flex:1 1 0;min-width:0;min-height:46px;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:12px;border:1px solid var(--lin2);background:var(--card3);color:var(--t2);font:700 15px 'DM Sans',sans-serif;cursor:pointer;}
+.cj-tab svg.i{width:19px;height:19px;}
+.cj-tab.on{background:rgba(34,201,147,0.16);border-color:var(--green);color:#7CF0C8;}
+#cj-tab-claves.on{background:rgba(139,92,246,0.18);border-color:var(--mor);color:#D7C8FF;}
+.ing-t{display:block;width:100%;text-align:left;padding:13px 15px 11px;border-radius:16px;border:1px solid rgba(34,201,147,0.5);background:linear-gradient(150deg,#0F4C3E,#0C2C2C);box-shadow:var(--sombra);color:#fff;font-family:inherit;cursor:pointer;}
+.ing-t:active{border-color:rgba(34,201,147,0.9);}
+.ing-hd{display:flex;align-items:center;gap:7px;font-size:14.5px;font-weight:600;color:#DCE5F4;}
+.ing-hd svg.i{color:var(--green);width:24px;height:24px;}
+.ing-v{font-size:31px;font-weight:800;line-height:1.15;margin-top:2px;overflow-wrap:anywhere;}
+.ing-t .pa-med{margin-top:8px;}
+.ing-t .pa-med-e{font-size:11.5px;}
+.ing-t .pa-med-v{font-size:13.5px;}
+.ing-card{display:flex;align-items:center;gap:10px;padding:11px 13px;margin-bottom:9px;background:linear-gradient(150deg,#1A2F58,#142443);border:1px solid rgba(56,123,255,0.28);border-radius:16px;box-shadow:var(--sombra);cursor:pointer;}
+.ing-card:active{border-color:rgba(56,123,255,0.7);}
+.ing-i{flex:1;min-width:0;}
+.ing-n{font-size:16px;font-weight:700;color:#fff;overflow-wrap:anywhere;}
+.ing-d{font-size:14px;color:var(--t2);overflow-wrap:anywhere;}
+.ing-r{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+.ing-mas{font-size:16.5px;font-weight:800;color:#5CE3B3;white-space:nowrap;}
+.ing-monto{display:flex;align-items:baseline;gap:4px;padding:10px 12px;border-radius:14px;background:var(--card2);border:2px solid var(--green);}
+.ing-monto span{font-size:22px;font-weight:700;color:var(--t2);}
+.ing-monto input{flex:1;min-width:0;width:100%;border:none;outline:none;background:transparent;color:#fff;font:800 32px 'DM Sans',sans-serif;}
+.ing-monto input::placeholder{color:var(--t3);}
+.ing-fila2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;}
+.ing-leido{font-size:14px;line-height:1.5;color:var(--t2);padding:10px 12px;margin-bottom:12px;border-radius:12px;background:rgba(34,201,147,0.10);border:1px solid rgba(34,201,147,0.35);}
+.ing-leido b{color:#fff;}
+.ing-prev{display:block;max-width:100%;max-height:140px;margin:0 auto 10px;border-radius:10px;}
+.cand-b{width:100%;min-height:52px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 14px;border:1px solid var(--lin2);border-radius:13px;background:var(--card3);color:#fff;font:600 15px 'DM Sans',sans-serif;text-align:left;cursor:pointer;}
+.cand-b b{white-space:nowrap;}
+.cand-b span{min-width:0;overflow-wrap:anywhere;}
+.nota-comp{font-size:14.5px;line-height:1.45;color:var(--t2);margin:0 0 10px;}
 /* ── Buscador común ── */
 .rt-tools{display:flex;gap:8px;padding:0 14px 10px;flex-shrink:0;}
 .rt-search,.hj-buscar{flex:1;min-width:0;display:flex;align-items:center;gap:8px;height:48px;padding:0 13px;background:var(--card2);border:1px solid var(--lin2);border-radius:13px;color:var(--t2);}
@@ -946,7 +983,7 @@ select.form-inp option{background:var(--card2);}
   /* Contenido centrado con un ancho cómodo */
   .scr{padding:18px max(26px,calc((100% - 1060px)/2)) 0;}
   .scroll{padding:0 2px 26px;}
-  #scr-recordatorios,#scr-ia{padding-bottom:12px;}
+  #scr-caja,#scr-ia{padding-bottom:12px;}
   .scr>.k-tit,.rt-tools,.hj-tools,.lt-wrap{padding-left:0;padding-right:0;}
   .hj-panel,.hj-aviso-caja{margin-left:0;margin-right:0;}
   .k-tit-ic{width:50px;height:50px;}
@@ -1047,6 +1084,7 @@ select.form-inp option{background:var(--card2);}
 <symbol id="i-bor" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14M10 11v6M14 11v6"/></symbol>
 <symbol id="i-cam" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/></symbol>
 <symbol id="i-recibo" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></symbol>
+<symbol id="i-ent" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M12 7v10M8 13l4 4 4-4"/></symbol>
 <symbol id="i-bajar" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
 <symbol id="i-pun" viewBox="0 0 24 24"><path d="M12 5h.01M12 12h.01M12 19h.01"/></symbol>
 <symbol id="i-men" viewBox="0 0 24 24"><path d="M4 6.5h16M4 12h16M4 17.5h16"/></symbol>
@@ -1090,7 +1128,7 @@ select.form-inp option{background:var(--card2);}
   <section class="lnd-hero lnd-wrap">
     <div class="lnd-eyebrow"><span class="lnd-dot"></span>Disponible en WhatsApp</div>
     <h1 class="lnd-h1">Tu asistente<br/><span class="lnd-grad">personal</span><br/>por WhatsApp</h1>
-    <p class="lnd-lead">Organiza tu agenda, tus listas, tus pagos y tus recordatorios. Todo desde un chat.</p>
+    <p class="lnd-lead">Organiza tu agenda, tus listas, tus pagos y lo que te entra. Todo desde un chat.</p>
     <button type="button" class="lnd-btn" onclick="enterApp()">Entrar a la app →</button>
   </section>
 
@@ -1115,9 +1153,9 @@ select.form-inp option{background:var(--card2);}
         <div class="lnd-feat-txt">Mercado, tareas o lo que sea: dictadas, escritas o desde una foto.</div>
       </div>
       <div class="lnd-feat m-mo">
-        <div class="lnd-feat-ic"><svg class="i " aria-hidden="true"><use href="#i-bell"/></svg></div>
-        <div class="lnd-feat-ttl">Recordatorios</div>
-        <div class="lnd-feat-txt">Guarda lo que no quieres olvidar y elige cuándo te lo recuerda.</div>
+        <div class="lnd-feat-ic"><svg class="i " aria-hidden="true"><use href="#i-cand"/></svg></div>
+        <div class="lnd-feat-ttl">Caja fuerte</div>
+        <div class="lnd-feat-txt">Lo que te entra, con topes por medio, y tus claves guardadas con PIN.</div>
       </div>
     </div>
   </section>
@@ -1241,7 +1279,7 @@ select.form-inp option{background:var(--card2);}
             <button type="button" class="mod m-az" onclick="goTab('agenda')"><svg class="i " aria-hidden="true"><use href="#i-cal"/></svg><b>Agenda</b><span>Organiza tu día</span></button>
             <button type="button" class="mod m-ve" onclick="goTab('listado')"><svg class="i " aria-hidden="true"><use href="#i-list"/></svg><b>Listado</b><span>Tus listas</span></button>
             <button type="button" class="mod m-am" onclick="goTab('pagos')"><svg class="i " aria-hidden="true"><use href="#i-wal"/></svg><b>Pagos</b><span>Tus pagos del mes</span></button>
-            <button type="button" class="mod m-mo" onclick="goTab('recordatorios')"><svg class="i " aria-hidden="true"><use href="#i-bell"/></svg><b>Recordatorios</b><span>No olvides nada</span></button>
+            <button type="button" class="mod m-mo" onclick="goTab('caja')"><svg class="i " aria-hidden="true"><use href="#i-cand"/></svg><b>Caja fuerte</b><span>Ingresos y claves</span></button>
           </div>
           <div class="ini-col">
             <div class="tar hoy">
@@ -1305,10 +1343,28 @@ select.form-inp option{background:var(--card2);}
       <div class="lt-wrap" id="listado-list"></div>
     </div>
 
-    <!-- ══ RECORDATORIOS Y HOJAS ══ -->
-    <div class="scr" id="scr-recordatorios">
-      <div class="k-tit"><div class="k-tit-i"><div class="k-tit-ic" style="color:#A78BFA"><svg class="i " aria-hidden="true"><use href="#i-bell"/></svg></div><div><h1>Recordatorios</h1><span class="hj-estado ok" id="hj-estado" role="status"><svg class="i " aria-hidden="true"><use href="#i-ok"/></svg>Guardado</span></div></div></div>
-      <div class="hj-vista on" id="hj-hoja">
+    <!-- ══ CAJA FUERTE: Ingresos y Claves ══ -->
+    <div class="scr" id="scr-caja">
+      <div class="k-tit"><div class="k-tit-i"><div class="k-tit-ic" style="color:#A78BFA"><svg class="i " aria-hidden="true"><use href="#i-cand"/></svg></div><div><h1>Caja fuerte</h1><p>Lo que te entra y tus claves</p></div></div></div>
+      <div class="cj-vista on" id="cj-ingresos">
+        <div class="scroll">
+          <div class="k-acc cj-botones">
+            <button type="button" class="b-pri" onclick="abrirNuevoIngreso()"><svg class="i " aria-hidden="true"><use href="#i-mas"/></svg>Ingreso</button>
+            <label class="b-sec lt-foto" id="ing-foto-btn" for="ing-foto-input" role="button" tabindex="0" onclick="marcarEligiendoFoto()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}"><svg class="i " aria-hidden="true"><use href="#i-cam"/></svg><span id="ing-foto-txt">Foto</span></label>
+            <input type="file" id="ing-foto-input" class="hj-sr" accept="image/*" tabindex="-1" aria-label="Elegir la foto del comprobante" onchange="onComprobanteFoto(event)" oncancel="soltarEligiendoFoto()"/>
+            <button type="button" class="b-sec" onclick="abrirTopes()"><svg class="i " aria-hidden="true"><use href="#i-sum"/></svg>Topes</button>
+          </div>
+          <div id="ing-resumen"></div>
+          <div id="ing-list"></div>
+        </div>
+      </div>
+      <!-- Claves: la Caja fuerte de siempre, con PIN -->
+      <div class="hj-vista" id="hj-caja"></div>
+      <!-- La hoja de Recordatorios ya no se muestra. Su maquinaria sigue cargada, oculta, para
+           no tocar el guardado de la Caja que comparte con ella. -->
+      <div hidden>
+      <span class="hj-estado ok" id="hj-estado" role="status"></span>
+      <div class="hj-vista" id="hj-hoja">
         <div class="hj-tools">
           <label class="hj-buscar"><svg class="i " aria-hidden="true"><use href="#i-bus"/></svg><input id="hj-buscar" type="text" placeholder="Buscar…" aria-label="Buscar en la hoja"/></label>
           <button class="hj-btn-fila" id="hj-btn-fila" type="button">+ Fila</button>
@@ -1323,9 +1379,13 @@ select.form-inp option{background:var(--card2);}
           </table>
         </div>
       </div>
-      <div class="hj-vista" id="hj-caja"></div>
       <div class="hj-vista" id="hj-nueva"></div>
       <div class="hj-tabs" id="hj-tabs"></div>
+      </div>
+      <div class="cj-sub" role="tablist" aria-label="Secciones de la Caja">
+        <button type="button" class="cj-tab on" id="cj-tab-ingresos" role="tab" aria-selected="true" onclick="verSubCaja('ingresos')"><svg class="i " aria-hidden="true"><use href="#i-ent"/></svg>Ingresos</button>
+        <button type="button" class="cj-tab" id="cj-tab-claves" role="tab" aria-selected="false" onclick="verSubCaja('claves')"><svg class="i " aria-hidden="true"><use href="#i-llave"/></svg>Claves</button>
+      </div>
     </div>
 
     <!-- ══ IA CHAT ══ -->
@@ -1432,7 +1492,7 @@ select.form-inp option{background:var(--card2);}
         <div class="config-section">
           <div class="config-section-ttl">Notificaciones</div>
           <div class="config-row">
-            <div class="config-row-info"><div class="config-row-lbl">Alertas de pagos</div><div class="config-row-sub">Próximos, vencidos, recordatorios</div></div>
+            <div class="config-row-info"><div class="config-row-lbl">Alertas de pagos</div><div class="config-row-sub">Próximos y vencidos</div></div>
             <div class="toggle on" id="toggle-notif" onclick="toggleConfig('toggle-notif','notif')"><div class="toggle-thumb"></div></div>
           </div>
         </div>
@@ -1530,7 +1590,7 @@ select.form-inp option{background:var(--card2);}
     <button type="button" class="ntab" id="tab-agenda" data-n="Agenda" aria-label="Agenda" onclick="goTab('agenda')"><svg class="i " aria-hidden="true"><use href="#i-cal"/></svg><span class="n n-larga">Agenda</span><span class="n n-corta">Agenda</span></button>
     <button type="button" class="ntab" id="tab-listado" data-n="Listado" aria-label="Listado" onclick="goTab('listado')"><svg class="i " aria-hidden="true"><use href="#i-list"/></svg><span class="n n-larga">Listado</span><span class="n n-corta">Listado</span></button>
     <button type="button" class="ntab" id="tab-pagos" data-n="Pagos" aria-label="Pagos" onclick="goTab('pagos')"><svg class="i " aria-hidden="true"><use href="#i-wal"/></svg><span class="n n-larga">Pagos</span><span class="n n-corta">Pagos</span></button>
-    <button type="button" class="ntab" id="tab-recordatorios" data-n="Recordatorios" aria-label="Recordatorios" onclick="goTab('recordatorios')"><svg class="i " aria-hidden="true"><use href="#i-bell"/></svg><span class="n n-larga">Recordatorios</span><span class="n n-corta">Record.</span></button>
+    <button type="button" class="ntab" id="tab-caja" data-n="Caja fuerte" aria-label="Caja fuerte" onclick="goTab('caja')"><svg class="i " aria-hidden="true"><use href="#i-cand"/></svg><span class="n n-larga">Caja fuerte</span><span class="n n-corta">Caja</span></button>
     <div class="lat-sp"></div>
     <button type="button" class="ntab solo-comp" id="tab-admin" style="display:none" data-n="Admin" aria-label="Admin" onclick="goTab('admin')"><svg class="i " aria-hidden="true"><use href="#i-gear"/></svg><span class="n n-larga">Admin</span><span class="n n-corta">Admin</span></button>
     <button type="button" class="ntab solo-comp" id="tab-config" data-n="Configuración" aria-label="Configuración" onclick="goTab('config')"><svg class="i " aria-hidden="true"><use href="#i-gear"/></svg><span class="n n-larga">Configuración</span><span class="n n-corta">Config.</span></button>
@@ -1545,7 +1605,7 @@ select.form-inp option{background:var(--card2);}
 <div class="rec-led" id="rec-led" aria-hidden="true"></div>
 
 
-<!-- Campana: pagos y recordatorios de hoy o vencidos -->
+<!-- Campana: pagos de hoy o vencidos -->
 <div class="modal-overlay hidden" id="modal-avisos" onclick="closeModalOutside(event,'modal-avisos')">
   <div class="modal">
     <div class="modal-hdr">
@@ -1701,7 +1761,7 @@ select.form-inp option{background:var(--card2);}
     <div class="vis-foto"><img id="pago-ver-foto-img" alt="Foto del soporte"/></div>
     <div class="vis-mini" id="vis-mini"></div>
     <div class="vis-acc">
-      <label for="pago-camara-file" role="button" tabindex="0" onclick="prepararFotoSoporte(visorPagoId)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}"><svg class="i" aria-hidden="true"><use href="#i-cam"/></svg>Otra foto</label>
+      <label for="pago-camara-file" role="button" tabindex="0" onclick="prepararFotoSoporte(visorPagoId, visorTabla)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}"><svg class="i" aria-hidden="true"><use href="#i-cam"/></svg>Otra foto</label>
       <button type="button" id="vis-bajar" onclick="descargarFotoSoporte()"><svg class="i" aria-hidden="true"><use href="#i-bajar"/></svg>Descargar</button>
       <button type="button" id="vis-borrar" class="peligro" onclick="borrarFotoSoporte()"><svg class="i" aria-hidden="true"><use href="#i-bor"/></svg>Borrar</button>
     </div>
@@ -1741,6 +1801,93 @@ select.form-inp option{background:var(--card2);}
     </div>
     <button class="btn-primary" id="pago-lim-guardar" onclick="guardarLimites()">Guardar límites</button>
     <button class="btn-secondary" onclick="hideModal('modal-pago-limites')">Cancelar</button>
+  </div>
+</div>
+
+<!-- Nuevo o editar ingreso. Dos toques: el valor y Guardar; lo demás es opcional. -->
+<div class="modal-overlay hidden" id="modal-ingreso" onclick="closeModalOutside(event,'modal-ingreso')">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-ttl" id="ing-ttl">Nuevo ingreso</span>
+      <button class="modal-close" onclick="hideModal('modal-ingreso')">✕</button>
+    </div>
+    <div id="ing-leido-box" style="display:none">
+      <img class="ing-prev" id="ing-prev" alt="Comprobante"/>
+      <div class="ing-leido" id="ing-leido" role="status"></div>
+    </div>
+    <label class="form-label" for="ing-monto">¿Cuánto te entró?</label>
+    <div class="ing-monto"><span>$</span><input id="ing-monto" type="text" inputmode="numeric" autocomplete="off" placeholder="0" oninput="formatMonto(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();guardarIngreso();}"/></div>
+    <div class="form-label" style="margin-top:12px">Dónde (opcional)</div>
+    <div class="medio-chips" id="ing-medios">
+      <button type="button" data-m="banco" aria-pressed="false" onclick="elegirMedioIngreso('banco')">Banco</button>
+      <button type="button" data-m="nequi" aria-pressed="false" onclick="elegirMedioIngreso('nequi')">Nequi</button>
+      <button type="button" data-m="efectivo" aria-pressed="false" onclick="elegirMedioIngreso('efectivo')">Efectivo</button>
+    </div>
+    <div class="form-group" style="margin-top:12px">
+      <label class="form-label" for="ing-de">De quién (opcional)</label>
+      <input class="form-inp" id="ing-de" maxlength="120" placeholder="Ej: Carlos, empresa X"/>
+    </div>
+    <div class="ing-fila2">
+      <div class="form-group">
+        <label class="form-label" for="ing-motivo">Motivo (opcional)</label>
+        <input class="form-inp" id="ing-motivo" maxlength="200" placeholder="Ej: Salario"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="ing-fecha">Fecha</label>
+        <input class="form-inp" id="ing-fecha" type="date" style="color-scheme:dark;min-width:0;width:100%"/>
+      </div>
+    </div>
+    <button class="btn-primary" id="ing-guardar" onclick="guardarIngreso()">Guardar</button>
+    <div id="ing-extra"></div>
+    <button class="btn-secondary" onclick="hideModal('modal-ingreso')">Cancelar</button>
+  </div>
+</div>
+
+<!-- Topes mensuales por medio -->
+<div class="modal-overlay hidden" id="modal-topes" onclick="closeModalOutside(event,'modal-topes')">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-ttl">Topes del mes</span>
+      <button class="modal-close" onclick="hideModal('modal-topes')">✕</button>
+    </div>
+    <div style="font-size:14px;color:var(--t2);line-height:1.5;margin:0 0 14px">Pon un tope a los medios que quieras. Los que dejes vacíos no tienen tope. Te aviso por WhatsApp al llegar al 80 % y al llegar al tope.</div>
+    <div class="form-group">
+      <label class="form-label" for="tope-banco">Banco</label>
+      <input class="form-inp" id="tope-banco" type="text" inputmode="numeric" placeholder="Sin tope" oninput="formatMonto(this)"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="tope-nequi">Nequi</label>
+      <input class="form-inp" id="tope-nequi" type="text" inputmode="numeric" placeholder="Sin tope" oninput="formatMonto(this)"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="tope-efectivo">Efectivo</label>
+      <input class="form-inp" id="tope-efectivo" type="text" inputmode="numeric" placeholder="Sin tope" oninput="formatMonto(this)"/>
+    </div>
+    <button class="btn-primary" id="tope-guardar" onclick="guardarTopes()">Guardar topes</button>
+    <button class="btn-secondary" onclick="hideModal('modal-topes')">Cancelar</button>
+  </div>
+</div>
+
+<!-- Ingresos del mes por medio, valores exactos -->
+<div class="modal-overlay hidden" id="modal-ing-medios" onclick="closeModalOutside(event,'modal-ing-medios')">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-ttl" id="ing-medios-ttl">Te entró este mes</span>
+      <button class="modal-close" onclick="hideModal('modal-ing-medios')">✕</button>
+    </div>
+    <div class="medios-tabla" id="ing-medios-tabla"></div>
+  </div>
+</div>
+
+<!-- Comprobante de un pago tuyo, o sin claro quién pagó -->
+<div class="modal-overlay hidden" id="modal-comprobante" onclick="closeModalOutside(event,'modal-comprobante')">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-ttl" id="comp-ttl">Comprobante</span>
+      <button class="modal-close" onclick="hideModal('modal-comprobante')">✕</button>
+    </div>
+    <div id="comp-body"></div>
+    <button class="btn-secondary" onclick="hideModal('modal-comprobante')">Cancelar</button>
   </div>
 </div>
 
@@ -1917,19 +2064,32 @@ async function syncDesdeSupabase() {
       { data: eventos },
       { data: recordatorios },
       { data: hojas },
-      { data: limites }
+      { data: limites },
+      { data: ingresos }
     ] = await Promise.all([
       supa.from('payments').select('*').eq('user_id', uid),
       supa.from('events').select('*').eq('user_id', uid),
       supa.from('reminders').select('*').eq('user_id', uid),
       supa.from('hojas').select('*').eq('user_id', uid),
-      supa.from('profiles').select('limite_efectivo, limite_tarjeta, limite_nequi').eq('id', uid).maybeSingle()
+      supa.from('profiles').select('limite_efectivo, limite_tarjeta, limite_nequi, tope_banco, tope_nequi, tope_efectivo').eq('id', uid).maybeSingle(),
+      supa.from('ingresos').select('*').eq('user_id', uid).order('fecha', { ascending: false }).order('id', { ascending: false }).limit(1000)
     ]);
-    if (limites) DB.limites = {
-      efectivo: Number(limites.limite_efectivo) || 0,
-      tarjeta: Number(limites.limite_tarjeta) || 0,
-      nequi: Number(limites.limite_nequi) || 0
-    };
+    if (limites) {
+      DB.limites = {
+        efectivo: Number(limites.limite_efectivo) || 0,
+        tarjeta: Number(limites.limite_tarjeta) || 0,
+        nequi: Number(limites.limite_nequi) || 0
+      };
+      DB.topes = {
+        banco: Number(limites.tope_banco) || 0,
+        nequi: Number(limites.tope_nequi) || 0,
+        efectivo: Number(limites.tope_efectivo) || 0
+      };
+    }
+    if (ingresos) DB.ingresos = ingresos.map(i => ({
+      id: i.id, monto: Number(i.monto) || 0, medio: i.medio || null,
+      de: i.de_quien || '', motivo: i.motivo || '', fecha: i.fecha, soportes: i.soportes || []
+    }));
 
     // Actualizar DB local con datos de Supabase
     if (pagos) DB.pagos = pagos.map(p => ({
@@ -2040,9 +2200,10 @@ function toast(msg, color){
 // ════════════════════════════════════════
 // NAVIGATION
 // ════════════════════════════════════════
-const TABS = ['inicio','agenda','listado','pagos','recordatorios','ia','config','admin'];
+const TABS = ['inicio','agenda','listado','pagos','caja','ia','config','admin'];
 // Secciones retiradas o con nombre anterior: la IA o un mensaje viejo aún pueden pedirlas.
-const TAB_ALIAS = { recordar:'recordatorios', listados:'listado', resumen:'inicio', movimientos:'agenda', cajas:'agenda', metas:'agenda', inbox:'agenda' };
+// Recordatorios ya no tiene pestaña: lo que se anota vive en la Agenda.
+const TAB_ALIAS = { recordatorios:'agenda', recordar:'agenda', ingresos:'caja', listados:'listado', resumen:'inicio', movimientos:'agenda', cajas:'caja', metas:'agenda', inbox:'agenda' };
 // Mapa de tipo de acción IA → pestaña donde el usuario ve el resultado.
 // Si la IA ejecutó varias acciones, se usa la primera coincidencia (orden de la lista).
 const AI_ACTION_TAB = {
@@ -2051,10 +2212,8 @@ const AI_ACTION_TAB = {
   borrar_pago: 'pagos',
   evento: 'agenda',
   borrar_evento: 'agenda',
-  recordatorio: 'recordatorios',
-  borrar_recordatorio: 'recordatorios',
-  marcar_recordatorio_hecho: 'recordatorios',
-  desmarcar_recordatorio: 'recordatorios',
+  recordatorio: 'agenda',
+  registrar_ingreso: 'caja',
   lista: 'listado'
 };
 
@@ -2081,8 +2240,9 @@ function goTab(id){
   actualizarCampana();
   if(id==='pagos') renderPagos();
   if(id==='agenda') renderAgenda();
-  if(id!=='recordatorios') hjAlSalirDeTab();
-  if(id==='listado' || id==='recordatorios') renderRecordar();
+  if(id!=='caja') hjAlSalirDeTab();
+  if(id==='listado') renderRecordar();
+  if(id==='caja') verSubCaja('ingresos');   // Ingresos abre primero
   if(id==='config') renderConfig();
   if(id==='admin') renderAdmin();
 }
@@ -2095,7 +2255,7 @@ function renderCurrentScreen(){
     pagos: renderPagos,
     agenda: renderAgenda,
     listado: renderRecordar,
-    recordatorios: renderRecordar,
+    caja: renderCaja,
     config: renderConfig
   };
   for(const [id, fn] of Object.entries(renders)){
@@ -2145,26 +2305,23 @@ function renderInicio(){
   const fila = (color, nombreFila, der, tab, hecho) => `<button type="button" class="hoy-f${hecho?' ok':''}" onclick="goTab('${tab}')">${hecho?icono('okc','pt-ok'):`<i class="pt" style="background:${color}"></i>`}<span class="nom">${escAttr(nombreFila)}</span><span class="der">${escAttr(der)}</span></button>`;
   const eventos = (DB.eventos||[]).filter(e=>e.fecha===hoy).sort((a,b)=>(a.hora||'').localeCompare(b.hora||''))
     .map(e=>fila('#6AA3FF', e.titulo, e.hora?fmtHora(e.hora):'Hoy', 'agenda', false));
-  const recs = (DB.recordatorios||[]).filter(r=>!ES_LISTADO(r) && r.recordar_fecha===hoy)
-    .map(r=>fila('#BCA3FF', r.titulo||'Sin título', r.hecho?'Hecho':'Recordatorio', 'recordatorios', r.hecho));
   const pagos = (DB.pagos||[]).filter(p=>p.fechaLimite===hoy)
     .map(p=>fila('var(--amber)', p.nombre, p.status==='pagado'?'Pagado':fmtCOP(p.monto), 'pagos', p.status==='pagado'));
-  const filas = [...eventos, ...recs, ...pagos].join('');
+  const filas = [...eventos, ...pagos].join('');
   document.getElementById('ini-hoy').innerHTML = filas || '<div class="hoy-vacio">Nada para hoy. ¡Día libre!</div>';
   actualizarAvisoWhatsApp();
 }
 
 // ════════════════════════════════════════
-// CAMPANA: pagos y recordatorios de hoy o vencidos
+// CAMPANA: pagos de hoy o vencidos
 // ════════════════════════════════════════
 // Una fila con "Rojo cuando se acerque" apagado no enciende la campana.
 function avisosPendientes(){
   const hoy = todayStr();
   const pagos = (DB.pagos||[]).filter(p=>p.status!=='pagado' && p.fechaLimite && p.fechaLimite<=hoy)
     .map(p=>({ tipo:'pago', id:p.id, nombre:p.nombre, fecha:p.fechaLimite, der:fmtCOP(p.monto) }));
-  const recs = (DB.recordatorios||[]).filter(r=>!ES_LISTADO(r) && !r.hecho && r.rojo!==false && r.recordar_fecha && r.recordar_fecha<=hoy)
-    .map(r=>({ tipo:'rec', id:r.id, nombre:r.titulo||'Sin título', fecha:r.recordar_fecha, der:'Recordatorio' }));
-  return [...pagos, ...recs].sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  // Los recordatorios ya no se muestran: solo los pagos encienden la campana.
+  return pagos.sort((a,b)=>a.fecha.localeCompare(b.fecha));
 }
 function actualizarCampana(){
   const b = document.getElementById('btn-campana');
@@ -2179,17 +2336,12 @@ function abrirAvisos(){
   const grupo = (t, cl, f) => f.length ? `<div class="av-lista"><div class="av-sec ${cl}">${t} · ${f.length}</div>${f.map(fila).join('')}</div>` : '';
   document.getElementById('avisos-body').innerHTML = lista.length
     ? grupo('Vencidos','ven',lista.filter(a=>a.fecha<hoy)) + grupo('Hoy','',lista.filter(a=>a.fecha===hoy))
-    : '<div class="av-vacio">No tienes pagos ni recordatorios de hoy o vencidos.</div>';
+    : '<div class="av-vacio">No tienes pagos de hoy o vencidos.</div>';
   showModal('modal-avisos');
 }
 function irAAviso(tipo, id){
   hideModal('modal-avisos');
-  if(tipo==='pago'){ goTab('pagos'); abrirPagoDetalle(id); return; }
-  const r = (DB.recordatorios||[]).find(x=>String(x.id)===String(id));
-  goTab('recordatorios');
-  hjVer(r && r.hoja_id ? r.hoja_id : 'recordatorios');
-  const tr = document.querySelector(`#hj-filas tr[data-k="${id}"]`);
-  if(tr) tr.scrollIntoView({ block:'center' });
+  if(tipo==='pago'){ goTab('pagos'); abrirPagoDetalle(id); }
 }
 
 // Perfil: en el celular es la entrada a Configuración; también cierra la sesión.
@@ -2217,6 +2369,10 @@ function showModal(id){
 function hideModal(id){
   document.getElementById(id).classList.add('hidden');
   if(id==='modal-nuevo-pago') limpiarFacturaNueva();
+  if(id==='modal-pago-medio') medioCallback = null;
+  // Cerrar descarta la foto leída: no se cuela en el siguiente ingreso o pago.
+  if(id==='modal-ingreso') ingFoto = null;
+  if(id==='modal-comprobante') compActual = null;
 }
 function closeModalOutside(e,id){ if(e.target===document.getElementById(id)) hideModal(id); }
 
@@ -2713,7 +2869,16 @@ function marcarPagoPagado(id){
   showModal('modal-pago-medio');
 }
 
+// Otro flujo (el comprobante de un pago) puede usar esta misma ventana para preguntar el medio.
+let medioCallback = null;
+
 async function elegirMedioPago(medio){
+  if(medioCallback && MEDIOS_PAGO.includes(medio)){
+    const cb = medioCallback; medioCallback = null;
+    hideModal('modal-pago-medio');
+    cb(medio);
+    return;
+  }
   if(marcandoPago || !MEDIOS_PAGO.includes(medio)) return;
   const p = DB.pagos.find(x=>String(x.id)===String(pagoMedioId));
   hideModal('modal-pago-medio');
@@ -2820,52 +2985,65 @@ function leerArchivoComoDataUrl(file){
 }
 
 // Antes de abrir la cámara: a qué pago va la foto y que la app no se actualice mientras.
-function prepararFotoSoporte(id){
+// La foto va a un pago (payments) o a un ingreso (ingresos). Mismo bucket, misma carpeta.
+let soporteTabla = 'payments';
+function prepararFotoSoporte(id, tabla='payments'){
   pagoSoporteId = id;
+  soporteTabla = tabla;
   marcarEligiendoFoto();
 }
 function soltarSoporte(){
   pagoSoporteId = null;
   soltarEligiendoFoto();
 }
+// Fila local (DB) de un pago o de un ingreso.
+function filaSoporte(tabla, id){
+  const lista = tabla==='ingresos' ? (DB.ingresos||[]) : (DB.pagos||[]);
+  return lista.find(x=>String(x.id)===String(id)) || null;
+}
+const tituloSoporte = (tabla, f) => tabla==='ingresos' ? (f.motivo || f.de || 'Ingreso') : f.nombre;
 
 // soportes guarda rutas, no URLs: el bucket es privado. Se lee la lista fresca para no
 // pisar una foto que otro dispositivo haya agregado.
-async function subirFacturaPago(id, dataUrl){
+async function subirSoporte(tabla, id, dataUrl){
   const blob = dataUrlABlob(dataUrl);
   const ext = { 'image/jpeg':'jpg', 'image/png':'png', 'image/webp':'webp' }[blob.type] || 'jpg';
-  const ruta = `${currentUser.id}/${id}-${Date.now()}.${ext}`;
+  const ruta = `${currentUser.id}/${tabla==='ingresos'?'ingreso-':''}${id}-${Date.now()}.${ext}`;
   const { error: errSubida } = await supa.storage.from('facturas')
     .upload(ruta, blob, { contentType: blob.type });
   if(errSubida) throw errSubida;
-  const { data: fila, error: errLee } = await supa.from('payments').select('soportes').eq('id', id).eq('user_id', currentUser.id).single();
-  const { error: errPago } = errLee ? { error: errLee }
-    : await supa.from('payments').update({ soportes: [...(fila.soportes||[]), ruta] }).eq('id', id).eq('user_id', currentUser.id);
-  if(errPago){
+  const { data: fila, error: errLee } = await supa.from(tabla).select('soportes').eq('id', id).eq('user_id', currentUser.id).single();
+  const { error: errFila } = errLee ? { error: errLee }
+    : await supa.from(tabla).update({ soportes: [...(fila.soportes||[]), ruta] }).eq('id', id).eq('user_id', currentUser.id);
+  if(errFila){
     await supa.storage.from('facturas').remove([ruta]);
-    throw errPago;
+    throw errFila;
   }
   return ruta;
 }
+const subirFacturaPago = (id, dataUrl) => subirSoporte('payments', id, dataUrl);
+
+function repintarConSoportes(tabla){ if(tabla==='ingresos') renderIngresos(); else renderPagos(); }
 
 async function onSoporteSeleccionado(event){
   soltarEligiendoFoto();
   const file = event.target.files[0];
   event.target.value = '';
-  const id = pagoSoporteId;
+  const id = pagoSoporteId, tabla = soporteTabla;
   if(!file || id==null){ pagoSoporteId = null; return; }
   hideModal('modal-pago-detalle');
+  hideModal('modal-ingreso');
   toast('📤 Guardando foto…','var(--t2)');
   try{
     // comprimirImagen devuelve el original si no pudo decodificarlo (p. ej. HEIC):
     // se manda su tipo real para que el bucket lo rechace en vez de guardarlo mal.
-    const ruta = await subirFacturaPago(id, await comprimirImagen(await leerArchivoComoDataUrl(file), 1600, 0.8));
-    const p = DB.pagos.find(x=>String(x.id)===String(id));
-    if(p) p.soportes = [...(p.soportes||[]), ruta];
-    renderPagos();
+    const ruta = await subirSoporte(tabla, id, await comprimirImagen(await leerArchivoComoDataUrl(file), 1600, 0.8));
+    const f = filaSoporte(tabla, id);
+    if(f) f.soportes = [...(f.soportes||[]), ruta];
+    repintarConSoportes(tabla);
     toast('✅ Foto guardada','var(--green)');
     const visorAbierto = !document.getElementById('modal-pago-ver-foto').classList.contains('hidden');
-    if(visorAbierto && String(visorPagoId)===String(id)) verSoportePago(id, ruta);
+    if(visorAbierto && visorTabla===tabla && String(visorPagoId)===String(id)) verSoporte(tabla, id, ruta);
   }catch(e){
     console.error('[soporte] subida:', e);
     toast('❌ No se pudo guardar la foto. Intenta otra vez.','var(--red)');
@@ -2876,23 +3054,26 @@ async function onSoporteSeleccionado(event){
 
 // Visor: foto grande, miniaturas, otra foto, descargar y borrar.
 let visorPagoId = null;
+let visorTabla = 'payments';
 let visorFotos = [];   // [{ ruta, url }]
 let visorIdx = 0;
 
-async function verSoportePago(id, mostrarRuta){
-  const p = DB.pagos.find(x=>String(x.id)===String(id));
-  const rutas = p ? (p.soportes||[]) : [];
+async function verSoporte(tabla, id, mostrarRuta){
+  const f = filaSoporte(tabla, id);
+  const rutas = f ? (f.soportes||[]) : [];
   if(!rutas.length){ hideModal('modal-pago-ver-foto'); return; }
   const { data, error } = await supa.storage.from('facturas').createSignedUrls(rutas, 600);
   if(error || !data){ toast('❌ No se pudieron abrir las fotos','var(--red)'); return; }
-  visorPagoId = p.id;
+  visorPagoId = f.id;
+  visorTabla = tabla;
   visorFotos = rutas.map((ruta,i)=>({ ruta, url: data[i]?.signedUrl || null }));
   const i = mostrarRuta ? rutas.indexOf(mostrarRuta) : 0;
   visorIdx = i >= 0 ? i : 0;
-  document.getElementById('vis-ttl').textContent = p.nombre;
+  document.getElementById('vis-ttl').textContent = tituloSoporte(tabla, f);
   pintarVisor();
   showModal('modal-pago-ver-foto');
 }
+const verSoportePago = (id, mostrarRuta) => verSoporte('payments', id, mostrarRuta);
 
 function pintarVisor(){
   const actual = visorFotos[visorIdx];
@@ -2908,9 +3089,10 @@ function pintarVisor(){
 async function descargarFotoSoporte(){
   const actual = visorFotos[visorIdx];
   if(!actual) return;
-  const p = DB.pagos.find(x=>String(x.id)===String(visorPagoId));
+  const f = filaSoporte(visorTabla, visorPagoId);
   const ext = (actual.ruta.split('.').pop() || 'jpg').toLowerCase();
-  const nombre = `${(p?.nombre || 'soporte').replace(/[^\p{L}\p{N} _-]/gu,'').trim() || 'soporte'}-${visorIdx+1}.${ext}`;
+  const base = f ? tituloSoporte(visorTabla, f) : 'soporte';
+  const nombre = `${String(base).replace(/[^\p{L}\p{N} _-]/gu,'').trim() || 'soporte'}-${visorIdx+1}.${ext}`;
   const { data, error } = await supa.storage.from('facturas').createSignedUrl(actual.ruta, 120, { download: nombre });
   if(error || !data){ toast('❌ No se pudo descargar','var(--red)'); return; }
   const a = document.createElement('a');
@@ -2920,25 +3102,27 @@ async function descargarFotoSoporte(){
 
 async function borrarFotoSoporte(){
   const actual = visorFotos[visorIdx];
-  const p = DB.pagos.find(x=>String(x.id)===String(visorPagoId));
-  if(!actual || !p) return;
+  const tabla = visorTabla;
+  const f = filaSoporte(tabla, visorPagoId);
+  if(!actual || !f) return;
   if(!(await uiConfirm('¿Borrar esta foto del soporte? No se puede recuperar.', { titulo:'Borrar foto', okText:'Sí, borrar' }))) return;
   const btn = document.getElementById('vis-borrar');
   btn.disabled = true;
   try {
-    // Primero se quita del pago y después el archivo: nunca queda un pago apuntando a nada.
-    const { data: fila, error: errLee } = await supa.from('payments').select('soportes, soporte_url').eq('id', p.id).eq('user_id', currentUser.id).single();
+    // Primero se quita de la fila y después el archivo: nunca queda una fila apuntando a nada.
+    const cols = tabla==='payments' ? 'soportes, soporte_url' : 'soportes';
+    const { data: fila, error: errLee } = await supa.from(tabla).select(cols).eq('id', f.id).eq('user_id', currentUser.id).single();
     if(errLee) throw errLee;
     const cambios = { soportes: (fila.soportes||[]).filter(r=>r!==actual.ruta) };
-    if(fila.soporte_url===actual.ruta) cambios.soporte_url = null;
-    const { error } = await supa.from('payments').update(cambios).eq('id', p.id).eq('user_id', currentUser.id);
+    if(tabla==='payments' && fila.soporte_url===actual.ruta) cambios.soporte_url = null;
+    const { error } = await supa.from(tabla).update(cambios).eq('id', f.id).eq('user_id', currentUser.id);
     if(error) throw error;
     const { error: errFoto } = await supa.storage.from('facturas').remove([actual.ruta]);
     if(errFoto) console.warn('[soporte] no se pudo borrar el archivo:', errFoto.message);
-    p.soportes = (p.soportes||[]).filter(r=>r!==actual.ruta);
+    f.soportes = (f.soportes||[]).filter(r=>r!==actual.ruta);
     visorFotos.splice(visorIdx, 1);
     visorIdx = Math.max(0, Math.min(visorIdx, visorFotos.length-1));
-    renderPagos();
+    repintarConSoportes(tabla);
     toast('🗑 Foto borrada','var(--t2)');
     if(visorFotos.length) pintarVisor(); else hideModal('modal-pago-ver-foto');
   } catch(e){
@@ -2962,6 +3146,376 @@ async function eliminarPago(){
   hideModal('modal-pago-detalle');
   toast('🗑 Pago eliminado','var(--t2)');
   await syncDesdeSupabase();
+}
+
+// ════════════════════════════════════════
+// CAJA FUERTE: INGRESOS (sin PIN) Y CLAVES (con PIN)
+// ════════════════════════════════════════
+const MEDIOS_ING = ['banco','nequi','efectivo'];
+const NOMBRE_MEDIO_ING = { banco:'Banco', nequi:'Nequi', efectivo:'Efectivo' };
+// El comprobante de un pago propio pasa a los medios de Pagos: banco cuenta como Tarjeta.
+const MEDIO_PAGO_DE_COMPROBANTE = { banco:'tarjeta', nequi:'nequi', efectivo:'efectivo' };
+const MESES_LARGOS = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
+let subCaja = 'ingresos';
+let ingEdit = null;            // id del ingreso que se edita; null = nuevo
+let ingMedio = null;
+let ingFoto = null;            // foto del comprobante que se guarda con el ingreso nuevo
+let guardandoIngreso = false;
+let comprobanteLeyendo = false;
+let compActual = null;         // { c, clase, candidatos, foto } mientras se decide qué es
+let guardandoComp = false;
+
+// Pestañas de abajo. Ingresos no pide PIN; Claves es la Caja fuerte de siempre.
+function verSubCaja(v){
+  subCaja = v==='claves' ? 'claves' : 'ingresos';
+  const enClaves = subCaja==='claves';
+  [['ingresos',!enClaves],['claves',enClaves]].forEach(([k,on])=>{
+    const b = document.getElementById('cj-tab-'+k);
+    b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on));
+  });
+  document.getElementById('cj-ingresos').classList.toggle('on', !enClaves);
+  if(enClaves){ hjVer('caja'); return; }
+  // Al salir de Claves se cierra con su llave, igual que al salir de la pestaña.
+  if(hj.actual==='caja') hjVer('recordatorios');
+  $hj('hj-caja').classList.remove('on');
+  renderIngresos();
+}
+function renderCaja(){
+  renderIngresos();
+  if(subCaja==='claves') hjRender();
+}
+
+function ingresosDelMes(){
+  const mes = mesActualColombia();
+  return (DB.ingresos||[]).filter(i=>(i.fecha||'').slice(0,7)===mes);
+}
+function ingresadoPorMedio(lista){
+  const tot = { banco:0, nequi:0, efectivo:0, sin:0 };
+  lista.forEach(i=>{ tot[MEDIOS_ING.includes(i.medio) ? i.medio : 'sin'] += i.monto; });
+  return tot;
+}
+const nombreMesActual = () => MESES_LARGOS[Number(mesActualColombia().slice(5,7))-1];
+
+function renderIngresos(){
+  const res = document.getElementById('ing-resumen'), el = document.getElementById('ing-list');
+  if(!res || !el) return;
+  const lista = ingresosDelMes().sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'') || b.id-a.id);
+  const por = ingresadoPorMedio(lista);
+  const total = lista.reduce((s,i)=>s+i.monto,0);
+  const mes = nombreMesActual();
+  res.innerHTML = `<div class="ing-t" role="button" tabindex="0" aria-label="Te entró en ${mes} ${fmtCOP(total)}. Ver cuánto por cada medio" onclick="abrirIngMedios()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirIngMedios();}">
+    <div class="ing-hd">${icono('ent')}Te entró en ${mes}</div>
+    <div class="ing-v">${fmtCOP(total)}</div>
+    <div class="pa-med">${MEDIOS_ING.map(m=>`<div><div class="pa-med-e">${NOMBRE_MEDIO_ING[m]}</div><div class="pa-med-v">${fmtCorto(por[m])}</div></div>`).join('')}</div>
+  </div>`;
+
+  // Barras solo de los medios con tope, encima de la lista.
+  const topes = DB.topes || {};
+  const barras = MEDIOS_ING.filter(m=>topes[m]>0).map(m=>{
+    const pct = por[m]/topes[m]*100;
+    const nivel = pct>=100 ? 'tope' : pct>=80 ? 'alto' : 'ok';
+    return `<div class="pa-lim ${nivel}">
+      <div class="pa-lim-tx"><b>${NOMBRE_MEDIO_ING[m]}</b><span>${fmtCOP(por[m])} de ${fmtCOP(topes[m])}</span></div>
+      <div class="pa-lim-bar" role="progressbar" aria-label="Tope de ${NOMBRE_MEDIO_ING[m]}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.min(100,Math.round(pct))}"><i style="width:${Math.min(100,pct).toFixed(1)}%"></i></div>
+    </div>`;
+  }).join('');
+  let html = barras ? `<div class="pa-lims">${barras}</div>` : '';
+  html += lista.length
+    ? `<div class="pa-sec">Ingresos de ${mes} · ${lista.length}</div>` + lista.map(filaIngreso).join('')
+    : `<div class="empty"><div class="empty-ico">${icono('ent')}</div><div class="empty-txt">Aún no registras ingresos en ${mes}</div></div>`;
+  el.innerHTML = html;
+}
+
+function filaIngreso(i){
+  const titulo = i.motivo || i.de || 'Ingreso';
+  const detalle = [i.motivo && i.de ? `De ${i.de}` : '', i.medio ? NOMBRE_MEDIO_ING[i.medio] : 'Sin medio', i.fecha ? fmtDiaMes(i.fecha) : ''].filter(Boolean).join(' · ');
+  const n = (i.soportes||[]).length;
+  const sop = n ? `<button type="button" class="pago-sop con" onclick="event.stopPropagation();verSoporte('ingresos',${i.id})" aria-label="Ver ${n} ${n===1?'foto':'fotos'} del comprobante"><span>${icono('recibo')}</span>${n>1?`<b>${n}</b>`:''}</button>` : '';
+  return `<div class="ing-card" role="button" tabindex="0" onclick="abrirIngreso(${i.id})" onkeydown="if(event.key==='Enter'){abrirIngreso(${i.id});}">
+    <div class="ing-i"><div class="ing-n">${escAttr(titulo)}</div><div class="ing-d">${escAttr(detalle)}</div></div>
+    <div class="ing-r"><span class="ing-mas">+${fmtCOP(i.monto)}</span>${sop}</div>
+  </div>`;
+}
+
+function abrirIngMedios(){
+  const por = ingresadoPorMedio(ingresosDelMes());
+  const filas = MEDIOS_ING.map(m=>`<div><span>${NOMBRE_MEDIO_ING[m]}</span><b>${fmtCOP(por[m])}</b></div>`);
+  if(por.sin>0) filas.push(`<div><span>Sin medio</span><b>${fmtCOP(por.sin)}</b></div>`);
+  filas.push(`<div class="tot"><span>Total</span><b>${fmtCOP(por.banco+por.nequi+por.efectivo+por.sin)}</b></div>`);
+  document.getElementById('ing-medios-ttl').textContent = `Te entró en ${nombreMesActual()}`;
+  document.getElementById('ing-medios-tabla').innerHTML = filas.join('');
+  showModal('modal-ing-medios');
+}
+
+// ─── Registrar o editar ───
+function pintarMediosIng(){
+  document.querySelectorAll('#ing-medios button').forEach(b=>{
+    const on = b.dataset.m===ingMedio;
+    b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on));
+  });
+}
+function elegirMedioIngreso(m){
+  ingMedio = ingMedio===m ? null : m;   // un segundo toque lo quita: el medio es opcional
+  pintarMediosIng();
+}
+function llenarIngreso({ monto, medio, de, motivo, fecha }){
+  document.getElementById('ing-monto').value = monto>0 ? Math.round(monto).toLocaleString('es-CO') : '';
+  ingMedio = MEDIOS_ING.includes(medio) ? medio : null;
+  pintarMediosIng();
+  document.getElementById('ing-de').value = de || '';
+  document.getElementById('ing-motivo').value = motivo || '';
+  const f = document.getElementById('ing-fecha');
+  f.max = todayStr();
+  f.value = fecha && fecha<=todayStr() ? fecha : todayStr();
+}
+// pre: lo leído de un comprobante (valor, medio, de, fecha, foto, leido).
+function abrirNuevoIngreso(pre){
+  ingEdit = null;
+  llenarIngreso({ monto: pre?.valor, medio: pre?.medio, de: pre?.de, motivo: '', fecha: pre?.fecha });
+  document.getElementById('ing-ttl').textContent = 'Nuevo ingreso';
+  document.getElementById('ing-guardar').textContent = pre?.foto ? 'Sí, registrarlo' : 'Guardar';
+  document.getElementById('ing-extra').innerHTML = '';
+  const caja = document.getElementById('ing-leido-box');
+  if(pre?.foto){
+    document.getElementById('ing-prev').src = pre.foto;
+    document.getElementById('ing-leido').innerHTML = pre.leido || '';
+    caja.style.display = '';
+  } else {
+    caja.style.display = 'none';
+    document.getElementById('ing-prev').removeAttribute('src');
+  }
+  showModal('modal-ingreso');
+  // hideModal de un modal anterior pudo limpiar la foto: se asigna después de abrir.
+  ingFoto = pre?.foto || null;
+  if(!pre) setTimeout(()=>{ try{ document.getElementById('ing-monto').focus(); }catch(_){} }, 60);
+}
+function abrirIngreso(id){
+  const i = (DB.ingresos||[]).find(x=>String(x.id)===String(id));
+  if(!i) return;
+  ingEdit = i.id;
+  ingFoto = null;
+  llenarIngreso(i);
+  document.getElementById('ing-ttl').textContent = 'Ingreso';
+  document.getElementById('ing-guardar').textContent = 'Guardar cambios';
+  document.getElementById('ing-leido-box').style.display = 'none';
+  const n = (i.soportes||[]).length;
+  document.getElementById('ing-extra').innerHTML = (n
+      ? `<button class="btn-secondary" onclick="verSoporte('ingresos',${i.id})">Ver comprobante${n>1?` (${n})`:''}</button>`
+      : `<label class="btn-secondary" for="pago-soporte-file" style="display:block;text-align:center;box-sizing:border-box;cursor:pointer" onclick="prepararFotoSoporte(${i.id},'ingresos')">Agregar foto del comprobante</label>`)
+    + `<button class="btn-danger" style="margin-bottom:8px" onclick="borrarIngreso(${i.id})">Borrar ingreso</button>`;
+  showModal('modal-ingreso');
+}
+
+async function guardarIngreso(){
+  if(guardandoIngreso) return;
+  const monto = parseCOP(document.getElementById('ing-monto').value);
+  if(!monto){ toast('⚠️ Escribe cuánto te entró','var(--amber)'); return; }
+  const fecha = document.getElementById('ing-fecha').value || todayStr();
+  if(fecha > todayStr()){ toast('⚠️ La fecha no puede ser futura','var(--amber)'); return; }
+  const datos = {
+    monto, medio: ingMedio, fecha,
+    de_quien: document.getElementById('ing-de').value.trim() || null,
+    motivo: document.getElementById('ing-motivo').value.trim() || null
+  };
+  const boton = document.getElementById('ing-guardar');
+  const foto = ingEdit ? null : ingFoto;
+  guardandoIngreso = true; boton.disabled = true;
+  try {
+    if(!(await sesionLista())){ toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
+    let id = ingEdit;
+    if(id){
+      const { error } = await supa.from('ingresos').update(datos).eq('id', id).eq('user_id', currentUser.id);
+      if(error){ toast('❌ No se pudo guardar: '+error.message,'var(--red)'); return; }
+    } else {
+      const { data, error } = await supa.from('ingresos').insert({ user_id: currentUser.id, ...datos }).select('id').single();
+      if(error || !data){ toast('❌ No se pudo guardar: '+(error?.message||'sin confirmación'),'var(--red)'); return; }
+      id = data.id;
+    }
+    let aviso = null;
+    if(foto){
+      try { await subirSoporte('ingresos', id, foto); }
+      catch(e){ console.error('[ingreso] foto:', e); aviso = '⚠️ Ingreso guardado, pero sin la foto. Agrégala tocando el ingreso'; }
+    }
+    hideModal('modal-ingreso');
+    await syncDesdeSupabase();
+    renderIngresos();
+    if(aviso){ toast(aviso,'var(--amber)'); return; }
+    // Cuánto lleva del tope de ese medio, si tiene.
+    const tope = datos.medio && (DB.topes||{})[datos.medio];
+    const otroMes = fecha.slice(0,7)!==mesActualColombia();
+    if(otroMes) toast(`✅ Guardado en ${MESES_LARGOS[Number(fecha.slice(5,7))-1]}`,'var(--green)');
+    else if(tope>0) toast(`✅ Guardado · ${NOMBRE_MEDIO_ING[datos.medio]}: ${fmtCOP(ingresadoPorMedio(ingresosDelMes())[datos.medio])} de ${fmtCOP(tope)}`,'var(--green)');
+    else toast(ingEdit ? '✅ Cambios guardados' : '✅ Ingreso guardado','var(--green)');
+  } finally {
+    guardandoIngreso = false; boton.disabled = false;
+  }
+}
+
+async function borrarIngreso(id){
+  const i = (DB.ingresos||[]).find(x=>String(x.id)===String(id));
+  if(!i) return;
+  if(!(await uiConfirm(`¿Borrar el ingreso de ${fmtCOP(i.monto)}?`, { titulo:'Borrar ingreso', okText:'Sí, borrar' }))) return;
+  const { error } = await supa.from('ingresos').delete().eq('id', i.id).eq('user_id', currentUser.id);
+  if(error){ toast('❌ No se pudo borrar: '+error.message,'var(--red)'); return; }
+  if((i.soportes||[]).length){
+    const { error: errFoto } = await supa.storage.from('facturas').remove(i.soportes);
+    if(errFoto) console.warn('[ingreso] no se pudieron borrar las fotos:', errFoto.message);
+  }
+  hideModal('modal-ingreso');
+  DB.ingresos = (DB.ingresos||[]).filter(x=>x.id!==i.id);
+  renderIngresos();
+  toast('🗑 Ingreso borrado','var(--t2)');
+}
+
+// ─── Topes mensuales ───
+function abrirTopes(){
+  const t = DB.topes || {};
+  MEDIOS_ING.forEach(m=>{ document.getElementById('tope-'+m).value = t[m]>0 ? Math.round(t[m]).toLocaleString('es-CO') : ''; });
+  showModal('modal-topes');
+}
+async function guardarTopes(){
+  const boton = document.getElementById('tope-guardar');
+  if(boton.disabled) return;
+  const nuevos = {};
+  MEDIOS_ING.forEach(m=>{ nuevos[m] = parseCOP(document.getElementById('tope-'+m).value) || 0; });
+  boton.disabled = true;
+  try {
+    if(!(await sesionLista())){ toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
+    const { error } = await supa.from('profiles').update({
+      tope_banco: nuevos.banco || null, tope_nequi: nuevos.nequi || null, tope_efectivo: nuevos.efectivo || null
+    }).eq('id', currentUser.id);
+    if(error){ toast('❌ No se pudo guardar: '+error.message,'var(--red)'); return; }
+    DB.topes = nuevos;
+    save();
+    hideModal('modal-topes');
+    renderIngresos();
+    toast(MEDIOS_ING.some(m=>nuevos[m]>0) ? '✅ Topes guardados' : 'Sin topes','var(--green)');
+  } finally {
+    boton.disabled = false;
+  }
+}
+
+// ─── Foto de un comprobante ───
+// Solo se lee (camino seguro de las fotos): nada se guarda hasta que el usuario confirma.
+function pintarComprobanteLeyendo(){
+  const b = document.getElementById('ing-foto-btn');
+  b.classList.toggle('cargando', comprobanteLeyendo);
+  b.setAttribute('aria-busy', String(comprobanteLeyendo));
+  document.getElementById('ing-foto-txt').textContent = comprobanteLeyendo ? 'Leyendo…' : 'Foto';
+}
+async function onComprobanteFoto(event){
+  soltarEligiendoFoto();
+  const file = event.target.files[0];
+  event.target.value = '';
+  if(!file || comprobanteLeyendo) return;
+  comprobanteLeyendo = true;
+  pintarComprobanteLeyendo();
+  try{
+    if(!(await sesionLista())) throw new Error('Sesión no lista. Recarga la página');
+    const comprimida = await comprimirImagen(await leerArchivoComoDataUrl(file), 1568, 0.85);
+    if(!comprimida.startsWith('data:image/jpeg')) throw new Error('No pude abrir esa imagen. Prueba con otra foto');
+    toast('🧾 Leyendo el comprobante…','var(--t2)');
+    const res = await fetch('/api/ai-chat', {
+      method: 'POST',
+      headers: await headersIA(),
+      body: JSON.stringify({ modo: 'foto_comprobante', imagen_base64: comprimida.split(',')[1] })
+    });
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok) throw new Error(data.error || 'No se pudo leer el comprobante. Intenta de nuevo');
+    if(!data.comprobante){ toast('❌ No encontré un comprobante con valor en la foto. Prueba con más luz o regístralo con + Ingreso','var(--red)'); return; }
+    compActual = { c: data.comprobante, clase: data.clase, candidatos: data.candidatos || [], foto: comprimida };
+    if(data.clase==='ingreso') return abrirIngresoDeComprobante();
+    pintarComprobante(data.clase);
+    showModal('modal-comprobante');
+  }catch(e){
+    console.error('[comprobante] error:', e);
+    toast('⚠️ ' + e.message, 'var(--red)');
+  }finally{
+    comprobanteLeyendo = false;
+    pintarComprobanteLeyendo();
+  }
+}
+const resumenLeido = c => [`<b>${fmtCOP(c.valor)}</b>`, c.medio && NOMBRE_MEDIO_ING[c.medio], c.fecha && fmtDiaMes(c.fecha)].filter(Boolean).join(' · ');
+const quienLeido = c => [c.de && `De: ${escAttr(c.de)}`, c.para && `Para: ${escAttr(c.para)}`].filter(Boolean).join(' · ');
+
+function abrirIngresoDeComprobante(){
+  const k = compActual;
+  if(!k) return;
+  hideModal('modal-comprobante');
+  abrirNuevoIngreso({
+    valor: k.c.valor, medio: k.c.medio, de: k.c.de, fecha: k.c.fecha, foto: k.foto,
+    leido: `Leí: ${resumenLeido(k.c)}${k.c.de ? `<br>De ${escAttr(k.c.de)} para ti.` : ''}<br>¿Lo registro? Revisa y toca <b>Sí, registrarlo</b>.`
+  });
+}
+
+// Pago propio o sin claro quién pagó. Si se parece a un pago pendiente, se ofrece ese.
+function pintarComprobante(clase){
+  const k = compActual;
+  if(!k) return;
+  k.clase = clase;
+  const quien = quienLeido(k.c);
+  let html = `<img class="ing-prev" src="${k.foto}" alt="Comprobante"/><div class="ing-leido">Leí: ${resumenLeido(k.c)}${quien ? '<br>'+quien : ''}</div>`;
+  if(clase==='duda'){
+    document.getElementById('comp-ttl').textContent = '¿Te entró o lo pagaste?';
+    html += `<div class="nota-comp">No sé si te entró a ti o lo pagaste tú.</div>
+      <button class="btn-primary" onclick="abrirIngresoDeComprobante()">Me entró</button>
+      <button class="btn-secondary" onclick="pintarComprobante('pago')">Lo pagué yo</button>`;
+  } else {
+    document.getElementById('comp-ttl').textContent = 'Parece un pago tuyo';
+    const cands = k.candidatos || [];
+    html += `<div class="nota-comp">Lo pagaste tú${k.c.para ? ` a ${escAttr(k.c.para)}` : ''}: parece un pago, no un ingreso.</div>`;
+    if(cands.length) html += `<div class="nota-comp">${cands.length===1 ? 'Coincide con tu pago pendiente. Tócalo para marcarlo como pagado:' : '¿Cuál de tus pagos pendientes es?'}</div>`
+      + cands.map(p=>`<button type="button" class="cand-b" onclick="pagarConComprobante(${p.id})"><span>${escAttr(p.nombre)}${p.fecha_limite?` · vence ${fmtDiaMes(p.fecha_limite)}`:''}</span><b>${fmtCOP(p.monto)}</b></button>`).join('');
+    html += `<button class="${cands.length?'btn-secondary':'btn-primary'}" onclick="pagarConComprobante(null)">${cands.length?'Es otro: crear pago nuevo':'Registrar como pago'}</button>
+      <button class="btn-secondary" onclick="abrirIngresoDeComprobante()">No, es un ingreso</button>`;
+  }
+  document.getElementById('comp-body').innerHTML = html;
+}
+
+// Guarda el pago como pagado con su comprobante. Sin medio leído, lo pregunta primero.
+async function pagarConComprobante(pagoId, medioElegido){
+  const k = compActual;
+  if(!k || guardandoComp) return;
+  const medio = medioElegido || MEDIO_PAGO_DE_COMPROBANTE[k.c.medio] || null;
+  if(!medio){
+    // Se oculta sin limpiar: la ventana del medio vuelve aquí con lo leído intacto.
+    document.getElementById('modal-comprobante').classList.add('hidden');
+    pagoMedioId = null;
+    document.getElementById('pago-medio-txt').textContent = `${k.c.para || 'Pago'} · ${fmtCOP(k.c.valor)}`;
+    showModal('modal-pago-medio');
+    medioCallback = m => pagarConComprobante(pagoId, m);
+    return;
+  }
+  guardandoComp = true;
+  try {
+    if(!(await sesionLista())){ toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
+    const hoy = todayStr();
+    const fecha = k.c.fecha && k.c.fecha<=hoy ? k.c.fecha : hoy;
+    let id = pagoId;
+    if(id){
+      const { data, error } = await supa.from('payments')
+        .update({ status:'pagado', fecha_pago: fecha, medio_pago: medio })
+        .eq('id', id).eq('user_id', currentUser.id).neq('status','pagado').select('id');
+      if(error){ toast('❌ No se pudo marcar: '+error.message,'var(--red)'); return; }
+      if(!data || !data.length){ toast('Ese pago ya estaba pagado','var(--amber)'); hideModal('modal-comprobante'); await syncDesdeSupabase(); return; }
+    } else {
+      const { data, error } = await supa.from('payments').insert({
+        user_id: currentUser.id, nombre: (k.c.para || 'Pago').slice(0,80), monto: k.c.valor,
+        fecha_limite: fecha, categoria: 'otro', fijo: false, status: 'pagado', fecha_pago: fecha, medio_pago: medio
+      }).select('id').single();
+      if(error || !data){ toast('❌ No se pudo guardar: '+(error?.message||'sin confirmación'),'var(--red)'); return; }
+      id = data.id;
+    }
+    let msg = `✅ Pagado con ${NOMBRE_MEDIO[medio].toLowerCase().replace('nequi','Nequi')}, con su comprobante`;
+    try { await subirFacturaPago(id, k.foto); }
+    catch(e){ console.error('[comprobante] foto:', e); msg = '⚠️ Pago guardado, pero sin la foto. Agrégala en Pagos'; }
+    hideModal('modal-comprobante');
+    toast(msg, msg.startsWith('✅') ? 'var(--green)' : 'var(--amber)');
+    await syncDesdeSupabase();
+  } finally {
+    guardandoComp = false;
+  }
 }
 
 // Activa/desactiva la recurrencia mensual de un pago existente (edicion).
@@ -3319,7 +3873,8 @@ function abrirModalDiario(fechaISO){
 
   const eventos = (DB.eventos||[]).filter(e=>e.fecha===fechaISO);
   const pagos = (DB.pagos||[]).filter(p=>(p.fechaLimite||p.fecha_limite)===fechaISO);
-  const recs = (DB.recordatorios||[]).filter(r=>r.recordar_fecha===fechaISO);
+  // Los recordatorios ya no se muestran: los que tenían aviso pasaron a la Agenda.
+  const recs = [];
 
   let html = '';
 
@@ -4608,7 +5163,8 @@ async function intentLocal(msg){
     if(/pagos/i.test(m)){goTab('pagos');return 'Aqui estan tus pagos.';}
     if(/agenda|calendario/i.test(m)){goTab('agenda');return 'Aqui esta tu agenda.';}
     if(/listados?|listas?/i.test(m)){goTab('listado');return 'Aqui estan tus listados.';}
-    if(/recordatorios|notas/i.test(m)){goTab('recordatorios');return 'Aqui estan tus recordatorios.';}
+    if(/recordatorios|notas/i.test(m)){goTab('agenda');return 'Lo que anotas ahora vive en tu Agenda.';}
+    if(/caja|ingresos|claves/i.test(m)){goTab('caja');return 'Aqui esta tu Caja fuerte.';}
     if(/config/i.test(m)){goTab('config');return 'Aqui esta la configuracion.';}
   }
   return null;
@@ -5781,7 +6337,7 @@ function usuarioOcupado(){
   const activo = document.activeElement;
   if(activo && (/^(INPUT|TEXTAREA|SELECT)$/.test(activo.tagName) || activo.isContentEditable)) return true;
   if(document.querySelector('.modal-overlay:not(.hidden)')) return true;
-  if(hjOcupado() || isRecording || ttsSpeaking || pagoSoporteId !== null || fotoListadoOcupada || facturaLeyendo || Date.now() < eligiendoFotoHasta) return true;
+  if(hjOcupado() || isRecording || ttsSpeaking || pagoSoporteId !== null || fotoListadoOcupada || facturaLeyendo || comprobanteLeyendo || Date.now() < eligiendoFotoHasta) return true;
   if(document.getElementById('ia-typing')) return true;
   // Texto a medio escribir aunque el campo ya no tenga el foco.
   const auth = document.getElementById('auth-screen');

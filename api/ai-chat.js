@@ -5,6 +5,9 @@ const { colombiaDateString, colombiaDateLongEs, colombiaTimeString, colombiaDate
 const { esTemprano, resolverAviso, fechaHoraColombia, momentoAviso, eventoADate } = require('../lib/avisos-evento');
 const { preguntaAntesDeGuardar, horasDelPedido, avisoDelPedido, fechasDelPedido } = require('../lib/evento-completo');
 const { MEDIOS, medioDelTexto } = require('../lib/medio-pago');
+const { MEDIOS_ING, NOMBRE_MEDIO_ING, fmtPesos, medioIngresoDelTexto, lineaDeTope } = require('../lib/ingresos');
+const { leerComprobanteDeImagen, interpretarComprobante } = require('../lib/lista-foto');
+const { clasificarComprobante, pagosParecidos } = require('../lib/comprobante');
 
 const MEM0_API_KEY = process.env.MEM0_API_KEY;
 const MEM0_BASE = 'https://api.mem0.ai/v1';
@@ -106,6 +109,22 @@ module.exports = async function handler(req, res) {
       return res.status(502).json({ error: 'No se pudo leer la factura. Intenta de nuevo.' });
     }
   }
+  // Comprobante desde el botón Foto de Ingresos: se lee y se clasifica, no se guarda nada.
+  // La app muestra lo leído y el usuario confirma antes de guardar.
+  if (req.body.modo === 'foto_comprobante') {
+    if (!imagen_base64) return res.status(400).json({ error: 'Falta la foto' });
+    try {
+      const leido = interpretarComprobante(await leerComprobanteDeImagen(imagen_base64, colombiaDateString()));
+      if (leido.tipo !== 'comprobante' || !leido.valor) return res.json({ ok: true, comprobante: null });
+      const { tipo, ...comprobante } = leido;
+      const clase = await clasificarComprobante(user_id, comprobante);
+      const candidatos = clase === 'ingreso' ? [] : await pagosParecidos(user_id, comprobante);
+      return res.json({ ok: true, comprobante, clase, candidatos });
+    } catch (e) {
+      console.error('[ai-chat] foto_comprobante:', e.message);
+      return res.status(502).json({ error: 'No se pudo leer el comprobante. Intenta de nuevo.' });
+    }
+  }
   if (req.body.modo === 'foto_listado') {
     if (!imagen_base64) return res.status(400).json({ error: 'Falta la foto' });
     try {
@@ -181,7 +200,8 @@ module.exports = async function handler(req, res) {
     const acciones = await ejecutarAcciones(respuesta, contexto, user_id, {
       avisoDicho: avisoDelPedido(message, history),
       fechaDicha: fechasDichas.length === 1 ? fechasDichas[0].fecha : null,
-      medioDicho: medioDelTexto(message)
+      medioDicho: medioDelTexto(message),
+      medioIngresoDicho: medioIngresoDelTexto(message)
     });
     console.log('[ai-chat] acciones realmente ejecutadas:', acciones.length, acciones.map(a => a.accion));
 
@@ -248,10 +268,16 @@ module.exports = async function handler(req, res) {
         partesEvento.push('❌ No anoté nada porque me faltó el qué. ¿Qué quieres que anote?');
       } else if (a.accion === 'recordatorio' && a.ok) {
         const valor = a.valor ? ` por ${fmtValorExacto(a.valor)}` : '';
-        const aviso = a.recordar_fecha
-          ? `Te aviso ${formatearDia(a.recordar_fecha)}${a.recordar_fecha === colombiaDateString() ? '' : ' a las 8 am'} por WhatsApp.`
-          : 'Queda guardado como registro, sin aviso.';
-        partesEvento.push(`✅ Anoté "${a.detalle}"${valor}. ${aviso}`);
+        const cuando = a.fecha === colombiaDateString()
+          ? 'en tu Agenda de hoy.'
+          : `en tu Agenda para ${formatearDia(a.fecha)}. Ese día te aviso a las 8 am por WhatsApp.`;
+        partesEvento.push(`✅ Anoté "${a.detalle}"${valor} ${cuando}`);
+      } else if (a.accion === 'registrar_ingreso' && a.ok) {
+        const donde = a.medio ? ` en ${NOMBRE_MEDIO_ING[a.medio]}` : '';
+        const cuando = a.fecha === colombiaDateString() ? 'hoy' : formatearDia(a.fecha);
+        partesEvento.push(`✅ Registré +${fmtPesos(a.monto)}${donde}, ${cuando}.${a.tope ? `\n${a.tope}` : ''}`);
+      } else if (a.accion === 'registrar_ingreso') {
+        partesEvento.push(a.error === 'sin_monto' ? '¿Cuánto te entró?' : '❌ No pude registrar el ingreso. Intenta de nuevo.');
       } else if (a.accion === 'buscar_recordatorio') {
         partesEvento.push(textoBusquedaRecordatorios(a));
       } else if (a.accion === 'desmarcar_recordatorio') {
@@ -397,7 +423,7 @@ function buildSystemPrompt(ctx, memoria) {
 
 Hablas sencillo, como una persona: respuestas cortas y naturales, sin tecnicismos ni explicaciones de más.
 
-⚠️ NO eres asesora financiera. No das consejos de dinero, ahorro, inversión o presupuesto, ni analizas gastos. Kontrol tampoco lleva movimientos, cuentas, cajas, saldos, transferencias ni metas: si te piden algo de eso, dilo en una línea y ofrece lo que sí puedes hacer. Ignora las cifras de saldos o gastos que aparezcan en la memoria. Registrar un pago pendiente o anotar un valor sí es parte de tu trabajo.
+⚠️ NO eres asesora financiera. No das consejos de dinero, ahorro, inversión o presupuesto, ni analizas gastos. Kontrol tampoco lleva movimientos, cuentas, cajas, saldos, transferencias ni metas: si te piden algo de eso, dilo en una línea y ofrece lo que sí puedes hacer. Ignora las cifras de saldos o gastos que aparezcan en la memoria. Registrar un pago pendiente, anotar un valor o registrar lo que le entró (ingresos, regla de [ACCION:registrar_ingreso]) sí es parte de tu trabajo.
 
 🔒 CAJA FUERTE: las claves del usuario están cifradas y tú NO tienes acceso a ellas: no las ves ni sabes cuáles hay. Si te preguntan por una clave, contraseña o PIN, o por la Caja fuerte, responde en una línea que no puedes verlas y que están en la pestaña Recordatorios, hoja Caja. Nunca inventes ni deduzcas una. Si el usuario te escribe una clave, no la repitas, no la anotes en ningún lado ni emitas acciones con ella; dile que la guarde en la Caja fuerte.
 
@@ -454,6 +480,14 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
 [ACCION:marcar_pago_pagado|ID|medio]
   medio: efectivo, tarjeta o nequi si el usuario lo dijo. Si no lo dijo, déjalo vacío y no lo preguntes: el sistema pregunta.
 [ACCION:borrar_pago|ID]
+— Ingresos (lo que le entra al usuario; se ven en la pestaña Caja)
+[ACCION:registrar_ingreso|monto|medio|de quién|motivo|YYYY-MM-DD]
+  Cuando diga que le entró, le pagaron, recibió o le consignaron plata: "regístrame que me entraron 2 millones al banco".
+  Solo el monto es obligatorio (número sin puntos ni símbolos: 2 millones = 2000000). medio: banco, nequi o efectivo si lo dijo.
+  De quién y motivo son opcionales y van por separado: "me pagó Carlos el arriendo" → de quién: Carlos, motivo: arriendo.
+  Fecha vacía = hoy. Si no dijo el monto, pregúntalo sin emitir la acción. El sistema responde cuánto lleva del tope.
+    "me entraron 2 millones al banco"              → [ACCION:registrar_ingreso|2000000|banco|||]
+    "Carlos me pagó 350 mil por Nequi del arriendo" → [ACCION:registrar_ingreso|350000|nequi|Carlos|Arriendo|]
 — Eventos y recordatorios
 [ACCION:evento|titulo|YYYY-MM-DD|HH:MM]
   Título, día y hora son obligatorios (regla 10). Si falta uno, pregúntalo sin emitir la acción.
@@ -468,8 +502,9 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
   Si tu mensaje anterior preguntó "¿Te aviso como siempre o a otra hora?" y responde cuándo, emite esta acción. Si dice "a las 9" y no se sabe si es mañana o noche, pregunta cuál, sin emitirla.
   Si responde "como siempre", "no", "así está bien" o "como sea": [ACCION:aviso_evento|ID|siempre]
 [ACCION:recordatorio|qué recordar|YYYY-MM-DD|valor|nota]
-  Solo "qué recordar" es obligatorio; deja vacíos los demás campos que no dijo.
-  Con fecha, ese día le llega aviso por WhatsApp a las 8 am. Sin fecha queda como registro.
+  Ya no hay pestaña Recordatorios: esto queda en la AGENDA como actividad sin hora del día que dijo,
+  u hoy si no dijo día. Úsala para "anota…" o "recordatorio…" sin hora. Solo "qué recordar" es obligatorio.
+  Con fecha futura, ese día le llega aviso por WhatsApp a las 8 am.
 [ACCION:buscar_recordatorio|palabra clave]
   Busca en todos sus recordatorios por texto y nota. Usa solo las palabras clave.
 [ACCION:marcar_recordatorio_hecho|palabra clave]
@@ -514,13 +549,15 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
 
 — Navegación (cambiar la pantalla activa de la app)
 [ACCION:navegar|seccion]
-  Secciones válidas: agenda, listado, pagos, recordatorios, ia
+  Secciones válidas: agenda, listado, pagos, caja, ia (caja = Ingresos y Claves)
   Úsala cuando el usuario diga "llévame a X", "abre Y", "muéstrame Z", "ve a W".
   Ejemplos:
     "llévame a pagos"        → [ACCION:navegar|pagos]
     "abre la agenda"         → [ACCION:navegar|agenda]
     "muéstrame mis listas"   → [ACCION:navegar|listado]
-    "ve a recordatorios"     → [ACCION:navegar|recordatorios]
+    "abre la caja"           → [ACCION:navegar|caja]
+    "mis ingresos"           → [ACCION:navegar|caja]
+    "ve a recordatorios"     → [ACCION:navegar|agenda]   (ya viven en la Agenda)
 
 ═══ REGLAS ═══
 1. NUNCA muestres [ACCION:...] — son invisibles
@@ -742,14 +779,14 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
          "agenda cita médica mañana a las 10am" → [ACCION:evento|Cita médica|<mañana>|10:00]
          "listado mercado: pan, leche"          → [ACCION:crear_lista|mercado|pan;leche]
          "listado tareas"                        → [ACCION:crear_lista|tareas|]  (listado vacío)
-         "recordatorio mi clave es 1234"        → [ACCION:recordatorio|mi clave es 1234]
+         "recordatorio llevar los papeles el viernes" → [ACCION:recordatorio|Llevar los papeles|<viernes>]
        (Si es evento aplica la regla 10 A2: con QUÉ, DÍA y HORA se crea; si falta algo, pregúntalo.)
 
     B) Empieza con un VERBO DE VER o una pregunta → CONSULTAR, NO crear:
          "dime qué tengo en agenda" / "qué hay en agenda mañana" → responde con los datos (regla 20)
          "muéstrame la agenda"                                    → [ACCION:navegar|agenda]
          "muéstrame mis listados"                            → [ACCION:navegar|listado]
-         "ver mis recordatorios"                             → [ACCION:navegar|recordatorios]
+         "ver mis recordatorios"                             → [ACCION:navegar|agenda]
 
     C) CASOS ESPECIALES (mandan sobre A). Mira QUÉ viene justo después de "agenda":
        • NADA → consultar:  "agenda" → [ACCION:navegar|agenda]
@@ -1060,7 +1097,7 @@ const ACCIONES_RETIRADAS = new Set([
 ]);
 
 // ═══ EJECUTAR ACCIONES — todo queda visible en la app ═══
-async function ejecutarAcciones(respuesta, contexto, userId, { avisoDicho = null, fechaDicha = null, medioDicho = null } = {}) {
+async function ejecutarAcciones(respuesta, contexto, userId, { avisoDicho = null, fechaDicha = null, medioDicho = null, medioIngresoDicho = null } = {}) {
   // "mañana" o "el viernes" los calcula el código. Queda en los registros qué escribió la IA.
   const fechaFinal = (tipo, delModelo) => {
     const propia = (delModelo || '').trim();
@@ -1351,22 +1388,39 @@ async function ejecutarAcciones(respuesta, contexto, userId, { avisoDicho = null
           ejecutadas.push({ accion: 'recordatorio', error: 'sin_titulo' });
           continue;
         }
-        // Solo una fecha válida de hoy en adelante programa aviso; lo pasado queda como registro.
-        // Sin fecha de la IA es una nota sin aviso: "anota que hoy pagué" no programa nada.
+        // Recordatorios ya no tiene pestaña: "recuérdame" y "anota" van a la Agenda como evento
+        // del día dicho (hoy si no dijo día), sin hora. El valor y la nota quedan en la nota.
+        const hoyCol = colombiaDateString();
         const fechaTxt = (parts[2] || '').trim() ? fechaFinal('recordatorio', parts[2]) : '';
-        const fechaOk = /^\d{4}-\d{2}-\d{2}$/.test(fechaTxt) && !isNaN(new Date(`${fechaTxt}T12:00:00-05:00`).getTime()) && fechaTxt >= colombiaDateString();
-        const recordar_fecha = fechaOk ? fechaTxt : null;
+        const fechaOk = /^\d{4}-\d{2}-\d{2}$/.test(fechaTxt) && !isNaN(new Date(`${fechaTxt}T12:00:00-05:00`).getTime()) && fechaTxt >= hoyCol;
+        const fecha = fechaOk ? fechaTxt : hoyCol;
         const valor = parseMontoSeguro(parts[3]) || null;
-        const nota = (parts[4] || '').trim() || null;
-        const { error } = await supabase.from('reminders').insert({
-          user_id: userId, tipo: 'nota', titulo, content: { texto: titulo },
-          fecha: colombiaDateString(), recordar_fecha, valor, nota
-        });
+        const nota = [(parts[4] || '').trim(), valor ? `Valor: ${fmtValorExacto(valor)}` : ''].filter(Boolean).join(' · ') || null;
+        const { error } = await supabase.from('events').insert({ user_id: userId, titulo, fecha, hora: null, nota });
         if (error) {
-          console.error('[recordatorio] insert reminders falló:', error.message);
+          console.error('[recordatorio] insert events falló:', error.message);
           ejecutadas.push({ accion: 'recordatorio', error: 'db', detalle: titulo });
         } else {
-          ejecutadas.push({ accion: 'recordatorio', ok: true, detalle: titulo, recordar_fecha, valor });
+          ejecutadas.push({ accion: 'recordatorio', ok: true, detalle: titulo, fecha, valor });
+        }
+
+      } else if (accion === 'registrar_ingreso') {
+        const monto = parseMontoSeguro(parts[1]);
+        if (!monto || monto <= 0) { ejecutadas.push({ accion, error: 'sin_monto' }); continue; }
+        const delModelo = (parts[2] || '').trim().toLowerCase();
+        const medio = medioIngresoDicho || (MEDIOS_ING.includes(delModelo) ? delModelo : null);
+        const corto = (v, n) => { const t = String(v || '').trim(); return t && t.toLowerCase() !== 'null' ? t.slice(0, n) : null; };
+        const hoyCol = colombiaDateString();
+        const fechaTxt = (parts[5] || '').trim() ? fechaFinal('ingreso', parts[5]) : '';
+        const fecha = /^\d{4}-\d{2}-\d{2}$/.test(fechaTxt) && fechaTxt <= hoyCol ? fechaTxt : hoyCol;
+        const { data: creado, error } = await supabase.from('ingresos').insert({
+          user_id: userId, monto, medio, de_quien: corto(parts[3], 120), motivo: corto(parts[4], 200), fecha
+        }).select('id').single();
+        if (error || !creado) {
+          console.error('[registrar_ingreso] insert falló:', error?.message);
+          ejecutadas.push({ accion, error: 'db' });
+        } else {
+          ejecutadas.push({ accion, ok: true, id: creado.id, monto, medio, fecha, tope: await lineaDeTope(userId, medio) });
         }
 
       } else if (accion === 'desmarcar_recordatorio') {
@@ -1587,8 +1641,10 @@ async function ejecutarAcciones(respuesta, contexto, userId, { avisoDicho = null
 
       } else if (accion === 'navegar') {
         // No muta DB — solo devuelve la sección para que el frontend cambie de tab
-        const seccion = (parts[1] || '').trim();
-        const validas = ['agenda','listado','pagos','recordatorios','ia'];
+        // Recordatorios ya no tiene pestaña: sus cosas viven en la Agenda.
+        const pedida = (parts[1] || '').trim().toLowerCase();
+        const seccion = pedida === 'recordatorios' ? 'agenda' : pedida;
+        const validas = ['agenda','listado','pagos','caja','ia'];
         if (seccion && validas.includes(seccion)) {
           ejecutadas.push({ accion, seccion });
         }

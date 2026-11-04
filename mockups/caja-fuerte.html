@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<meta name="color-scheme" content="dark"/>
+<title>Caja fuerte de Kontrol</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+/* Mismos colores de la app (index.html). La app es solo oscura, así que el mockup también. */
+:root{
+  --bg:#080D1C;--card:#15223B;--card2:#10192D;--card3:#1B2B49;
+  --bd:rgba(255,255,255,0.10);--lin2:rgba(255,255,255,0.16);
+  --t1:#F3F6FF;--t2:#C6D2E6;--t3:#9AAAC4;
+  --mor:#8B5CF6;--blue:#387BFF;--green:#22C993;--amber:#F2B84B;--red:#EF6067;--purple:#A78BFA;
+  --sombra:0 6px 18px rgba(2,6,20,0.45);
+  --pagina:#05080F;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{background:var(--pagina);color:var(--t1);font-family:'DM Sans',sans-serif;overflow-x:hidden;}
+button{font-family:inherit;}
+svg.i{width:23px;height:23px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round;}
+
+/* ── Página del mockup ── */
+.pag{max-width:1240px;margin:0 auto;padding:22px 16px 60px;}
+.intro h1{font:800 26px/1.15 'Syne',sans-serif;}
+.intro p{margin-top:8px;font-size:15.5px;line-height:1.5;color:var(--t2);max-width:760px;}
+.decid{margin-top:16px;padding:14px 16px;border-radius:16px;background:var(--card2);border:1px solid var(--bd);max-width:760px;}
+.decid h2{font:700 16px 'Syne',sans-serif;margin-bottom:8px;}
+.decid li{margin:0 0 7px 18px;font-size:14.5px;line-height:1.45;color:var(--t2);}
+.decid b{color:var(--t1);}
+.rejilla{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,370px),1fr));gap:28px 22px;margin-top:26px;align-items:start;}
+.escena h3{font:700 16px 'Syne',sans-serif;margin-bottom:4px;}
+.escena>p{font-size:14px;line-height:1.45;color:var(--t3);margin-bottom:10px;min-height:40px;}
+
+/* ── Marco del celular ── */
+.tel{position:relative;width:100%;max-width:390px;border-radius:26px;border:1px solid var(--lin2);background:var(--bg);overflow:hidden;box-shadow:0 18px 40px rgba(0,0,0,0.5);display:flex;flex-direction:column;}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 10px 6px 14px;}
+.logo{display:flex;align-items:center;gap:7px;font:800 19px 'Syne',sans-serif;}
+.logo svg{width:28px;height:28px;}
+.hdr-r{display:flex;gap:2px;color:var(--t2);}
+.hdr-r span{width:36px;height:36px;display:flex;align-items:center;justify-content:center;}
+.hdr-r svg.i{width:21px;height:21px;}
+.cont{padding:4px 14px 14px;flex:1;}
+.nav{display:flex;gap:2px;background:var(--card2);border-top:1px solid var(--bd);padding:5px 5px 9px;}
+.ntab{flex:1 1 0;min-width:0;min-height:54px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-radius:14px;color:var(--t2);font-size:12px;font-weight:600;}
+.ntab.on{background:var(--mor);color:#fff;font-weight:700;box-shadow:0 4px 14px rgba(139,92,246,0.5);}
+
+/* Título y botones como en Pagos */
+.k-tit{display:flex;align-items:center;gap:11px;margin-bottom:12px;}
+.k-tit-ic{color:var(--purple);filter:drop-shadow(0 0 8px rgba(167,139,250,0.5));}
+.k-tit-ic svg.i{width:36px;height:36px;}
+.k-tit h1{font:700 23px/1.12 'Syne',sans-serif;}
+.k-tit p{font-size:14.5px;color:var(--t2);margin-top:2px;}
+.acc{display:flex;gap:7px;margin-bottom:12px;}
+.b-pri,.b-sec{flex:1 1 0;min-width:0;min-height:46px;display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:13px;font-size:14.5px;font-weight:700;white-space:nowrap;padding:0 8px;}
+.b-pri{flex-grow:1.35;border:none;background:var(--mor);color:#fff;box-shadow:0 5px 16px rgba(139,92,246,0.42);}
+.b-sec{border:1px solid var(--lin2);background:var(--card3);color:#fff;font-weight:600;}
+.b-sec.foto{border-color:var(--mor);}
+.b-pri svg.i,.b-sec svg.i{width:19px;height:19px;}
+
+/* Tarjeta verde */
+.ing-t{padding:13px 15px 11px;border-radius:16px;border:1px solid rgba(34,201,147,0.5);background:linear-gradient(150deg,#0F4C3E,#0C2C2C);box-shadow:var(--sombra);cursor:pointer;}
+.ing-hd{display:flex;align-items:center;gap:7px;font-size:14.5px;font-weight:600;color:#DCE5F4;}
+.ing-hd svg.i{color:var(--green);width:24px;height:24px;}
+.ing-v{font-size:31px;font-weight:800;line-height:1.15;margin-top:2px;}
+.med{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin-top:8px;padding-top:7px;border-top:1px solid rgba(255,255,255,0.16);}
+.med-e{font-size:11.5px;font-weight:600;color:#A9C9BE;}
+.med-v{font-size:13.5px;font-weight:800;}
+.toca{font-size:11.5px;color:#A9C9BE;margin-top:6px;}
+
+/* Barras de tope */
+.lims{display:flex;flex-direction:column;gap:9px;margin:13px 0 4px;}
+.lim-tx{display:flex;justify-content:space-between;flex-wrap:wrap;gap:2px 10px;font-size:13.5px;color:var(--t2);}
+.lim-tx b{color:#fff;}
+.bar{height:5px;margin-top:5px;border-radius:99px;background:rgba(255,255,255,0.12);overflow:hidden;}
+.bar i{display:block;height:100%;border-radius:99px;background:var(--green);}
+.lim.alto .bar i{background:var(--amber);}
+.lim.alto .lim-tx span{color:#FFD98C;}
+
+/* Lista de ingresos */
+.sec{font-size:15.5px;font-weight:700;margin:14px 0 8px;}
+.ing{display:flex;align-items:center;gap:10px;padding:11px 13px;margin-bottom:8px;border-radius:16px;background:linear-gradient(150deg,#1A2F58,#142443);border:1px solid rgba(56,123,255,0.28);}
+.ing-i{flex:1;min-width:0;}
+.ing-n{font-size:15.5px;font-weight:700;overflow-wrap:anywhere;}
+.ing-d{font-size:13.5px;color:var(--t2);margin-top:1px;}
+.ing-r{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+.mas{font-size:15.5px;font-weight:800;color:#5CE3B3;white-space:nowrap;}
+.sop{width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:9px;color:#7CF0C8;background:#0D4F3D;border:1px solid rgba(34,201,147,0.55);}
+.sop svg.i{width:17px;height:17px;}
+
+/* Pestañas de abajo dentro de Caja */
+.sub{display:flex;gap:6px;padding:7px 14px 8px;background:var(--bg);border-top:1px solid var(--bd);}
+.sub span{flex:1;min-height:44px;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:12px;border:1px solid var(--lin2);background:var(--card3);font-size:15px;font-weight:700;color:var(--t2);}
+.sub span.on{background:rgba(34,201,147,0.16);border-color:var(--green);color:#7CF0C8;}
+.sub span.on.mor{background:rgba(139,92,246,0.18);border-color:var(--mor);color:#D7C8FF;}
+.sub svg.i{width:18px;height:18px;}
+
+/* Ventanas (hoja que sube desde abajo) */
+.velo{position:absolute;inset:0;background:rgba(0,0,0,0.62);display:flex;align-items:flex-end;}
+.fondo{filter:blur(3px);opacity:.55;}
+.modal{width:100%;background:var(--card);border:1px solid var(--lin2);border-radius:24px 24px 0 0;padding:18px 16px 20px;}
+.m-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.m-hd b{font:700 19px 'Syne',sans-serif;}
+.m-hd span{color:var(--t2);font-size:20px;}
+.lbl{font-size:13.5px;font-weight:700;color:var(--t2);margin:12px 0 6px;}
+.monto{display:flex;align-items:baseline;justify-content:center;gap:4px;padding:12px 10px;border-radius:14px;background:var(--card2);border:2px solid var(--green);font-size:34px;font-weight:800;}
+.monto small{font-size:22px;color:var(--t2);font-weight:700;}
+.chips{display:flex;gap:6px;}
+.chips span{flex:1 1 0;min-width:0;min-height:46px;display:flex;align-items:center;justify-content:center;border-radius:12px;border:1px solid var(--lin2);background:var(--card3);font-size:15px;font-weight:600;}
+.chips span.on{border-color:var(--green);background:#0D4F3D;color:#7CF0C8;}
+.inp{min-height:46px;display:flex;align-items:center;padding:0 13px;border-radius:12px;background:var(--card2);border:1px solid var(--lin2);font-size:15px;color:var(--t3);}
+.inp.lleno{color:var(--t1);}
+.fila2{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;}
+.hoy{min-height:46px;display:flex;align-items:center;padding:0 12px;border-radius:12px;border:1px solid var(--lin2);background:var(--card3);font-size:14px;font-weight:600;white-space:nowrap;}
+.btn-p,.btn-s{width:100%;min-height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;margin-top:10px;}
+.btn-p{background:var(--mor);color:#fff;box-shadow:0 5px 16px rgba(139,92,246,0.42);}
+.btn-s{border:1px solid var(--lin2);background:var(--card3);color:#fff;font-weight:600;margin-top:8px;}
+.nota{font-size:13.5px;line-height:1.45;color:var(--t2);}
+
+/* PIN, igual que la Caja fuerte de hoy */
+.pin{display:flex;flex-direction:column;align-items:center;padding:14px 4px 6px;}
+.pin svg.i.cand{width:42px;height:42px;color:var(--purple);filter:drop-shadow(0 0 9px rgba(188,163,255,0.6));}
+.pin h2{font:700 20px 'Syne',sans-serif;margin-top:4px;}
+.pin p{margin-top:4px;font-size:14px;color:var(--t2);text-align:center;}
+.puntos{display:flex;gap:13px;margin:14px 0;}
+.puntos i{width:15px;height:15px;border-radius:50%;border:2px solid var(--t2);}
+.puntos i.on{background:var(--mor);border-color:var(--mor);}
+.teclado{display:grid;grid-template-columns:repeat(3,68px);gap:8px;}
+.teclado span{height:50px;display:flex;align-items:center;justify-content:center;border-radius:13px;border:1px solid var(--lin2);background:var(--card3);font-size:21px;font-weight:600;}
+.teclado span.v{border:none;background:transparent;}
+.link{margin-top:10px;min-height:40px;display:flex;align-items:center;color:var(--purple);font-size:15px;font-weight:600;}
+
+/* WhatsApp */
+.wa{background:#0B141A;padding:12px 10px 14px;display:flex;flex-direction:column;gap:7px;}
+.wa-hd{display:flex;align-items:center;gap:9px;padding:10px 12px;background:#1F2C34;}
+.wa-av{width:34px;height:34px;border-radius:50%;background:var(--mor);display:flex;align-items:center;justify-content:center;font-weight:800;}
+.wa-hd b{font-size:15.5px;}
+.wa-hd small{display:block;font-size:12px;color:#8696A0;}
+.bur{max-width:86%;padding:7px 10px 6px;border-radius:10px;font-size:14.5px;line-height:1.4;overflow-wrap:anywhere;}
+.bur.yo{align-self:flex-end;background:#005C4B;border-top-right-radius:3px;}
+.bur.ana{align-self:flex-start;background:#202C33;border-top-left-radius:3px;}
+.bur .h{display:block;text-align:right;font-size:11px;color:#8FA9A2;margin-top:2px;}
+.audio{display:flex;align-items:center;gap:8px;min-width:190px;}
+.audio i{flex:1;height:3px;border-radius:99px;background:linear-gradient(90deg,#8FD9C5 35%,rgba(255,255,255,0.3) 35%);}
+.audio .play{width:0;height:0;border-left:11px solid #D1E5DF;border-top:7px solid transparent;border-bottom:7px solid transparent;}
+.trans{font-size:12.5px;color:#9FC9BE;font-style:italic;margin-top:4px;}
+.comp{width:170px;border-radius:8px;background:#E9EEF3;color:#1D2633;padding:10px 11px;font-size:12px;line-height:1.35;}
+.comp b{display:block;font-size:12.5px;}
+.comp .v{font-size:19px;font-weight:800;margin:4px 0;}
+.wa-sep{align-self:center;font-size:11.5px;color:#8696A0;background:#182229;padding:3px 9px;border-radius:7px;margin:4px 0;}
+
+/* Valores exactos */
+.exactos>div{display:flex;justify-content:space-between;gap:10px;padding:11px 2px;border-bottom:1px solid var(--bd);font-size:15px;color:var(--t2);}
+.exactos b{color:#fff;white-space:nowrap;}
+.exactos .tot{border:none;color:#fff;font-weight:700;}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs><linearGradient id="lg-k" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#A78BFA"/><stop offset="1" stop-color="#7C4DFF"/></linearGradient></defs>
+  <symbol id="i-logo" viewBox="0 0 34 34"><rect x="2.5" y="6.5" width="25" height="25" rx="7" fill="rgba(139,92,246,0.2)" stroke="url(#lg-k)" stroke-width="3.4"/><path d="M9.5 18l6.5 6.5L31 7" fill="none" stroke="url(#lg-k)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 9.5V21h5v-6h4v6h5V9.5"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 10h18M3 15h18M10 10v10"/></symbol>
+  <symbol id="i-wal" viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 0 1 2-2h11l2 4"/><rect x="3" y="8" width="18" height="12" rx="3"/><path d="M21 12h-4a2 2 0 0 0 0 4h4"/></symbol>
+  <symbol id="i-cand" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+  <symbol id="i-cam" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/></symbol>
+  <symbol id="i-sum" viewBox="0 0 24 24"><path d="M18 5H6l6.5 7L6 19h12"/></symbol>
+  <symbol id="i-mas" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-recibo" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></symbol>
+  <symbol id="i-llave" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4.5"/><path d="M11.3 11.7L20 3M16 7l3 3"/></symbol>
+  <symbol id="i-ent" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M12 7v10M8 13l4 4 4-4"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 9a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M10 21a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="10" r="3.2"/><path d="M6 19a7 7 0 0 1 12 0"/></symbol>
+  <symbol id="i-ref" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14-5L3 9M3 4v5h5M4 13a8 8 0 0 0 14 5l3-3M21 20v-5h-5"/></symbol>
+  <symbol id="i-ia" viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></symbol>
+</svg>
+
+<template id="t-hdr">
+  <div class="hdr"><div class="logo"><svg aria-hidden="true"><use href="#i-logo"/></svg>Kontrol</div>
+  <div class="hdr-r"><span><svg class="i"><use href="#i-ref"/></svg></span><span><svg class="i"><use href="#i-ia"/></svg></span><span><svg class="i"><use href="#i-bell"/></svg></span><span><svg class="i"><use href="#i-user"/></svg></span></div></div>
+</template>
+<template id="t-nav">
+  <div class="nav">
+    <div class="ntab"><svg class="i"><use href="#i-home"/></svg>Inicio</div>
+    <div class="ntab"><svg class="i"><use href="#i-cal"/></svg>Agenda</div>
+    <div class="ntab"><svg class="i"><use href="#i-list"/></svg>Listado</div>
+    <div class="ntab"><svg class="i"><use href="#i-wal"/></svg>Pagos</div>
+    <div class="ntab on"><svg class="i"><use href="#i-cand"/></svg>Caja</div>
+  </div>
+</template>
+<template id="t-ingresos">
+  <div class="cont">
+    <div class="k-tit"><div class="k-tit-ic"><svg class="i"><use href="#i-cand"/></svg></div><div><h1>Caja fuerte</h1><p>Lo que te entra y tus claves</p></div></div>
+    <div class="acc">
+      <span class="b-pri"><svg class="i"><use href="#i-mas"/></svg>Ingreso</span>
+      <span class="b-sec foto"><svg class="i"><use href="#i-cam"/></svg>Foto</span>
+      <span class="b-sec"><svg class="i"><use href="#i-sum"/></svg>Topes</span>
+    </div>
+    <div class="ing-t" data-exactos>
+      <div class="ing-hd"><svg class="i"><use href="#i-ent"/></svg>Te entró en noviembre</div>
+      <div class="ing-v">$19.150.000</div>
+      <div class="med">
+        <div><div class="med-e">Banco</div><div class="med-v">16,8 M</div></div>
+        <div><div class="med-e">Nequi</div><div class="med-v">1,4 M</div></div>
+        <div><div class="med-e">Efectivo</div><div class="med-v">750 mil</div></div>
+      </div>
+    </div>
+    <div class="lims">
+      <div class="lim alto"><div class="lim-tx"><b>Banco</b><span>$16.800.000 de $20.000.000</span></div><div class="bar"><i style="width:84%"></i></div></div>
+      <div class="lim"><div class="lim-tx"><b>Nequi</b><span>$1.400.000 de $3.000.000</span></div><div class="bar"><i style="width:47%"></i></div></div>
+    </div>
+    <div class="sec">Ingresos de noviembre · 5</div>
+    <div class="ing"><div class="ing-i"><div class="ing-n">Devolución tienda</div><div class="ing-d">Sin medio · 3 nov</div></div><div class="ing-r"><span class="mas">+$200.000</span></div></div>
+    <div class="ing"><div class="ing-i"><div class="ing-n">Arriendo apto 302</div><div class="ing-d">Efectivo · 3 nov</div></div><div class="ing-r"><span class="mas">+$750.000</span></div></div>
+    <div class="ing"><div class="ing-i"><div class="ing-n">Venta bicicleta</div><div class="ing-d">Nequi · 2 nov</div></div><div class="ing-r"><span class="mas">+$1.400.000</span><span class="sop" aria-label="Tiene comprobante"><svg class="i"><use href="#i-recibo"/></svg></span></div></div>
+    <div class="ing"><div class="ing-i"><div class="ing-n">Cliente Ruiz</div><div class="ing-d">Banco · 2 nov</div></div><div class="ing-r"><span class="mas">+$4.800.000</span><span class="sop" aria-label="Tiene comprobante"><svg class="i"><use href="#i-recibo"/></svg></span></div></div>
+    <div class="ing"><div class="ing-i"><div class="ing-n">Salario</div><div class="ing-d">Banco · 1 nov</div></div><div class="ing-r"><span class="mas">+$12.000.000</span></div></div>
+  </div>
+  <div class="sub"><span class="on"><svg class="i"><use href="#i-ent"/></svg>Ingresos</span><span><svg class="i"><use href="#i-llave"/></svg>Claves</span></div>
+</template>
+
+<div class="pag">
+  <div class="intro">
+    <h1>Caja fuerte: Ingresos y Claves</h1>
+    <p>Mockup para aprobar antes de tocar la app. La pestaña Recordatorios pasa a ser <b>Caja</b>. Adentro hay dos pestañas: <b>Ingresos</b>, que abre primero y no pide PIN, y <b>Claves</b>, que es la Caja fuerte de hoy con su PIN. Toca la tarjeta verde para ver los valores exactos.</p>
+    <div class="decid">
+      <h2>Lo que pasa con Recordatorios</h2>
+      <ul>
+        <li><b>No se borra nada.</b> Los recordatorios que tengan fecha y aviso pendiente pasan a la Agenda como eventos, con la nota y el valor dentro de la nota del evento. Los demás quedan guardados en la base, sin mostrarse.</li>
+        <li><b>Hoy no hay ninguno con aviso pendiente:</b> la hoja Recordatorios está vacía, así que la migración no mueve nada. Igual queda lista por si aparece alguno antes del cambio.</li>
+        <li>Las <b>claves que ya tienes</b> siguen igual, con el mismo PIN.</li>
+        <li>"Recuérdame…" y "anota…" a Ana van a la Agenda.</li>
+        <li><b>Para que decidas:</b> con la pestaña se va también el botón "+ Nueva hoja" (hojas propias). Hoy no tienes ninguna.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="rejilla">
+    <section class="escena">
+      <h3>1 · Ingresos (abre primero)</h3>
+      <p>Banco va en el 84 % de su tope: barra amarilla. Nequi va en el 47 %: verde. Efectivo no tiene tope y no muestra barra.</p>
+      <div class="tel" data-arma="ingresos"></div>
+    </section>
+
+    <section class="escena">
+      <h3>2 · Registrar un ingreso</h3>
+      <p>Dos toques: escribes el valor y tocas Guardar. El medio, el "de quién" y la fecha son opcionales. La fecha es hoy si no la cambias.</p>
+      <div class="tel" data-arma="ingresos" data-fondo>
+        <div class="velo"><div class="modal">
+          <div class="m-hd"><b>Nuevo ingreso</b><span>✕</span></div>
+          <div class="lbl" style="margin-top:0">¿Cuánto te entró?</div>
+          <div class="monto"><small>$</small>2.000.000</div>
+          <div class="lbl">Dónde (opcional)</div>
+          <div class="chips"><span class="on">Banco</span><span>Nequi</span><span>Efectivo</span></div>
+          <div class="lbl">De quién o por qué (opcional)</div>
+          <div class="fila2"><div class="inp">Ej: Salario, cliente Ruiz</div><div class="hoy">Hoy, 3 nov</div></div>
+          <div class="btn-p">Guardar</div>
+          <div class="btn-s">Cancelar</div>
+        </div></div>
+      </div>
+    </section>
+
+    <section class="escena">
+      <h3>3 · Topes</h3>
+      <p>Tope mensual para uno, dos o los tres medios. Los que dejas vacíos no tienen tope. WhatsApp avisa una vez al 80 % y una vez al llegar al tope, cada mes.</p>
+      <div class="tel" data-arma="ingresos" data-fondo>
+        <div class="velo"><div class="modal">
+          <div class="m-hd"><b>Topes del mes</b><span>✕</span></div>
+          <div class="nota">Pon un tope a los medios que quieras. Los que dejes vacíos no tienen tope. Te aviso por WhatsApp al llegar al 80 % y al llegar al tope.</div>
+          <div class="lbl">Banco</div><div class="inp lleno">20.000.000</div>
+          <div class="lbl">Nequi</div><div class="inp lleno">3.000.000</div>
+          <div class="lbl">Efectivo</div><div class="inp">Sin tope</div>
+          <div class="btn-p">Guardar topes</div>
+          <div class="btn-s">Cancelar</div>
+        </div></div>
+      </div>
+    </section>
+
+    <section class="escena">
+      <h3>4 · Claves pide el PIN</h3>
+      <p>Igual que la Caja fuerte de hoy. La primera vez dice "Crea tu PIN"; de ahí en adelante siempre lo pide para entrar. Ingresos nunca lo pide.</p>
+      <div class="tel">
+        <div data-hdr></div>
+        <div class="cont">
+          <div class="k-tit"><div class="k-tit-ic"><svg class="i"><use href="#i-cand"/></svg></div><div><h1>Caja fuerte</h1><p>Lo que te entra y tus claves</p></div></div>
+          <div class="pin">
+            <svg class="i cand"><use href="#i-cand"/></svg>
+            <h2>Claves</h2>
+            <p>Escribe tu PIN para entrar</p>
+            <div class="puntos"><i class="on"></i><i class="on"></i><i></i><i></i></div>
+            <div class="teclado"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span class="v"></span><span>0</span><span>⌫</span></div>
+            <div class="link">Olvidé mi PIN</div>
+          </div>
+        </div>
+        <div class="sub"><span><svg class="i"><use href="#i-ent"/></svg>Ingresos</span><span class="on mor"><svg class="i"><use href="#i-llave"/></svg>Claves</span></div>
+        <div data-nav></div>
+      </div>
+    </section>
+
+    <section class="escena">
+      <h3>5 · WhatsApp: audio y foto de ingreso</h3>
+      <p>Por audio o texto se registra al instante y responde cuánto lleva del tope. Con la foto, Ana muestra lo que leyó y pregunta antes de guardar. La foto queda como comprobante.</p>
+      <div class="tel">
+        <div class="wa-hd"><div class="wa-av">K</div><div><b>Kontrol</b><small>en línea</small></div></div>
+        <div class="wa">
+          <div class="bur yo"><div class="audio"><span class="play"></span><i></i><span style="font-size:12px">0:04</span></div><div class="trans">"regístrame que me entraron 2 millones al banco"</div><span class="h">9:12</span></div>
+          <div class="bur ana">✅ Registré <b>+$2.000.000</b> en Banco, hoy.<br/>🟡 Banco este mes: $18.800.000 de $20.000.000 (94 %).<span class="h">9:12</span></div>
+          <div class="wa-sep">Más tarde</div>
+          <div class="bur yo"><div class="comp"><b>Comprobante de transferencia</b>Envío exitoso<div class="v">$1.250.000</div>De: Carlos Pérez<br/>Para: Rubén<br/>Nequi · 3 nov 2026</div><span class="h">15:40</span></div>
+          <div class="bur ana">🧾 Leí: <b>$1.250.000</b> · Nequi · 3 nov<br/>De Carlos Pérez para ti.<br/>¿Lo registro como ingreso? Responde sí o no<span class="h">15:40</span></div>
+          <div class="bur yo">sí<span class="h">15:41</span></div>
+          <div class="bur ana">✅ Registré +$1.250.000 en Nequi, con su comprobante.<br/>⚠️ Ya vas en el 80 % de tu tope de Nequi: $2.650.000 de $3.000.000.<span class="h">15:41</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="escena">
+      <h3>6 · WhatsApp: la foto es un pago tuyo</h3>
+      <p>Si el que paga eres tú, Ana pregunta si es un pago. Si no se entiende quién paga a quién, también pregunta. Sin respuesta, no guarda nada.</p>
+      <div class="tel">
+        <div class="wa-hd"><div class="wa-av">K</div><div><b>Kontrol</b><small>en línea</small></div></div>
+        <div class="wa">
+          <div class="bur yo"><div class="comp"><b>Comprobante de pago</b>Pago exitoso<div class="v">$320.000</div>De: Rubén<br/>Para: Gas del barrio<br/>Banco · 3 nov 2026</div><span class="h">18:05</span></div>
+          <div class="bur ana">🧾 Leí: <b>$320.000</b> · 3 nov<br/>Lo pagaste tú a Gas del barrio: parece un pago, no un ingreso.<br/>¿Lo registro como pago? Responde sí o no<span class="h">18:05</span></div>
+          <div class="bur yo">sí<span class="h">18:06</span></div>
+          <div class="bur ana">✅ Guardé Gas del barrio · $320.000 en Pagos, pagado hoy, con su comprobante.<span class="h">18:06</span></div>
+          <div class="wa-sep">Si no queda claro</div>
+          <div class="bur ana">🧾 Leí $85.000 del 3 nov, pero no veo a nombre de quién. ¿Te entró a ti o lo pagaste tú? Responde "me entró" o "lo pagué"<span class="h">18:20</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="escena">
+      <h3>7 · Al tocar la tarjeta verde</h3>
+      <p>Valores exactos por medio. "Sin medio" solo sale si hay ingresos sin medio.</p>
+      <div class="tel" data-arma="ingresos" data-fondo>
+        <div class="velo"><div class="modal">
+          <div class="m-hd"><b>Te entró en noviembre</b><span>✕</span></div>
+          <div class="exactos">
+            <div><span>Banco</span><b>$16.800.000</b></div>
+            <div><span>Nequi</span><b>$1.400.000</b></div>
+            <div><span>Efectivo</span><b>$750.000</b></div>
+            <div><span>Sin medio</span><b>$200.000</b></div>
+            <div class="tot"><span>Total</span><b>$19.150.000</b></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+// Arma cada celular con el encabezado, la pantalla de Ingresos y la barra de abajo.
+const tpl = id => document.getElementById(id).content.cloneNode(true);
+document.querySelectorAll('[data-hdr]').forEach(el => el.replaceWith(tpl('t-hdr')));
+document.querySelectorAll('[data-nav]').forEach(el => el.replaceWith(tpl('t-nav')));
+document.querySelectorAll('.tel[data-arma]').forEach(tel => {
+  const encima = [...tel.children];
+  const cuerpo = document.createElement('div');
+  cuerpo.append(tpl('t-hdr'), tpl('t-ingresos'), tpl('t-nav'));
+  if (tel.hasAttribute('data-fondo')) cuerpo.className = 'fondo';
+  tel.prepend(cuerpo);
+  encima.forEach(e => tel.append(e));
+});
+// La tarjeta verde del primer celular abre la ventana de valores exactos (escena 7).
+const primera = document.querySelector('.escena .tel [data-exactos]');
+if (primera) primera.addEventListener('click', () => {
+  document.querySelectorAll('.escena')[6].scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+</script>
+</body>
+</html>
