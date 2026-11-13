@@ -26,6 +26,7 @@ const { PREGUNTA_MEDIO, medioDelTexto, avisosDeLimite } = require('../lib/medio-
 const { NOMBRE_MEDIO_ING, lineaDeTope } = require('../lib/ingresos');
 const { MEDIO_PAGO_DE, clasificarComprobante, pagosParecidos, norm } = require('../lib/comprobante');
 const { leerListaDeImagen, leerFotoDeImagen, interpretarLectura, interpretarFoto, destinoDelTexto, elegirLista } = require('../lib/lista-foto');
+const { guardarUbicacionActual, tomarPendiente, buscarCerca } = require('../lib/lugares');
 
 const TWILIO_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_TOKEN = process.env.TWILIO_AUTH_TOKEN;
@@ -682,6 +683,10 @@ async function procesarFoto(userId, phone, mediaUrl, mediaCt, caption) {
 }
 
 // ─── Ubicaciones (lugares guardados) ──────────────────────────
+// Texto que es un pedido y no un nombre de lugar: incluye búsquedas y rutas, para que
+// "búscame una droguería" después de un pin no quede guardado como nombre.
+const PARECE_COMANDO = /(\$|\b\d{4,}\b|gast[oeé]|ingres[oa]|recuerd|agenda|registr|elimin|borr|b[uú]sca|cerca|d[oó]nde|ll[eé]v|ruta|c[oó]mo llego)/i;
+
 // Mensaje canónico cuando hay colisión de nombre. Numerado para UX consistente
 // con respuestas rápidas tipo botón.
 function mensajeConflictoUbicacion(nombre) {
@@ -723,7 +728,7 @@ async function procesarUbicacion(userId, phone, lat, lng, label, address, captio
   }
 
   const sugerido = (caption || label || '').trim();
-  const pareceComando = /(\$|\b\d{4,}\b|gast[oeé]|ingres[oa]|recuerd|agenda|registr|elimin|borr)/i.test(sugerido);
+  const pareceComando = PARECE_COMANDO.test(sugerido);
 
   if (sugerido && sugerido.length <= 100 && !pareceComando) {
     const resultado = await guardarUbicacion(userId, sugerido, lat, lng, address, label);
@@ -749,7 +754,7 @@ async function procesarUbicacion(userId, phone, lat, lng, label, address, captio
   }, 10);
 
   const labelHint = label ? `\n(WhatsApp dice "${label}" — puedes usar ese nombre si quieres)` : '';
-  return `📍 Recibí tu ubicación. ¿Con qué nombre la guardo? (responde solo el nombre)${labelHint}`;
+  return `📍 Recibí tu ubicación. ¿Con qué nombre la guardo? (responde solo el nombre)${labelHint}\nSi querías buscar algo cerca, dime qué (ej. "una droguería").`;
 }
 
 // ─── Handler principal ────────────────────────────────────────
@@ -800,6 +805,20 @@ module.exports = async function handler(req, res) {
     if (messageType === 'location' || (latRaw && lngRaw)) {
       const lat = parseFloat(latRaw);
       const lng = parseFloat(lngRaw);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        await sendTwilio(from, '⚠️ No pude leer las coordenadas de la ubicación.');
+        return twimlOk(res);
+      }
+      // Un pin con Label es un sitio elegido en el mapa, no donde está la persona.
+      if (!locLabel) await guardarUbicacionActual(usuario.id, lat, lng);
+      // Si una búsqueda estaba esperando la ubicación, el pin es la respuesta.
+      const pendiente = await tomarPendiente(usuario.id);
+      if (pendiente) {
+        const respuesta = await buscarCerca(usuario.id, { lat, lng }, pendiente);
+        await guardarTurno(usuario.id, phone, '[Ubicación]', respuesta);
+        await sendTwilio(from, respuesta);
+        return twimlOk(res);
+      }
       const respuesta = await procesarUbicacion(usuario.id, phone, lat, lng, locLabel, locAddress, text);
       await sendTwilio(from, respuesta);
       return twimlOk(res);
@@ -967,7 +986,7 @@ async function despacharRespuestaPago(userId, phone, text, estado) {
       await clearState(phone);
       return 'Ok, no la guardé.';
     }
-    if (/(\$|\b\d{4,}\b|gast[oeé]|ingres[oa]|recuerd|agenda|registr|elimin|borr)/i.test(txt)) {
+    if (PARECE_COMANDO.test(txt)) {
       // Comando: el usuario abandonó el flujo. Limpiamos y delegamos a IA.
       await clearState(phone);
       return null;
@@ -1047,7 +1066,7 @@ async function despacharRespuestaPago(userId, phone, text, estado) {
       await clearState(phone);
       return 'Ok, no la guardé.';
     }
-    if (/(\$|\b\d{4,}\b|gast[oeé]|ingres[oa]|recuerd|agenda|registr|elimin|borr)/i.test(txt)) {
+    if (PARECE_COMANDO.test(txt)) {
       await clearState(phone);
       return null;
     }

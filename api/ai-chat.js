@@ -8,6 +8,7 @@ const { MEDIOS, medioDelTexto } = require('../lib/medio-pago');
 const { MEDIOS_ING, NOMBRE_MEDIO_ING, fmtPesos, medioIngresoDelTexto, lineaDeTope } = require('../lib/ingresos');
 const { leerComprobanteDeImagen, interpretarComprobante } = require('../lib/lista-foto');
 const { clasificarComprobante, pagosParecidos } = require('../lib/comprobante');
+const { ubicacionReciente, dejarPendiente, buscarCerca, enlaceRuta, PEDIR_UBICACION } = require('../lib/lugares');
 
 const MEM0_API_KEY = process.env.MEM0_API_KEY;
 const MEM0_BASE = 'https://api.mem0.ai/v1';
@@ -232,6 +233,9 @@ module.exports = async function handler(req, res) {
         partesUbicacion.push(`⚠️ Ya tienes "${a.nombre}" guardada. Pídeme borrarla primero o usa otro nombre.`);
       } else if (a.accion === 'guardar_ubicacion' && a.id) {
         partesUbicacion.push(`✅ Guardé "${a.nombre}".\n${a.url}`);
+      // Lugares cercanos y rutas: el texto lo arma lib/lugares con lo que devolvió Google.
+      } else if (a.accion === 'buscar_cerca' || a.accion === 'ruta') {
+        partesUbicacion.push(a.texto);
       // BUG 2/3: respuesta DETERMINÍSTICA para eventos — el ✅ solo si el insert
       // se confirmó, y SIEMPRE con día + hora exacta + qué. Salta la verification pass.
       } else if (a.accion === 'evento' && a.error === 'sin_hora') {
@@ -547,6 +551,31 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
   Cuando el usuario pida borrar una ubicación. Usa el nombre EXACTO del
   listado.
 
+— Lugares cercanos y rutas (el sistema busca en Google y arma la respuesta)
+[ACCION:buscar_cerca|qué busca|tipo_google]
+  Cuando pida un lugar CERCA o "dónde hay/consigo/echo…": droguería, ferretería,
+  gasolina, cajero, etc. "qué busca" en pocas palabras, como lo diría en Colombia.
+  tipo_google es uno de: pharmacy, gas_station, hardware_store, supermarket,
+  convenience_store, atm, bank, hospital, doctor, dentist, veterinary_care,
+  pet_store, restaurant, fast_food_restaurant, cafe, bakery, bar, liquor_store,
+  car_repair, car_wash, parking, electric_vehicle_charging_station, shopping_mall,
+  police, post_office, laundry, hair_care, beauty_salon, gym, electronics_store,
+  clothing_store, shoe_store, book_store, florist, bicycle_store, lodging, hotel.
+  Si ninguno encaja (ej. "un cerrajero", "una papelería"), déjalo vacío.
+    "búscame la droguería más cerca" → [ACCION:buscar_cerca|droguería|pharmacy]
+    "una ferretería cerca"           → [ACCION:buscar_cerca|ferretería|hardware_store]
+    "dónde echo gasolina"            → [ACCION:buscar_cerca|gasolinera|gas_station]
+    "un cajero de Bancolombia"       → [ACCION:buscar_cerca|cajero Bancolombia|]
+    "una papelería por aquí"         → [ACCION:buscar_cerca|papelería|]
+  NUNCA nombres lugares por tu cuenta ni escribas enlaces: solo la acción.
+[ACCION:ruta|destino]
+  "Llévame a / cómo llego a / ruta a" + una DIRECCIÓN o un LUGAR del mundo.
+  destino tal cual lo dijo (si es un lugar guardado, usa su nombre de "Lugares guardados").
+    "llévame a la Calle 10 # 5-20 Jamundí" → [ACCION:ruta|Calle 10 # 5-20 Jamundí]
+    "cómo llego al Éxito de Jamundí"       → [ACCION:ruta|Éxito Jamundí]
+  OJO: "llévame a" + pagos / agenda / listado / caja / ingresos / recordatorios
+  es una pantalla de la app → [ACCION:navegar|…], NO ruta.
+
 — Navegación (cambiar la pantalla activa de la app)
 [ACCION:navegar|seccion]
   Secciones válidas: agenda, listado, pagos, caja, ia (caja = Ingresos y Claves)
@@ -568,7 +597,7 @@ EJEMPLOS INCORRECTOS (NO hagas esto):
 6. Español colombiano, natural y cercano, sin rodeos
 7. RECUERDAS TODO — úsalo naturalmente
 8. Si te preguntan qué recuerdas → cuéntale todo
-9. Ubicaciones: si el nombre que pide el usuario está en el listado "Lugares guardados" de arriba, emite [ACCION:get_ubicacion|nombre] y formatea la respuesta con el link que ya tienes en ese listado. Si NO está guardado (lugar público conocido), genera un link de Google Maps genérico así: https://maps.google.com/?q=[lugar+ciudad]. Ejemplo lugar guardado: "📍 Bodega Juan\nhttps://maps.google.com/?q=4.0847,-76.1956". Ejemplo lugar público: "📍 Éxito Jamundí\nhttps://maps.google.com/?q=Éxito+Jamundí+Valle+del+Cauca".
+9. Ubicaciones: si el nombre que pide el usuario está en el listado "Lugares guardados" de arriba, emite [ACCION:get_ubicacion|nombre] y formatea la respuesta con el link que ya tienes en ese listado. Ejemplo: "📍 Bodega Juan\nhttps://maps.google.com/?q=4.0847,-76.1956". Si pide CÓMO LLEGAR a un lugar, guardado o no, usa [ACCION:ruta|…]. Si busca un lugar cercano, usa [ACCION:buscar_cerca|…]. NUNCA inventes lugares, direcciones ni enlaces de Maps.
 10. ⚠️ REGLA UNIVERSAL — HORA ESPECÍFICA SIEMPRE CREA EVENTO. SIN EXCEPCIONES.
 
     Si el usuario menciona una hora específica (7am, 14:00, "a las nueve")
@@ -1771,6 +1800,28 @@ async function ejecutarAcciones(respuesta, contexto, userId, { avisoDicho = null
         } else {
           ejecutadas.push({ accion, encontrado: true, nombre: data[0].nombre });
         }
+
+      } else if (accion === 'buscar_cerca') {
+        const consulta = (parts[1] || '').trim();
+        const tipo = (parts[2] || '').trim();
+        if (!consulta) continue;
+        const origen = await ubicacionReciente(userId);
+        if (!origen) {
+          // La búsqueda queda esperando: el pin que llegue por WhatsApp la dispara.
+          await dejarPendiente(userId, consulta, tipo);
+          ejecutadas.push({ accion, pide_ubicacion: true, texto: PEDIR_UBICACION(consulta) });
+        } else {
+          ejecutadas.push({ accion, texto: await buscarCerca(userId, origen, { consulta, tipo }) });
+        }
+
+      } else if (accion === 'ruta') {
+        const destino = (parts[1] || '').trim();
+        if (!destino) continue;
+        const origen = await ubicacionReciente(userId);
+        const guardado = (contexto.ubicaciones || []).find(u => u.nombre.toLowerCase() === destino.toLowerCase());
+        const url = enlaceRuta(origen, guardado ? `${guardado.latitud},${guardado.longitud}` : destino);
+        const nota = origen ? '' : '\n(Maps arranca desde tu GPS. Si me compartes tu ubicación, la próxima ruta sale desde ahí.)';
+        ejecutadas.push({ accion, texto: `🧭 Cómo llegar a ${guardado ? guardado.nombre : destino}:\n${url}${nota}` });
       }
     } catch(e) {
       console.error('[ejecutarAcciones] Error acción:', accion, e.message, e.stack);
