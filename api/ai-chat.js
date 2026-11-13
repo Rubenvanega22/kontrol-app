@@ -9,6 +9,7 @@ const { MEDIOS_ING, NOMBRE_MEDIO_ING, fmtPesos, medioIngresoDelTexto, lineaDeTop
 const { leerComprobanteDeImagen, interpretarComprobante } = require('../lib/lista-foto');
 const { clasificarComprobante, pagosParecidos } = require('../lib/comprobante');
 const { ubicacionReciente, dejarPendiente, buscarCerca, enlaceRuta, PEDIR_UBICACION } = require('../lib/lugares');
+const { detectarBusquedaCerca, respuestaInventaLugar, PREGUNTAR_LUGAR } = require('../lib/busqueda-cerca');
 
 const MEM0_API_KEY = process.env.MEM0_API_KEY;
 const MEM0_BASE = 'https://api.mem0.ai/v1';
@@ -134,6 +135,25 @@ module.exports = async function handler(req, res) {
     } catch (e) {
       console.error('[ai-chat] foto_listado:', e.message);
       return res.status(502).json({ error: 'No se pudo leer la foto. Intenta de nuevo.' });
+    }
+  }
+
+  // Lugares cercanos: si el pedido lo dice claro ("la ferretería más cerca"), el código
+  // activa buscar_cerca sin pasar por el modelo, así no puede olvidar la acción ni
+  // inventar un lugar. Vale para texto y para audio (llega ya transcrito).
+  const pedidoCerca = imagen_base64 ? null : detectarBusquedaCerca(message);
+  if (pedidoCerca) {
+    try {
+      console.log('[ai-chat] buscar_cerca detectado por el código:', pedidoCerca.consulta, pedidoCerca.tipo || '(texto)');
+      const accion = await ejecutarBusquedaCerca(user_id, pedidoCerca);
+      mem0Guardar(user_id, [
+        { role: 'user', content: message },
+        { role: 'assistant', content: accion.texto }
+      ]).catch(e => console.log('Mem0 guardar falló silenciosamente:', e.message));
+      return res.json({ ok: true, respuesta: accion.texto, acciones: [accion] });
+    } catch (e) {
+      console.error('[ai-chat] buscar_cerca por código falló:', e.message);
+      return res.json({ ok: true, respuesta: 'No pude buscar en este momento. Intenta de nuevo en un rato.', acciones: [] });
     }
   }
 
@@ -339,6 +359,19 @@ module.exports = async function handler(req, res) {
       }
     }
 
+    // Ningún lugar recomendado sale de otro lado que no sea Google Places: si el modelo
+    // nombró un sitio, una dirección o un tiempo de llegada sin usar buscar_cerca, esa
+    // respuesta se descarta y se activa el flujo correcto (o se pregunta qué busca).
+    const usoLugares = acciones.some(a => ['buscar_cerca', 'ruta', 'get_ubicacion', 'listar_ubicaciones', 'guardar_ubicacion', 'borrar_ubicacion'].includes(a.accion));
+    const guardados = (contexto.ubicaciones || []).map(u => u.nombre);
+    if (!imagen_base64 && !usoLugares && partesEvento.length === 0 && respuestaInventaLugar(respuestaLimpia, message, guardados)) {
+      console.warn('[ai-chat] respuesta con un lugar que no viene de Google Places; se descarta');
+      const pedido = detectarBusquedaCerca(message, { flexible: true });
+      const accion = pedido ? await ejecutarBusquedaCerca(user_id, pedido) : null;
+      if (accion) acciones.push(accion);
+      partesUbicacion.push(accion ? accion.texto : PREGUNTAR_LUGAR);
+    }
+
     if (partesUbicacion.length > 0) {
       respuestaFinal = partesUbicacion.join('\n\n');
     } else if (partesEvento.length > 0) {
@@ -375,6 +408,18 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: error.message });
   }
 };
+
+// buscar_cerca: con ubicación reciente busca en Google Places; sin ella, pide el pin y
+// la búsqueda queda esperando (el pin que llegue por WhatsApp la dispara). La usan el
+// marker del modelo y la detección por código.
+async function ejecutarBusquedaCerca(userId, { consulta, tipo = '' }) {
+  const origen = await ubicacionReciente(userId);
+  if (!origen) {
+    await dejarPendiente(userId, consulta, tipo);
+    return { accion: 'buscar_cerca', pide_ubicacion: true, texto: PEDIR_UBICACION(consulta) };
+  }
+  return { accion: 'buscar_cerca', texto: await buscarCerca(userId, origen, { consulta, tipo }) };
+}
 
 // ¿La respuesta dice que algo quedó hecho sin traer ninguna acción?
 function afirmaHaberHecho(texto) {
@@ -1805,14 +1850,7 @@ async function ejecutarAcciones(respuesta, contexto, userId, { avisoDicho = null
         const consulta = (parts[1] || '').trim();
         const tipo = (parts[2] || '').trim();
         if (!consulta) continue;
-        const origen = await ubicacionReciente(userId);
-        if (!origen) {
-          // La búsqueda queda esperando: el pin que llegue por WhatsApp la dispara.
-          await dejarPendiente(userId, consulta, tipo);
-          ejecutadas.push({ accion, pide_ubicacion: true, texto: PEDIR_UBICACION(consulta) });
-        } else {
-          ejecutadas.push({ accion, texto: await buscarCerca(userId, origen, { consulta, tipo }) });
-        }
+        ejecutadas.push(await ejecutarBusquedaCerca(userId, { consulta, tipo }));
 
       } else if (accion === 'ruta') {
         const destino = (parts[1] || '').trim();
