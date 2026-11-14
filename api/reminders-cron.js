@@ -21,6 +21,13 @@ const {
   minutosFaltantes, tocaUnaHoraNormal, tocaQuinceNormal, textoFaltan
 } = require('../lib/avisos-evento');
 
+const { enlaceWa } = require('../lib/mensaje-programado');
+
+// Los mensajes programados (events.tipo='mensaje') solo tienen su aviso a la hora exacta.
+const SIN_MENSAJES = 'tipo.is.null,tipo.neq.mensaje';
+// Si el cron se atrasa, el aviso del mensaje aún sale dentro de este margen.
+const MARGEN_MENSAJE_MS = 15 * 60 * 1000;
+
 const DAILY_UTC_HOUR = 13;   // 13:00 UTC = 8:00 am Colombia
 const EVENING_UTC_HOUR = 23; // 23:00 UTC = 6:00 pm Colombia
 
@@ -63,7 +70,8 @@ async function modoResumenDiario() {
   const { data: eventos, error } = await supabase
     .from('events').select('*')
     .eq('fecha', hoy)
-    .eq('notificado_agenda', false);
+    .eq('notificado_agenda', false)
+    .or(SIN_MENSAJES);
   if (error) { console.error('[reminders-cron daily] query error:', error.message); return { error: error.message }; }
 
   const delResumen = (eventos || []).filter(entraEnResumen);
@@ -242,7 +250,8 @@ async function modoUnaHoraAntes() {
   const { data: eventos, error } = await supabase
     .from('events').select('*')
     .eq('fecha', hoyCol)
-    .eq('notificado_1h', false);
+    .eq('notificado_1h', false)
+    .or(SIN_MENSAJES);
   if (error) { console.error('[reminders-cron 1h] query error:', error.message); return { error: error.message }; }
 
   // Sale al llegar a los 60 min. Hasta los 15 min tolera que el cron se haya caído o
@@ -292,7 +301,8 @@ async function modoQuinceMinAntes() {
   const { data: eventos, error } = await supabase
     .from('events').select('*')
     .eq('fecha', hoyCol)
-    .eq('notificado_15min', false);
+    .eq('notificado_15min', false)
+    .or(SIN_MENSAJES);
   if (error) { console.error('[reminders-cron 15m] query error:', error.message); return { error: error.message }; }
 
   // Sale al llegar a los 15 min. Asume cron cada 1 min (cron-job.org). El flag
@@ -337,9 +347,11 @@ async function modoAvisosPropios() {
   const [tempranos, elegidos] = await Promise.all([
     supabase.from('events').select('*')
       .in('fecha', [hoyCol, mananaCol])
-      .lt('hora', '08:00'),
+      .lt('hora', '08:00')
+      .or(SIN_MENSAJES),
     supabase.from('events').select('*')
       .eq('notificado_aviso', false)
+      .or(SIN_MENSAJES)
       .lte('aviso_en', ahora.toISOString())
       .gte('aviso_en', new Date(nowMs - 3 * 3600 * 1000).toISOString())
   ]);
@@ -385,6 +397,66 @@ async function modoAvisosPropios() {
   const alertasHora = await enviar(unaHora, 'notificado_1h', 'recordatorio_1h', e =>
     `⏰ *${textoFaltan(minutosFaltantes(e, nowMs))}:* ${formatearEvento(e)}`);
   return { alertas: alertasAviso + alertasHora, candidatos: avisos.length + unaHora.length, hoyCol };
+}
+
+// ─── MODO G: mensajes programados ───────────────────────────────────
+// "a las 6:05 escríbele a Paola: ya voy". A la hora, al USUARIO le llega un enlace wa.me
+// que abre el chat de Paola con el mensaje escrito. El bot nunca le escribe a Paola.
+function textoMensajeProgramado(e, contacto) {
+  const nombre = contacto?.nombre || String(e.titulo || '').replace(/^Mensaje a\s+/i, '') || 'tu contacto';
+  const texto = (e.nota || '').trim();
+  const cita = texto ? `\n«${texto}»` : '';
+  if (!contacto?.telefono) {
+    return `⏰ *Hora de escribirle a ${nombre}*${cita}\n\nYa no tengo su número. Agrégalo en la app: Perfil → Mis contactos.`;
+  }
+  return `⏰ *Hora de escribirle a ${nombre}*${cita}\n\nToca para abrir su chat con el mensaje listo:\n${enlaceWa(contacto.telefono, texto)}`;
+}
+
+async function modoMensajes() {
+  const ahora = new Date();
+  const nowMs = ahora.getTime();
+  const hoyCol = colombiaDateString(ahora);
+  const ayerCol = colombiaDateString(new Date(nowMs - 24 * 3600 * 1000));
+
+  const { data: eventos, error } = await supabase
+    .from('events').select('*')
+    .eq('tipo', 'mensaje')
+    .eq('notificado_mensaje', false)
+    .in('fecha', [ayerCol, hoyCol]);
+  if (error) { console.error('[reminders-cron mensajes] query error:', error.message); return { error: error.message }; }
+
+  const toca = (eventos || []).filter(e => {
+    if (!e.hora) return false;
+    const t = new Date(`${e.fecha}T${String(e.hora).slice(0, 5)}:00-05:00`).getTime();
+    return !isNaN(t) && t <= nowMs && nowMs - t <= MARGEN_MENSAJE_MS;
+  });
+  if (!toca.length) return { alertas: 0, candidatos: 0, hoyCol };
+
+  const tels = await telefonosPorUsuario([...new Set(toca.map(e => e.user_id).filter(Boolean))]);
+  const ids = [...new Set(toca.map(e => e.contacto_id).filter(Boolean))];
+  const contactos = {};
+  if (ids.length) {
+    const { data, error: eC } = await supabase.from('contactos').select('id, nombre, telefono').in('id', ids);
+    if (eC) console.error('[reminders-cron mensajes] contactos error:', eC.message);
+    for (const c of (data || [])) contactos[c.id] = c;
+  }
+
+  const claimed = await reclamar('events', toca.filter(e => tels[e.user_id]).map(e => e.id),
+    { notificado_mensaje: true }, q => q.eq('notificado_mensaje', false));
+  let alertas = 0;
+  for (const e of claimed) {
+    const { error: insErr } = await supabase.from('whatsapp_alerts').insert({
+      tipo: 'mensaje_programado', mensaje: textoMensajeProgramado(e, contactos[e.contacto_id]),
+      telefono: tels[e.user_id], enviado: false
+    });
+    if (insErr) {
+      console.error('[reminders-cron mensajes] insert failed event', e.id, insErr.message);
+      await supabase.from('events').update({ notificado_mensaje: false }).eq('id', e.id);
+      continue;
+    }
+    alertas++;
+  }
+  return { alertas, marcados: claimed.length, candidatos: toca.length, hoyCol };
 }
 
 // ─── PAGOS: recordatorio diario hasta que se pague (BUG 1) ──────────
@@ -554,8 +626,10 @@ module.exports = async function handler(req, res) {
       if (force === 'renovaciones')  results.renovaciones  = await modoRenovaciones();
       if (force === 'limites')       results.limites       = await modoLimites();
       if (force === 'topes')         results.topes         = await modoTopes();
+      if (force === 'mensajes')      results.mensajes      = await modoMensajes();
     } else {
       // Rolling cada tick (cron-job.org cada 15 min): 15-min + 1h
+      results.mensajes = await modoMensajes();
       results.q15 = await modoQuinceMinAntes();
       results.h1  = await modoUnaHoraAntes();
       results.propios = await modoAvisosPropios();

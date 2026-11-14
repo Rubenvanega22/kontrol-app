@@ -1669,6 +1669,7 @@ select.form-inp option{background:var(--card2);}
       <button type="button" class="modal-close" onclick="hideModal('modal-perfil')" aria-label="Cerrar">✕</button>
     </div>
     <div class="pf-quien" id="perfil-correo"></div>
+    <button type="button" class="pf-f" onclick="hideModal('modal-perfil');abrirContactos()"><svg class="i " aria-hidden="true"><use href="#i-user"/></svg>Mis contactos</button>
     <button type="button" class="pf-f" onclick="hideModal('modal-perfil');goTab('config')"><svg class="i " aria-hidden="true"><use href="#i-gear"/></svg>Configuración</button>
     <button type="button" class="pf-f" id="perfil-admin" style="display:none" onclick="hideModal('modal-perfil');goTab('admin')"><svg class="i " aria-hidden="true"><use href="#i-gear"/></svg>Admin</button>
     <button type="button" class="pf-f rojo" onclick="pedirCerrarSesion()"><svg class="i " aria-hidden="true"><use href="#i-sal"/></svg>Cerrar sesión</button>
@@ -1946,6 +1947,29 @@ select.form-inp option{background:var(--card2);}
 
 
 <!-- Nuevo Evento Agenda -->
+<!-- Mis contactos: a quién le escribe el bot por ti (mensajes programados) -->
+<div class="modal-overlay hidden" id="modal-contactos" onclick="closeModalOutside(event,'modal-contactos')">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-ttl">Mis contactos</span><button type="button" class="modal-close" onclick="hideModal('modal-contactos')" aria-label="Cerrar">✕</button></div>
+    <div class="nov-ayuda" style="margin:-8px 0 14px;font-size:14px">Para los mensajes programados: dile al bot "a las 6 escríbele a Paola: ya voy" y a esa hora te pasa su chat con el mensaje listo.</div>
+    <div id="contactos-lista"></div>
+    <button type="button" class="btn-primary" style="margin-top:6px" onclick="abrirFormContacto()">+ Agregar contacto</button>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-contacto-form" onclick="closeModalOutside(event,'modal-contacto-form')">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-ttl" id="contacto-form-ttl">Nuevo contacto</span><button type="button" class="modal-close" onclick="hideModal('modal-contacto-form')" aria-label="Cerrar">✕</button></div>
+    <button type="button" class="btn-secondary" id="contacto-elegir" style="display:none;margin-bottom:14px" onclick="elegirDeMisContactos()">📇 Elegir de mis contactos</button>
+    <div class="form-group"><label class="form-label" for="contacto-nombre">Nombre</label><input class="form-inp" id="contacto-nombre" maxlength="60" placeholder="Ej: Paola"/></div>
+    <div class="form-group"><label class="form-label" for="contacto-telefono">Número de WhatsApp</label>
+      <input class="form-inp" id="contacto-telefono" type="tel" inputmode="tel" maxlength="24" placeholder="300 123 4567"/>
+      <div class="nov-ayuda">Celular de Colombia con 10 dígitos, o con + y el código si es de otro país.</div></div>
+    <button type="button" class="btn-primary" id="contacto-guardar" onclick="guardarContacto()">Guardar</button>
+    <button type="button" class="btn-secondary" onclick="hideModal('modal-contacto-form')">Cancelar</button>
+  </div>
+</div>
+
 <!-- Novedades: sin cerrar al tocar afuera, para que "Entendido" las marque como vistas -->
 <div class="modal-overlay hidden" id="modal-novedades">
   <div class="modal nov-modal" role="dialog" aria-labelledby="nov-hola">
@@ -2012,8 +2036,9 @@ select.form-inp option{background:var(--card2);}
       <div id="evento-aviso-ayuda" style="font-size:12px;color:var(--t3);margin-top:6px"></div>
     </div>
     <div class="form-group">
-      <label class="form-label">Nota (opcional)</label>
+      <label class="form-label" id="evento-nota-label" for="evento-nota">Nota (opcional)</label>
       <input class="form-inp" id="evento-nota" maxlength="300" placeholder="Sale en el aviso de WhatsApp"/>
+      <div id="evento-mensaje-ayuda" style="display:none;font-size:12.5px;color:var(--t3);margin-top:6px;line-height:1.4"></div>
     </div>
     <button class="btn-primary" id="evento-guardar" onclick="guardarEvento()">Agendar</button>
     <button class="btn-secondary" onclick="hideModal('modal-nuevo-evento')">Cancelar</button>
@@ -3678,7 +3703,9 @@ function actualizarAvisoEvento(){
   const hora = document.getElementById('evento-hora').value;
   const opcion = document.getElementById('evento-avisar').value;
   const conHora = opcion === 'dia_anterior' || opcion === 'hora';
-  document.getElementById('evento-aviso-grupo').style.display = hora ? '' : 'none';
+  // Un mensaje programado solo tiene su aviso a la hora exacta.
+  document.getElementById('evento-aviso-grupo').style.display = hora && !eventoEsMensaje ? '' : 'none';
+  if(eventoEsMensaje) return;
   document.getElementById('evento-aviso').style.display = conHora ? '' : 'none';
   if(!hora) return;
   const ayuda = document.getElementById('evento-aviso-ayuda');
@@ -3695,6 +3722,28 @@ function actualizarAvisoEvento(){
   ayuda.textContent = `Un solo aviso, ${dia} a las ${horaEventoCorta(a.hora)}.`;
 }
 
+// Un evento tipo 'mensaje' ("Mensaje a Paola") se edita distinto: el texto es el mensaje,
+// el título no cambia (va con su contacto) y no tiene opciones de aviso.
+let eventoEsMensaje = false;
+function modoMensajeEvento(e){
+  eventoEsMensaje = !!(e && e.tipo === 'mensaje');
+  const titulo = document.getElementById('evento-titulo');
+  const nota = document.getElementById('evento-nota');
+  const ayuda = document.getElementById('evento-mensaje-ayuda');
+  titulo.readOnly = eventoEsMensaje;
+  nota.maxLength = eventoEsMensaje ? 1000 : 300;
+  nota.placeholder = eventoEsMensaje ? 'Lo que le vas a escribir' : 'Sale en el aviso de WhatsApp';
+  document.getElementById('evento-nota-label').textContent = eventoEsMensaje ? 'Mensaje' : 'Nota (opcional)';
+  ayuda.style.display = eventoEsMensaje ? '' : 'none';
+  ayuda.textContent = eventoEsMensaje ? 'A esa hora te llega por WhatsApp un enlace que abre su chat con este mensaje ya escrito.' : '';
+  if(eventoEsMensaje && e.contacto_id){
+    supa.from('contactos').select('nombre, telefono').eq('id', e.contacto_id).maybeSingle().then(({ data })=>{
+      if(eventoEsMensaje && data) ayuda.textContent = `Para ${data.nombre} · ${data.telefono}. ${ayuda.textContent}`;
+    });
+  } else if(eventoEsMensaje){
+    ayuda.textContent = 'Ya no tengo el número de este contacto. Agrégalo en Perfil → Mis contactos.';
+  }
+}
 function llenarModalEvento(ttl, boton, titulo, fecha, hora, nota, aviso){
   document.getElementById('evento-modal-ttl').textContent = ttl;
   document.getElementById('evento-guardar').textContent = boton;
@@ -3710,6 +3759,7 @@ function llenarModalEvento(ttl, boton, titulo, fecha, hora, nota, aviso){
 }
 function abrirNuevoEvento(fecha){
   eventoEditId = null;
+  modoMensajeEvento(null);
   llenarModalEvento('Nueva actividad','Agendar','',fecha||hoyISO(),'','',{ opcion:'siempre', tiempo:'' });
 }
 function abrirEditarEvento(id){
@@ -3717,7 +3767,8 @@ function abrirEditarEvento(id){
   if(!e) return;
   eventoEditId = e.id;
   hideModal('modal-vista-diaria');
-  llenarModalEvento('Editar actividad','Guardar',e.titulo||'',e.fecha||'',(e.hora||'').slice(0,5),e.nota||'',opcionDeAviso(e));
+  modoMensajeEvento(e);
+  llenarModalEvento(eventoEsMensaje ? 'Editar mensaje' : 'Editar actividad','Guardar',e.titulo||'',e.fecha||'',(e.hora||'').slice(0,5),e.nota||'',opcionDeAviso(e));
 }
 
 async function guardarEvento(){
@@ -3728,6 +3779,25 @@ async function guardarEvento(){
   const nota = document.getElementById('evento-nota').value.trim() || null;
   if(!titulo){ toast('⚠️ Escribe un título','var(--amber)'); return; }
   if(!fecha){ toast('⚠️ Selecciona una fecha','var(--amber)'); return; }
+  if(eventoEsMensaje && eventoEditId){
+    if(!hora){ toast('⚠️ Elige la hora','var(--amber)'); return; }
+    if(!nota){ toast('⚠️ Escribe el mensaje','var(--amber)'); return; }
+    const original = DB.eventos.find(x=>String(x.id)===String(eventoEditId));
+    const cuandoCambio = !original || original.fecha !== fecha || (original.hora||'').slice(0,5) !== hora;
+    if(cuandoCambio && new Date(`${fecha}T${hora}:00-05:00`).getTime() <= Date.now()){
+      toast('⚠️ Esa hora ya pasó. Elige una más adelante','var(--amber)'); return;
+    }
+    // Con otro día u hora, el aviso vuelve a quedar pendiente.
+    const campos = { fecha, hora, nota, ...(cuandoCambio ? { notificado_mensaje:false } : {}) };
+    const { error: errMsg } = await supa.from('events').update(campos).eq('id', eventoEditId).eq('user_id', currentUser.id);
+    if(errMsg){ toast('❌ Error: '+errMsg.message,'var(--red)'); return; }
+    eventoEditId = null;
+    hideModal('modal-nuevo-evento');
+    agendaDiaSel = fecha;
+    toast('✅ Mensaje actualizado','var(--green)');
+    await syncDesdeSupabase();
+    return;
+  }
   const aviso = avisoDelFormulario(fecha, hora);
   if(aviso === undefined){ toast('⚠️ Elige la hora del aviso','var(--amber)'); return; }
   const AVISO_PASADO = '⚠️ Ese aviso ya pasó. Elige otro o déjalo como siempre';
@@ -5814,6 +5884,105 @@ function renderConfig(){
 const ADMIN_USER_ID = 'bec85cec-8c85-460a-8c1e-31c6eb4e0eac';
 
 function esAdmin(){ return currentUser && currentUser.id === ADMIN_USER_ID; }
+
+// ════════════════════════════════════════
+// MIS CONTACTOS — a quién le escribe el usuario con los mensajes programados.
+// "Elegir de mis contactos" usa la Contact Picker API (Chrome en Android); si el celular
+// no la tiene, el botón no aparece y el número se escribe a mano.
+// ════════════════════════════════════════
+let contactos = [];
+let contactoEditId = null;
+const PUEDE_ELEGIR_CONTACTO = typeof navigator !== 'undefined' && 'contacts' in navigator && 'ContactsManager' in window;
+
+// Igual que lib/mensaje-programado.js: "300 123 4567", "+57 300…", "573001234567", "+1 555…".
+function normalizarTelefono(texto){
+  const t = String(texto || '');
+  const d = t.replace(/\D/g, '');
+  if(/\+\s*\d/.test(t)) return d.length >= 8 && d.length <= 15 ? `+${d}` : null;
+  if(d.length === 10 && d.startsWith('3')) return `+57${d}`;
+  if(d.length === 12 && d.startsWith('573')) return `+${d}`;
+  return null;
+}
+function telefonoBonito(tel){
+  const m = String(tel||'').match(/^\+57(\d{3})(\d{3})(\d{4})$/);
+  return m ? `${m[1]} ${m[2]} ${m[3]}` : tel;
+}
+
+async function abrirContactos(){
+  showModal('modal-contactos');
+  await pintarContactos();
+}
+async function pintarContactos(){
+  const el = document.getElementById('contactos-lista');
+  const { data, error } = await supa.from('contactos').select('id, nombre, telefono').eq('user_id', currentUser.id).order('nombre');
+  if(error){ el.innerHTML = `<div style="font-size:13px;color:var(--red)">Error: ${escAttr(error.message)}</div>`; return; }
+  contactos = data || [];
+  if(!contactos.length){
+    el.innerHTML = '<div style="font-size:14px;color:var(--t3);margin-bottom:10px">Todavía no tienes contactos. Agrega uno aquí o pídele al bot un mensaje y te pide el número.</div>';
+    return;
+  }
+  el.innerHTML = contactos.map(c => `<div class="adm-u">
+    <div class="adm-n" style="margin-bottom:2px">${escAttr(c.nombre)}</div>
+    <div class="adm-s" style="margin-top:0;font-size:14px">${escAttr(telefonoBonito(c.telefono))}</div>
+    <div class="adm-nov-acc">
+      <button type="button" class="btn-secondary" onclick="abrirFormContacto('${escAttr(String(c.id))}')">Editar</button>
+      <button type="button" class="btn-secondary bor" onclick="borrarContacto('${escAttr(String(c.id))}')">Borrar</button>
+    </div>
+  </div>`).join('');
+}
+function abrirFormContacto(id){
+  const c = id ? contactos.find(x => String(x.id) === String(id)) : null;
+  contactoEditId = c ? c.id : null;
+  document.getElementById('contacto-form-ttl').textContent = c ? 'Editar contacto' : 'Nuevo contacto';
+  document.getElementById('contacto-nombre').value = c ? c.nombre : '';
+  document.getElementById('contacto-telefono').value = c ? telefonoBonito(c.telefono) : '';
+  document.getElementById('contacto-elegir').style.display = PUEDE_ELEGIR_CONTACTO ? '' : 'none';
+  showModal('modal-contacto-form');
+}
+async function elegirDeMisContactos(){
+  try {
+    const [elegido] = await navigator.contacts.select(['name','tel'], { multiple:false });
+    if(!elegido) return;
+    const nombre = (elegido.name || []).find(n => String(n).trim());
+    const tels = (elegido.tel || []).map(t => String(t));
+    const tel = tels.map(normalizarTelefono).find(Boolean);
+    if(nombre) document.getElementById('contacto-nombre').value = String(nombre).trim().slice(0, 60);
+    if(tel) document.getElementById('contacto-telefono').value = telefonoBonito(tel);
+    else if(tels.length) { document.getElementById('contacto-telefono').value = tels[0]; toast('⚠️ Revisa el número: no parece un celular completo','var(--amber)'); }
+    else toast('⚠️ Ese contacto no tiene número','var(--amber)');
+  } catch(e){
+    console.warn('[contactos] elegir:', e?.message);
+  }
+}
+async function guardarContacto(){
+  if (!(await sesionLista())) { toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
+  const nombre = document.getElementById('contacto-nombre').value.replace(/\s+/g,' ').trim();
+  const telefono = normalizarTelefono(document.getElementById('contacto-telefono').value);
+  if(!nombre){ toast('⚠️ Escribe el nombre','var(--amber)'); return; }
+  if(!telefono){ toast('⚠️ Ese número no se ve completo','var(--amber)'); return; }
+  const btn = document.getElementById('contacto-guardar');
+  btn.disabled = true;
+  const { error } = contactoEditId
+    ? await supa.from('contactos').update({ nombre, telefono }).eq('id', contactoEditId).eq('user_id', currentUser.id)
+    : await supa.from('contactos').insert({ user_id: currentUser.id, nombre, telefono });
+  btn.disabled = false;
+  if(error){
+    toast(error.code === '23505' ? '⚠️ Ya tienes un contacto con ese nombre' : '❌ Error: '+error.message, error.code === '23505' ? 'var(--amber)' : 'var(--red)');
+    return;
+  }
+  hideModal('modal-contacto-form');
+  toast(contactoEditId ? '✅ Contacto actualizado' : '✅ Contacto guardado','var(--green)');
+  contactoEditId = null;
+  pintarContactos();
+}
+async function borrarContacto(id){
+  const c = contactos.find(x => String(x.id) === String(id));
+  if(!c || !(await uiConfirm(`¿Borrar a ${c.nombre}? Sus mensajes programados quedan sin número.`))) return;
+  const { error } = await supa.from('contactos').delete().eq('id', c.id).eq('user_id', currentUser.id);
+  if(error){ toast('❌ Error: '+error.message,'var(--red)'); return; }
+  toast('🗑 Contacto borrado','var(--t2)');
+  pintarContactos();
+}
 
 // ════════════════════════════════════════
 // NOVEDADES — "Esto es lo nuevo" al abrir la app; el admin las maneja en su panel.

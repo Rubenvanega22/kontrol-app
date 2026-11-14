@@ -27,6 +27,8 @@ const { NOMBRE_MEDIO_ING, lineaDeTope } = require('../lib/ingresos');
 const { MEDIO_PAGO_DE, clasificarComprobante, pagosParecidos, norm } = require('../lib/comprobante');
 const { leerListaDeImagen, leerFotoDeImagen, interpretarLectura, interpretarFoto, destinoDelTexto, elegirLista } = require('../lib/lista-foto');
 const { guardarUbicacionActual, tomarPendiente, buscarCerca } = require('../lib/lugares');
+const { detectarMensajeProgramado } = require('../lib/mensaje-programado');
+const { ESPERA: MENSAJE_ESPERA, iniciarMensajeProgramado, responderMensajeProgramado } = require('../lib/mensaje-programado-flujo');
 
 const TWILIO_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_TOKEN = process.env.TWILIO_AUTH_TOKEN;
@@ -682,10 +684,20 @@ async function procesarFoto(userId, phone, mediaUrl, mediaCt, caption) {
   return respuesta;
 }
 
+// ─── Mensaje programado: "a las 6:05 escríbele a Paola: ya voy" ──
+// Lo detecta el código; la conversación vive en lib/mensaje-programado-flujo.js.
+// null = no era un mensaje programado.
+async function mensajeProgramado(userId, phone, texto) {
+  if (!detectarMensajeProgramado(texto)) return null;
+  const respuesta = await iniciarMensajeProgramado(userId, phone, texto, await loadState(phone));
+  if (respuesta) await guardarTurno(userId, phone, texto, respuesta);
+  return respuesta;
+}
+
 // ─── Ubicaciones (lugares guardados) ──────────────────────────
 // Texto que es un pedido y no un nombre de lugar: incluye búsquedas y rutas, para que
 // "búscame una droguería" después de un pin no quede guardado como nombre.
-const PARECE_COMANDO = /(\$|\b\d{4,}\b|gast[oeé]|ingres[oa]|recuerd|agenda|registr|elimin|borr|b[uú]sca|cerca|d[oó]nde|ll[eé]v|ruta|c[oó]mo llego)/i;
+const PARECE_COMANDO = /(\$|\b\d{4,}\b|gast[oeé]|ingres[oa]|recuerd|agenda|registr|elimin|borr|b[uú]sca|cerca|d[oó]nde|ll[eé]v|ruta|c[oó]mo llego|escr[ií]b|\bdile\b|m[aá]ndale|env[ií]ale)/i;
 
 // Mensaje canónico cuando hay colisión de nombre. Numerado para UX consistente
 // con respuestas rápidas tipo botón.
@@ -827,10 +839,26 @@ module.exports = async function handler(req, res) {
     // ─── PRIMER PASO: ¿es respuesta a un flujo multi-turno? ──────
     // Solo para mensajes de texto (no audio/foto).
     if (text && numMedia === 0) {
-      const estado = await loadState(phone);
+      let estado = await loadState(phone);
+      // Un mensaje programado a medias: su respuesta va primero. Si no era para él, se
+      // cierra y devuelve el estado que había antes (una factura, un comprobante…).
+      if (estado?.awaiting === MENSAJE_ESPERA) {
+        const r = await responderMensajeProgramado(usuario.id, phone, text, estado);
+        if (r) {
+          await guardarTurno(usuario.id, phone, text, r);
+          await sendTwilio(from, r);
+          return twimlOk(res);
+        }
+        estado = await loadState(phone);
+      }
       const flujo = await despacharRespuestaPago(usuario.id, phone, text, estado);
       if (flujo) {
         await sendTwilio(from, flujo);
+        return twimlOk(res);
+      }
+      const mensaje = await mensajeProgramado(usuario.id, phone, text);
+      if (mensaje) {
+        await sendTwilio(from, mensaje);
         return twimlOk(res);
       }
     }
@@ -844,8 +872,17 @@ module.exports = async function handler(req, res) {
         respuesta = 'No pude entender el audio, intenta de nuevo.';
       } else {
         console.log('[whatsapp] audio transcrito, longitud=', texto.length);
-        const estado = await loadState(phone);
-        const flujo = [FACTURA_ESPERA, PAGO_MEDIO, COMPROBANTE_ESPERA].includes(estado?.awaiting) ? await despacharRespuestaPago(usuario.id, phone, texto, estado) : null;
+        let estado = await loadState(phone);
+        let flujo = null;
+        if (estado?.awaiting === MENSAJE_ESPERA) {
+          flujo = await responderMensajeProgramado(usuario.id, phone, texto, estado);
+          if (flujo) await guardarTurno(usuario.id, phone, texto, flujo);
+          else estado = await loadState(phone);
+        }
+        if (!flujo && [FACTURA_ESPERA, PAGO_MEDIO, COMPROBANTE_ESPERA].includes(estado?.awaiting)) {
+          flujo = await despacharRespuestaPago(usuario.id, phone, texto, estado);
+        }
+        if (!flujo) flujo = await mensajeProgramado(usuario.id, phone, texto);
         respuesta = flujo || await procesarConIA(usuario.id, phone, texto);
       }
     } else if (numMedia > 0 && mediaUrl && mediaCt.startsWith('image/')) {

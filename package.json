@@ -5,7 +5,8 @@
   "engines": { "node": "24.x" },
   "scripts": {
     "build": "node scripts/build-version.js",
-    "probar-busqueda-cerca": "node pruebas/probar-busqueda-cerca.js"
+    "probar-busqueda-cerca": "node pruebas/probar-busqueda-cerca.js",
+    "probar-mensaje-programado": "node pruebas/probar-mensaje-programado.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
