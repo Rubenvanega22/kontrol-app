@@ -26,7 +26,9 @@ const { PREGUNTA_MEDIO, medioDelTexto, avisosDeLimite } = require('../lib/medio-
 const { NOMBRE_MEDIO_ING, lineaDeTope } = require('../lib/ingresos');
 const { MEDIO_PAGO_DE, clasificarComprobante, pagosParecidos, norm } = require('../lib/comprobante');
 const { leerListaDeImagen, leerFotoDeImagen, interpretarLectura, interpretarFoto, destinoDelTexto, elegirLista } = require('../lib/lista-foto');
-const { guardarUbicacionActual, tomarPendiente, buscarCerca } = require('../lib/lugares');
+const { guardarUbicacionActual, tomarPendiente, buscarCerca, ubicacionReciente, dejarPendiente, topeDeHoy } = require('../lib/lugares');
+const DC = require('../lib/donde-compro');
+const { detectarBusquedaCerca } = require('../lib/busqueda-cerca');
 const { detectarMensajeProgramado } = require('../lib/mensaje-programado');
 const { ESPERA: MENSAJE_ESPERA, iniciarMensajeProgramado, responderMensajeProgramado } = require('../lib/mensaje-programado-flujo');
 
@@ -358,7 +360,7 @@ const FACTURA_TTL_MIN = 24 * 60;
 const FOTO_TIPOS = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const FOTO_MAX_BYTES = 3.7 * 1024 * 1024; // en base64 queda bajo el límite de 5 MB del lector
 const SIN_LISTA = '🔍 No encontré ninguna lista en esa foto. Prueba con más luz y de cerca.';
-const NI_FACTURA_NI_LISTA = '🔍 Esa foto no parece una factura, un comprobante ni una lista. Prueba con más luz y de cerca, o escríbeme lo que necesitas.';
+const NI_FACTURA_NI_LISTA = '🔍 Esa foto no parece una factura, un comprobante ni una lista. Prueba con más luz y de cerca, o escríbeme lo que necesitas.\n\nSi es un producto y quieres saber dónde lo venden, escríbeme "¿dónde compro esto?".';
 const cuentaItems = (n) => `${n} ${n === 1 ? 'ítem' : 'ítems'}`;
 
 // El lector se elige afuera: con destino se lee como lista; sin destino, se clasifica.
@@ -414,6 +416,8 @@ async function agregarAListaDeFoto(userId, lista, items) {
 }
 
 async function responderFoto(userId, phone, mediaUrl, mediaCt, caption) {
+  // "¿Dónde compro esto?" va antes que listas y facturas: esa foto no se lee como ninguna.
+  if (DC.detectarDondeCompro(caption)) return dondeComproConFoto(userId, phone, mediaUrl, mediaCt);
   const destino = destinoDelTexto(caption);
   let lista = null;
   // La lista se resuelve antes de leer: si hay que preguntar, no se gasta la lectura.
@@ -678,9 +682,94 @@ async function guardarTurno(userId, phone, entrada, respuesta) {
 }
 
 async function procesarFoto(userId, phone, mediaUrl, mediaCt, caption) {
+  // Por si después pregunta "¿dónde compro esto?" con un audio o un texto aparte.
+  await guardarUltimaFoto(userId, mediaUrl, mediaCt);
   const respuesta = await responderFoto(userId, phone, mediaUrl, mediaCt, caption);
   // Para que el bot sepa de qué se habla si le escriben justo después.
   await guardarTurno(userId, phone, caption ? `[Foto] ${caption}` : '[Foto]', respuesta);
+  return respuesta;
+}
+
+// ─── ¿Dónde compro esto? (foto de un producto) ────────────────
+// Haiku dice qué producto es y en qué tipo de tienda se vende; las tiendas salen solo de
+// Google Places (buscarCerca), con los mismos topes de lugares cercanos.
+const DONDE_COMPRO_QUE = 'donde_compro_que';
+const FOTO_RECIENTE_MS = 10 * 60 * 1000;
+
+async function guardarUltimaFoto(userId, mediaUrl, mediaCt) {
+  const { error } = await supabase.from('profiles')
+    .update({ ultima_foto: { url: mediaUrl, ct: mediaCt, at: new Date().toISOString() } }).eq('id', userId);
+  if (error) console.warn('[whatsapp] guardar última foto error:', error.message);
+}
+async function ultimaFotoReciente(userId) {
+  const { data, error } = await supabase.from('profiles').select('ultima_foto').eq('id', userId).maybeSingle();
+  if (error) { console.warn('[whatsapp] leer última foto error:', error.message); return null; }
+  const f = data?.ultima_foto;
+  if (!f?.url || !f.at || Date.now() - new Date(f.at).getTime() > FOTO_RECIENTE_MS) return null;
+  return f;
+}
+
+// Con el producto ya reconocido: busca con la ubicación reciente o la pide y deja pendiente.
+async function buscarDondeComprar(userId, p) {
+  const opciones = DC.opcionesDeBusqueda(p);
+  const origen = await ubicacionReciente(userId);
+  if (!origen) {
+    await dejarPendiente(userId, opciones.consulta, '', { encabezado: opciones.encabezado, pie: opciones.pie, nada: opciones.nada });
+    return DC.pedirUbicacion(p);
+  }
+  return buscarCerca(userId, origen, opciones);
+}
+
+async function dondeComproConFoto(userId, phone, mediaUrl, mediaCt) {
+  // El tope se revisa antes de mirar la foto: si no se puede buscar, no se gasta la lectura.
+  const tope = await topeDeHoy(userId);
+  if (tope) return tope;
+  const p = await leerFoto(mediaUrl, mediaCt, (b64, tipo) => DC.identificarProductoEnFoto(b64, tipo));
+  if (p.error) return p.error;
+  console.log('[whatsapp] dónde compro: reconocido=', p.reconocido);
+  if (!p.reconocido) {
+    const ok = await saveState(phone, userId, DONDE_COMPRO_QUE, {}, 10);
+    return ok ? DC.PREGUNTA_QUE : '🤔 No reconocí el producto de la foto. Escríbeme "¿dónde compro…?" con el nombre del producto.';
+  }
+  return buscarDondeComprar(userId, p);
+}
+
+async function dondeComproDeTexto(userId, texto) {
+  const tope = await topeDeHoy(userId);
+  if (tope) return tope;
+  let p;
+  try { p = await DC.identificarProductoDeTexto(texto); }
+  catch (e) { console.error('[whatsapp] dónde compro (texto):', e.message); return 'No pude buscar en este momento. Intenta de nuevo en un rato.'; }
+  if (!p.reconocido) return 'No entendí qué producto buscas. Dime el nombre, por ejemplo "un taladro".';
+  return buscarDondeComprar(userId, p);
+}
+
+// Texto o audio sin foto: "¿dónde compro esto?" usa la foto de hace un rato; "¿dónde compro
+// un taladro?" usa el nombre. null = no es este pedido (o es de lugares cercanos).
+async function dondeComproSinFoto(userId, phone, texto) {
+  const d = DC.detectarDondeCompro(texto);
+  if (!d) return null;
+  let respuesta;
+  if (d.producto) {
+    if (detectarBusquedaCerca(texto)) return null; // "dónde compro gasolina" → gasolinera cercana
+    respuesta = await dondeComproDeTexto(userId, d.producto);
+  } else {
+    const foto = await ultimaFotoReciente(userId);
+    respuesta = foto ? await dondeComproConFoto(userId, phone, foto.url, foto.ct) : DC.PEDIR_FOTO;
+  }
+  await guardarTurno(userId, phone, texto, respuesta);
+  return respuesta;
+}
+
+// Respuesta a "¿Qué es lo que buscas?". null = no era para esto.
+async function responderDondeComproQue(userId, phone, texto) {
+  await clearState(phone);
+  const t = texto.trim();
+  if (/^(no|nada|cancela|cancelar|d[eé]jalo|ol[vb][ií]dalo)\s*[.!]*$/i.test(t)) return '👍 Listo.';
+  // Una frase larga es otro pedido, no el nombre de un producto.
+  if (t.split(/\s+/).length > 8) return null;
+  const respuesta = await dondeComproDeTexto(userId, t);
+  await guardarTurno(userId, phone, t, respuesta);
   return respuesta;
 }
 
@@ -851,6 +940,14 @@ module.exports = async function handler(req, res) {
         }
         estado = await loadState(phone);
       }
+      if (estado?.awaiting === DONDE_COMPRO_QUE) {
+        const r = await responderDondeComproQue(usuario.id, phone, text);
+        if (r) {
+          await sendTwilio(from, r);
+          return twimlOk(res);
+        }
+        estado = null;
+      }
       const flujo = await despacharRespuestaPago(usuario.id, phone, text, estado);
       if (flujo) {
         await sendTwilio(from, flujo);
@@ -859,6 +956,11 @@ module.exports = async function handler(req, res) {
       const mensaje = await mensajeProgramado(usuario.id, phone, text);
       if (mensaje) {
         await sendTwilio(from, mensaje);
+        return twimlOk(res);
+      }
+      const compra = await dondeComproSinFoto(usuario.id, phone, text);
+      if (compra) {
+        await sendTwilio(from, compra);
         return twimlOk(res);
       }
     }
@@ -879,10 +981,15 @@ module.exports = async function handler(req, res) {
           if (flujo) await guardarTurno(usuario.id, phone, texto, flujo);
           else estado = await loadState(phone);
         }
+        if (!flujo && estado?.awaiting === DONDE_COMPRO_QUE) {
+          flujo = await responderDondeComproQue(usuario.id, phone, texto);
+          estado = null;
+        }
         if (!flujo && [FACTURA_ESPERA, PAGO_MEDIO, COMPROBANTE_ESPERA].includes(estado?.awaiting)) {
           flujo = await despacharRespuestaPago(usuario.id, phone, texto, estado);
         }
         if (!flujo) flujo = await mensajeProgramado(usuario.id, phone, texto);
+        if (!flujo) flujo = await dondeComproSinFoto(usuario.id, phone, texto);
         respuesta = flujo || await procesarConIA(usuario.id, phone, texto);
       }
     } else if (numMedia > 0 && mediaUrl && mediaCt.startsWith('image/')) {

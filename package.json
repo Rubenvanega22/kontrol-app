@@ -6,7 +6,8 @@
   "scripts": {
     "build": "node scripts/build-version.js",
     "probar-busqueda-cerca": "node pruebas/probar-busqueda-cerca.js",
-    "probar-mensaje-programado": "node pruebas/probar-mensaje-programado.js"
+    "probar-mensaje-programado": "node pruebas/probar-mensaje-programado.js",
+    "probar-donde-compro": "node pruebas/probar-donde-compro.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
