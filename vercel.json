@@ -19,6 +19,17 @@
       "headers": { "Cache-Control": "no-store" }
     },
     {
+      "src": "/manifest\\.webmanifest",
+      "dest": "/manifest.webmanifest",
+      "headers": { "Content-Type": "application/manifest+json", "Cache-Control": "public, max-age=0, must-revalidate" }
+    },
+    {
+      "src": "/icono-(192|512)\\.png",
+      "dest": "/icono-$1.png",
+      "headers": { "Cache-Control": "public, max-age=86400" }
+    },
+    { "src": "/compartir-contacto", "methods": ["POST"], "dest": "/api/compartir-contacto" },
+    {
       "src": "/(.*)",
       "dest": "/index.html",
       "headers": {

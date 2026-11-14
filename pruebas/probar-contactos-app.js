@@ -39,7 +39,8 @@ function sacarFuncion(nombre) {
 const linea = re => { const m = html.match(re); if (!m) throw new Error('no está: ' + re); return m[0]; };
 const NOMBRES = ['leerRegistroContactos', 'pintarRegistroContactos', 'registrarPasoContacto', 'borrarRegistroContactos', 'toqueFueraContacto', 'normalizarTelefono', 'telefonoBonito', 'recordarTokenContactos', 'estadoContacto', 'avisoContacto',
   'esperarVisible', 'leerContactoElegido', 'elegirDeMisContactos', 'pintarNumerosContacto', 'elegirNumeroContacto',
-  'limpiarNumerosContacto', 'escribirContacto', 'guardarContacto', 'abrirFormContacto', 'revisarSelectorInterrumpido'];
+  'limpiarNumerosContacto', 'escribirContacto', 'guardarContacto', 'abrirFormContacto', 'revisarSelectorInterrumpido',
+  'navegadorCorto', 'selectorNoSirve', 'usarContactoRecibido', 'decodificarVcard', 'leerVcards', 'tomarCompartido', 'revisarContactoCompartido'];
 const codigo = [
   'const CONTACTO_LIMITE_MS = LIMITE;',
   linea(/const CONTACTO_ELIGIENDO = .*;/),
@@ -49,11 +50,16 @@ const codigo = [
   linea(/const REGISTRO_CONTACTOS = .*;/),
   linea(/const ultimos4 = .*;/),
   'let selectorPendiente = false;',
+  linea(/const SELECTOR_NO_SIRVE = .*;/),
+  'const AL_INSTANTE_MS = INSTANTE;',
+  linea(/const COMO_COMPARTIR = .*;/),
+  linea(/const CACHE_COMPARTIDO = .*;/),
+  linea(/const CLAVE_COMPARTIDO = .*;/),
   ...NOMBRES.map(sacarFuncion),
   `return { ${NOMBRES.join(', ')}, editar: id => { contactoEditId = id; }, token: t => { tokenContactos = t; }, verToken: () => tokenContactos };`
 ].join('\n');
 
-function montar({ elegidos, falla, sesion = 'token-bueno', rest = {}, cliente = 'ok', visible = true, limite = 80 } = {}) {
+function montar({ elegidos, falla, sesion = 'token-bueno', rest = {}, cliente = 'ok', visible = true, limite = 80, demora = 0, instante = 2500, compartido = null, url = '/' } = {}) {
   const els = {};
   const el = id => (els[id] = els[id] || { id, value: '', innerHTML: '', textContent: '', disabled: false, style: {} });
   const oyentes = new Set();
@@ -86,17 +92,23 @@ function montar({ elegidos, falla, sesion = 'token-bueno', rest = {}, cliente = 
     assert.deepStrictEqual(props, ['name', 'tel']);
     assert.deepStrictEqual(opts, { multiple: false });
     assert.ok(almacen.kontrol_eligiendo_contacto, 'marca "eligiendo" antes de abrir el selector');
+    if (demora) await new Promise(r => setTimeout(r, demora));
     if (falla) throw falla;
     return elegidos;
-  } } };
+  } }, userAgent: 'Mozilla/5.0 (Linux; Android 14; SM-A546E) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/27.0 Chrome/125.0 Mobile Safari/537.36' };
+  let enCache = compartido ? JSON.stringify(compartido) : null;
+  const cachesFalso = { open: async () => ({ match: async () => (enCache ? { json: async () => JSON.parse(enCache) } : undefined), delete: async () => { enCache = null; return true; } }) };
+  const ubicacion = { search: url.includes('?') ? url.slice(url.indexOf('?')) : '', pathname: '/' };
+  const historial = { replaceState: (a, b, u) => { ubicacion.search = ''; } };
   const f = new Function('document', 'navigator', 'supa', 'fetch', 'sessionStorage', 'localStorage', 'APP_VERSION', 'toast', 'hideModal', 'showModal',
-    'pintarContactos', 'abrirContactos', 'escAttr', 'currentUser', 'SUPA_URL', 'SUPA_KEY', 'console', 'LIMITE', codigo)(
+    'pintarContactos', 'abrirContactos', 'escAttr', 'currentUser', 'SUPA_URL', 'SUPA_KEY', 'console', 'LIMITE', 'INSTANTE', 'caches', 'location', 'history', 'window', 'matchMedia', 'TextDecoder', codigo)(
     doc, nav, supa, fetchFalso, sesionStorage, local, '1a2b3c4d5e6f7a8b', (t) => avisos.push(t), id => ocultos.push(id), id => abiertos.push(id), () => {},
     async () => { abiertos.push('modal-contactos'); }, s => String(s).replace(/</g, '&lt;'), { id: 'u1' },
-    'https://x.supabase.co', 'anon', { warn() {}, log() {} }, limite);
+    'https://x.supabase.co', 'anon', { warn() {}, log() {} }, limite, instante, cachesFalso, ubicacion, historial,
+    { matchMedia: () => ({ matches: true }) }, () => ({ matches: true }), TextDecoder);
   const volver = () => { doc.visibilityState = 'visible'; [...oyentes].forEach(fn => fn()); };
   const registro = () => JSON.parse(guardadoLocal.kontrol_registro_contactos || '[]').map(l => l.replace(/^\S+ · /, ''));
-  return { f, el, avisos, guardados, ocultos, abiertos, restLlamadas, almacen, volver, doc, registro };
+  return { f, el, avisos, guardados, ocultos, abiertos, restLlamadas, almacen, volver, doc, registro, guardadoLocal, ubicacion, quedaEnCache: () => enCache };
 }
 const esperar = ms => new Promise(r => setTimeout(r, ms));
 async function abrirYElegir(t) { t.f.abrirFormContacto(); await esperar(0); return t.f.elegirDeMisContactos(); }
@@ -189,7 +201,7 @@ async function caso(nombre, fn) {
     ['contacto sin nombre', { elegidos: [{ name: [], tel: ['3001234567'] }] }, /no tiene nombre/],
     ['el selector falla', { falla: new Error('InvalidStateError') }, /No pude abrir tus contactos/],
     ['nombre repetido', { elegidos: [{ name: ['George'], tel: ['3001234567'] }], rest: { status: 409, cuerpo: { code: '23505', message: 'duplicate' } } }, /Ya tienes un contacto llamado George/],
-    ['canceló el selector', { elegidos: [] }, /No llegó ningún contacto desde tu teléfono/],
+    ['canceló el selector (después de mirar la lista)', { elegidos: [], instante: 0 }, /No llegó ningún contacto desde tu teléfono/],
   ];
   for (const [nombre, opciones, aviso] of sinGuardar) {
     await caso(nombre, async () => {
@@ -225,7 +237,7 @@ async function caso(nombre, fn) {
     const t = montar({ elegidos: [{ name: ['George'], tel: ['+57 300-123-4567'] }] });
     await abrirYElegir(t);
     assert.deepStrictEqual(t.registro(), [
-      'Toqué "Elegir de mis contactos" (versión 1a2b3c4d)',
+      'Toqué "Elegir de mis contactos" (versión 1a2b3c4d, Samsung Internet 27 en Android, app instalada)',
       'Abriendo la lista del teléfono…',
       'La lista respondió: 1 contacto(s) · nombres: 1 · números: …4567',
       'Datos listos: George · …4567',
@@ -236,15 +248,15 @@ async function caso(nombre, fn) {
     assert.match(t.el('contactos-registro').innerHTML, /Registro de "Elegir de mis contactos"/);
     assert.strictEqual(t.el('contactos-registro').style.display, '');
   });
-  await caso('la lista no entrega nada: lo dice en pantalla y en el registro', async () => {
-    const t = montar({ elegidos: [] });
+  await caso('la lista no entrega nada (tras un rato): lo dice en pantalla y en el registro', async () => {
+    const t = montar({ elegidos: [], instante: 0 });
     await abrirYElegir(t);
     assert.match(t.el('contacto-estado').textContent, /No llegó ningún contacto desde tu teléfono/);
     assert.match(t.avisos.at(-1), /No llegó ningún contacto/);
     assert.ok(t.registro().includes('La lista respondió: 0 contacto(s)'));
   });
   await caso('la lista devuelve algo raro (undefined): no se rompe y lo anota', async () => {
-    const t = montar({ elegidos: undefined });
+    const t = montar({ elegidos: undefined, instante: 0 });
     await abrirYElegir(t);
     assert.ok(t.registro().includes('La lista respondió algo inesperado: undefined'));
     assert.match(t.el('contacto-estado').textContent, /No llegó ningún contacto/);
@@ -268,6 +280,89 @@ async function caso(nombre, fn) {
     t.f.borrarRegistroContactos();
     assert.deepStrictEqual(t.registro(), []);
     assert.strictEqual(t.el('contactos-registro').style.display, 'none');
+  });
+
+  console.log('5c. La lista responde vacía al instante (Samsung, registro real del 14-nov-2026)');
+  await caso('lo dice, explica Compartir, esconde el botón y lo recuerda en este celular', async () => {
+    const t = montar({ elegidos: [] });
+    await abrirYElegir(t);
+    assert.match(t.el('contacto-estado').textContent, /Tu celular no le entrega el contacto a Kontrol.*Compartir y elige Kontrol/);
+    assert.strictEqual(t.el('contacto-elegir').style.display, 'none');
+    assert.strictEqual(t.guardadoLocal.kontrol_selector_no_sirve, '1');
+    assert.ok(t.registro().some(l => /respondió vacía al instante \(\d+ ms\)/.test(l)));
+    t.f.abrirFormContacto();
+    assert.strictEqual(t.el('contacto-elegir').style.display, 'none', 'la próxima vez el botón ya no sale');
+    assert.match(t.el('contacto-compartir-ayuda').textContent, /Compartir y elige Kontrol/);
+    assert.strictEqual(t.el('contacto-compartir-ayuda').style.display, '');
+  });
+  await caso('si tarda (la persona miró y canceló) no se marca el celular', async () => {
+    const t = montar({ elegidos: [], instante: 0, demora: 5 });
+    await abrirYElegir(t);
+    assert.strictEqual(t.guardadoLocal.kontrol_selector_no_sirve, undefined);
+    assert.strictEqual(t.el('contacto-elegir').style.display, '');
+  });
+
+  console.log('5d. Leer un contacto compartido (.vcf)');
+  const VCF_SAMSUNG = 'BEGIN:VCARD\r\nVERSION:2.1\r\nN;CHARSET=UTF-8;ENCODING=QUOTED-PRINTABLE:P=C3=A9rez;Jos=C3=A9;;;\r\nFN;CHARSET=UTF-8;ENCODING=QUOTED-PRINTABLE:Jos=C3=A9 P=C3=A9r=\r\nez\r\nTEL;CELL:300 123 4567\r\nTEL;HOME:601 234 5678\r\nEND:VCARD\r\n';
+  const VCF_GOOGLE = 'BEGIN:VCARD\nVERSION:3.0\nFN:George\nN:;George;;;\nitem1.TEL;TYPE=HOME:+57 601 234 5678\nitem2.TEL;TYPE=CELL:+57 310-555-6666\nPHOTO;ENCODING=b;TYPE=JPEG:/9j/4AAQSkZJRgABAQAAAQABAAD=\n  AAAA==\nEND:VCARD\n';
+  const VCF_IPHONE = 'BEGIN:VCARD\nVERSION:4.0\nFN:Paola\\, la vecina\nTEL;VALUE=uri;TYPE=cell:tel:+573001112222\nEND:VCARD';
+  await caso('Samsung: nombre con tilde en quoted-printable y doblado, celular primero', async () => {
+    const { leerVcards } = montar().f;
+    assert.deepStrictEqual(leerVcards(VCF_SAMSUNG), [{ nombre: 'José Pérez', tels: ['300 123 4567', '601 234 5678'] }]);
+  });
+  await caso('Google: item1.TEL, foto con "=" no se come el número', async () => {
+    const { leerVcards } = montar().f;
+    assert.deepStrictEqual(leerVcards(VCF_GOOGLE), [{ nombre: 'George', tels: ['+57 310-555-6666', '+57 601 234 5678'] }]);
+  });
+  await caso('iPhone/vCard 4: "tel:" y coma escapada', async () => {
+    const { leerVcards } = montar().f;
+    assert.deepStrictEqual(leerVcards(VCF_IPHONE), [{ nombre: 'Paola, la vecina', tels: ['+573001112222'] }]);
+  });
+  await caso('texto que no es un contacto', async () => {
+    assert.deepStrictEqual(montar().f.leerVcards('hola, mira esto'), []);
+  });
+
+  console.log('5e. Compartir → Kontrol');
+  await caso('un contacto con un celular: se guarda solo y se borra lo compartido', async () => {
+    const t = montar({ url: '/?compartido=1', compartido: { textos: [VCF_SAMSUNG], at: Date.now() } });
+    await t.f.revisarContactoCompartido();
+    assert.deepStrictEqual(t.guardados, [{ via: 'rest', metodo: 'POST', user_id: 'u1', nombre: 'José Pérez', telefono: '+573001234567' }]);
+    assert.strictEqual(t.avisos.at(-1), '✅ José Pérez guardado en tus contactos');
+    assert.strictEqual(t.quedaEnCache(), null);
+    assert.strictEqual(t.ubicacion.search, '', 'quita ?compartido de la dirección');
+    assert.ok(t.registro()[0].startsWith('Llegó algo compartido a Kontrol'));
+  });
+  await caso('un contacto con dos celulares: deja escoger', async () => {
+    const dos = 'BEGIN:VCARD\nFN:Ana\nTEL;CELL:3001111111\nTEL;CELL:3102222222\nEND:VCARD';
+    const t = montar({ url: '/?compartido=1', compartido: { textos: [dos] } });
+    await t.f.revisarContactoCompartido();
+    assert.strictEqual(t.guardados.length, 0);
+    assert.strictEqual((t.el('contacto-numeros').innerHTML.match(/elegirNumeroContacto\(/g) || []).length, 2);
+    await t.f.elegirNumeroContacto(1);
+    assert.strictEqual(t.guardados[0].telefono, '+573102222222');
+  });
+  await caso('varios contactos a la vez: guarda los claros y dice cuáles hacer a mano', async () => {
+    const varios = VCF_SAMSUNG + VCF_IPHONE + 'BEGIN:VCARD\nFN:Sin Número\nEND:VCARD';
+    const t = montar({ url: '/?compartido=1', compartido: { textos: [varios] } });
+    await t.f.revisarContactoCompartido();
+    assert.deepStrictEqual(t.guardados.map(g => g.nombre), ['José Pérez', 'Paola, la vecina']);
+    assert.match(t.el('contacto-estado').textContent, /Guardé 2: José Pérez, Paola, la vecina\. ⚠️ Agrega a mano: Sin Número\./);
+  });
+  await caso('lo compartido no es un contacto: lo explica', async () => {
+    const t = montar({ url: '/?compartido=1', compartido: { textos: ['https://algo.com'] } });
+    await t.f.revisarContactoCompartido();
+    assert.strictEqual(t.guardados.length, 0);
+    assert.match(t.el('contacto-estado').textContent, /no trae un contacto/);
+  });
+  await caso('Kontrol no alcanzó a recibirlo (sin service worker): pide compartir otra vez', async () => {
+    const t = montar({ url: '/?compartido=sin-sw' });
+    await t.f.revisarContactoCompartido();
+    assert.match(t.el('contacto-estado').textContent, /vuelve a compartirlo/);
+  });
+  await caso('sin ?compartido no hace nada', async () => {
+    const t = montar({ compartido: { textos: [VCF_SAMSUNG] } });
+    await t.f.revisarContactoCompartido();
+    assert.strictEqual(t.abiertos.length + t.guardados.length, 0);
   });
 
   console.log('6. Limpieza de números');

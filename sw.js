@@ -32,24 +32,58 @@ self.addEventListener('install', (event) => {
   );
 });
 
+// "Compartir → Kontrol" (share_target del manifest): lo compartido espera aquí hasta que la
+// página lo lea. Es una caché aparte para que una actualización no lo borre en el camino.
+const CACHE_COMPARTIDO = 'kontrol-compartido';
+const CLAVE_COMPARTIDO = '/__compartido';
+const MAX_COMPARTIDO = 256 * 1024;
+
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
       .then((keys) => Promise.all(
-        keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
+        keys.filter((k) => k !== CACHE_NAME && k !== CACHE_COMPARTIDO).map((k) => caches.delete(k))
       ))
       .then(() => self.clients.claim())
   );
 });
 
+// Recibe un contacto compartido desde la app de Contactos (archivo .vcf o texto vCard),
+// lo deja en CACHE_COMPARTIDO y abre Kontrol, que lo guarda con la sesión del usuario.
+async function recibirCompartido(req) {
+  const textos = [];
+  let titulo = '';
+  try {
+    const datos = await req.formData();
+    titulo = String(datos.get('title') || '').slice(0, 200);
+    for (const archivo of datos.getAll('contacto')) {
+      if (archivo && typeof archivo.text === 'function' && archivo.size <= MAX_COMPARTIDO) textos.push(await archivo.text());
+    }
+    const texto = String(datos.get('text') || '');
+    if (texto && texto.length <= MAX_COMPARTIDO) textos.push(texto);
+  } catch (e) {
+    textos.length = 0;
+  }
+  const cache = await caches.open(CACHE_COMPARTIDO);
+  await cache.put(CLAVE_COMPARTIDO, new Response(JSON.stringify({ textos, titulo, at: Date.now() }), {
+    headers: { 'Content-Type': 'application/json' }
+  }));
+  return Response.redirect(new URL('/?compartido=1', self.location.origin).href, 303);
+}
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
 
-  // Solo cacheamos GET. POSTs (login, ai-chat, etc.) pasan directo.
-  if (req.method !== 'GET') return;
-
   let url;
   try { url = new URL(req.url); } catch (_) { return; }
+
+  if (req.method === 'POST' && url.origin === self.location.origin && url.pathname === '/compartir-contacto') {
+    event.respondWith(recibirCompartido(req));
+    return;
+  }
+
+  // Solo cacheamos GET. POSTs (login, ai-chat, etc.) pasan directo.
+  if (req.method !== 'GET') return;
 
   // No cachear API propia — son datos dinámicos por usuario.
   if (url.origin === self.location.origin && url.pathname.startsWith('/api/')) return;

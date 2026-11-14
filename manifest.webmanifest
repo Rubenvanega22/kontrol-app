@@ -1,0 +1,30 @@
+{
+  "id": "/",
+  "name": "Kontrol",
+  "short_name": "Kontrol",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#080D1C",
+  "theme_color": "#080D1C",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ],
+  "share_target": {
+    "action": "/compartir-contacto",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "files": [
+        {
+          "name": "contacto",
+          "accept": ["text/vcard", "text/x-vcard", "text/directory", "text/plain", ".vcf", ".vcard"]
+        }
+      ]
+    }
+  }
+}
