@@ -228,6 +228,114 @@ const HOY = '2026-11-14';
     assert.match(r, /escribirle a Ana/);
   });
 
+  console.log('6. Cada persona lo pide distinto (prueba real fallida del 14-nov-2026)');
+  // [frase, nombre, texto, hora esperada a las 3:00 pm o null si se pregunta]
+  const variantes = [
+    // Las que fallaron de verdad (audio transcrito por Whisper):
+    ['escríbele un mensaje a Johanny a las 3 y 5', 'Johanny', '', '15:05'],
+    ['Escribe a Johanny a las 3 y 5. Hola, por favor.', 'Johanny', 'Hola, por favor', '15:05'],
+    ['Mándale este mensaje a... ...Johanny a las 3 de la tarde de hoy. Hola.', 'Johanny', 'Hola', '15:00'],
+    ['Quiero que le escribas a Rubén a su WhatsApp hola.', 'Rubén', 'Hola', null],
+    // Variantes:
+    ['Mándale un WhatsApp a Johanny a las 3 y 5: ya voy', 'Johanny', 'Ya voy', '15:05'],
+    ['envíale un mensaje a Johanny que ya salí, a las 4 pm', 'Johanny', 'Ya salí', '16:00'],
+    ['avísale a Johanny a las 3 y 5 que llego tarde', 'Johanny', 'Llego tarde', '15:05'],
+    ['a las 3 y 5 mándale a Johanny: hola', 'Johanny', 'Hola', '15:05'],
+    ['envíame un mensaje a Johanny a las 3 y 5 diciendo que ya voy', 'Johanny', 'Ya voy', '15:05'],
+    ['Necesito que le mandes un mensaje a Johanny hoy a las 3 y 5 que ya llegué', 'Johanny', 'Ya llegué', '15:05'],
+    ['dile a Johanny a las 3 y 5 que ya voy', 'Johanny', 'Ya voy', '15:05'],
+    ['Envíale un WhatsApp a Johanny en 20 minutos: voy en camino', 'Johanny', 'Voy en camino', '15:20'],
+    ['recuérdame escribirle a Johanny a las 3 y 5: feliz día', 'Johanny', 'Feliz día', '15:05'],
+    ['Escríbele a Johanny Pérez, a las 3 y 5, que ya voy', 'Johanny Pérez', 'Ya voy', '15:05'],
+    ['puedes escribirle a Johanny a las cinco de la tarde que ya voy', 'Johanny', 'Ya voy', '17:00'],
+  ];
+  for (const [frase, nombre, texto, hora] of variantes) {
+    await caso(frase, () => {
+      const d = M.detectarMensajeProgramado(frase);
+      assert.ok(d, 'no lo detectó');
+      assert.strictEqual(d.nombre, nombre);
+      assert.strictEqual(d.texto, texto);
+      const r = M.resolverMomento(M.horaDelTexto(d.control), M.fechaDelTexto(d.control, HOY), AHORA);
+      if (hora) assert.deepStrictEqual(r, { fecha: HOY, hora });
+      else assert.deepStrictEqual(r, { pregunta: 'hora' });
+    });
+  }
+  await caso('"dile a Paola que llego a las 8": sin coma, la hora es del mensaje', () => {
+    assert.strictEqual(M.detectarMensajeProgramado('dile a Paola que llego a las 8').texto, 'Llego a las 8');
+  });
+  for (const frase of ['escribe en la lista de mercado leche', 'manda a la lista de mercado pan', 'avísame mañana a las 8']) {
+    await caso(`no es mensaje: "${frase}"`, () => {
+      const d = M.detectarMensajeProgramado(frase);
+      assert.ok(!d || !d.nombre);
+    });
+  }
+
+  console.log('7. ¿Se le pregunta a Haiku? (habla de escribirle algo a alguien)');
+  for (const [frase, si] of [
+    ['Johanny tiene que saber que ya voy, avísale a las 3 y 5', true],
+    ['a Johanny le escribes a las 3 y 5 que ya voy', true],
+    ['envíame un mensaje a Johanny', true],
+    ['dile a mi mamá que ya voy', true],
+    ['avísame mañana a las 8', false],
+    ['mándame el resumen de pagos', false],
+    ['quiero mandar a arreglar el carro', false],
+    ['recuérdame comprar pan', false],
+    ['¿puedes mandar mensajes?', false],
+    ['agenda cita con el dentista mañana a las 3', false],
+  ]) {
+    await caso(`${si ? 'sí' : 'no'}: "${frase}"`, () => assert.strictEqual(M.mencionaMensajeAOtro(frase), si));
+  }
+
+  console.log('8. Lo que responde Haiku (solo vale lo que dijo el usuario)');
+  const MSG = 'Johanny tiene que saber que ya voy, avísale a las 3 y 5';
+  await caso('respuesta normal', () => {
+    assert.deepStrictEqual(F.interpretarMensajeIA('{"es_mensaje":true,"nombre":"Johanny","texto":"que ya voy","cuando":"a las 3 y 5"}', MSG),
+      { nombre: 'Johanny', texto: 'Que ya voy', control: 'a las 3 y 5' });
+  });
+  await caso('un nombre o una hora que no dijo se descartan', () => {
+    assert.deepStrictEqual(F.interpretarMensajeIA('{"es_mensaje":true,"nombre":"Juliana","texto":"ya voy","cuando":"a las 15:05"}', MSG),
+      { nombre: '', texto: 'Ya voy', control: '' });
+  });
+  await caso('no es mensaje, o respuesta rara', () => {
+    assert.strictEqual(F.interpretarMensajeIA('{"es_mensaje":false}', MSG), null);
+    assert.strictEqual(F.interpretarMensajeIA('no sé', MSG), null);
+  });
+  await caso('con markdown alrededor', () => {
+    assert.strictEqual(F.interpretarMensajeIA('```json\n{"es_mensaje":true,"nombre":"a Johanny","texto":"","cuando":""}\n```', MSG).nombre, 'Johanny');
+  });
+
+  console.log('9. Lo que entendió Haiku arranca la misma conversación');
+  await caso('con nombre y hora de Haiku: guarda el mensaje', async () => {
+    tablas.whatsapp_state.length = 0;
+    const antes = tablas.events.length;
+    const r = await F.iniciarMensajeProgramado(U, TEL, MSG, null, { detectado: { nombre: 'Paola', texto: 'Ya voy', control: 'a las 11:50 pm' } });
+    assert.match(r, /11:50 pm te aviso para escribirle a Paola/);
+    assert.strictEqual(tablas.events.length, antes + 1);
+  });
+  await caso('sin nombre: pregunta "¿A quién le escribo?" y sigue', async () => {
+    let r = await F.iniciarMensajeProgramado(U, TEL, 'mensaje', null, { detectado: { nombre: '', texto: 'Ya voy', control: 'a las 11:40 pm' } });
+    assert.strictEqual(r, '¿A quién le escribo?');
+    r = await responder('a Paola');
+    assert.match(r, /11:40 pm te aviso para escribirle a Paola/);
+  });
+  await caso('"3 y 5" como respuesta a "¿A qué hora?"', async () => {
+    let r = await F.iniciarMensajeProgramado(U, TEL, 'escríbele a Paola: hola', null);
+    assert.match(r, /A qué hora/);
+    r = await responder('11 y 5 de la noche');
+    assert.match(r, /11:05 pm te aviso para escribirle a Paola/);
+  });
+
+  console.log('10. "No puedo enviar mensajes" de la asistente se reconoce');
+  for (const [texto, si] of [
+    ['No puedo enviar mensajes a otras personas. Solo gestiono tu agenda.', true],
+    ['No puedo escribir mensajes de WhatsApp ni contactar a otras personas.', true],
+    ['No envío mensajes, pero puedo agendarte un recordatorio.', true],
+    ['✅ Listo, agendé tu cita.', false],
+    ['No puedo borrar ese pago.', false],
+  ]) {
+    await caso(`${si ? 'sí' : 'no'}: "${texto}"`, () => assert.strictEqual(F.niegaEnviarMensajes(texto), si));
+  }
+
   console.log(fallas ? `\n${fallas} prueba(s) fallaron` : '\nTodo bien');
   process.exit(fallas ? 1 : 0);
 })();

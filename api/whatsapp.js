@@ -29,8 +29,11 @@ const { leerListaDeImagen, leerFotoDeImagen, interpretarLectura, interpretarFoto
 const { guardarUbicacionActual, tomarPendiente, buscarCerca, ubicacionReciente, dejarPendiente, topeDeHoy } = require('../lib/lugares');
 const DC = require('../lib/donde-compro');
 const { detectarBusquedaCerca } = require('../lib/busqueda-cerca');
-const { detectarMensajeProgramado } = require('../lib/mensaje-programado');
-const { ESPERA: MENSAJE_ESPERA, iniciarMensajeProgramado, responderMensajeProgramado } = require('../lib/mensaje-programado-flujo');
+const { detectarMensajeProgramado, mencionaMensajeAOtro } = require('../lib/mensaje-programado');
+const {
+  ESPERA: MENSAJE_ESPERA, iniciarMensajeProgramado, responderMensajeProgramado,
+  entenderMensajeConHaiku, niegaEnviarMensajes, COMO_PEDIRLO
+} = require('../lib/mensaje-programado-flujo');
 
 const TWILIO_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_TOKEN = process.env.TWILIO_AUTH_TOKEN;
@@ -303,6 +306,14 @@ async function procesarConIA(userId, phone, message) {
     return data.error ? `Error IA: ${data.error}` : 'No pude procesar tu mensaje.';
   }
   let respuesta = data.respuesta || 'No tengo respuesta para eso.';
+
+  // "No puedo enviar mensajes a otras personas": falso con los mensajes programados. Se
+  // descarta esa respuesta y se arma el mensaje (o se explica cómo pedirlo).
+  if (niegaEnviarMensajes(respuesta) && !(data.acciones || []).length) {
+    console.warn('[whatsapp] la IA dijo que no envía mensajes; se intenta el mensaje programado');
+    const r = await intentarMensajeProgramado(userId, phone, message, { forzar: true });
+    if (r) respuesta = r;
+  }
 
   // "Ya pagué la luz" sin medio: se pregunta. Con medio, se revisan los límites.
   if (data.pago_sin_medio?.id) {
@@ -783,11 +794,25 @@ async function responderDondeComproQue(userId, phone, texto) {
 }
 
 // ─── Mensaje programado: "a las 6:05 escríbele a Paola: ya voy" ──
-// Lo detecta el código; la conversación vive en lib/mensaje-programado-flujo.js.
-// null = no era un mensaje programado.
+// 1. El código reconoce las formas comunes.  2. Si no, y el mensaje habla de escribirle,
+// mandarle, decirle o avisarle algo a alguien, Haiku saca a quién, qué y las palabras de la
+// hora (la hora la calcula el código).  La conversación vive en lib/mensaje-programado-flujo.js.
+// forzar: la asistente ya contestó que no envía mensajes; si Haiku tampoco ve un pedido, se
+// explica cómo pedirlo. null = no era un mensaje programado.
+async function intentarMensajeProgramado(userId, phone, texto, { forzar = false } = {}) {
+  const porCodigo = detectarMensajeProgramado(texto);
+  if (porCodigo?.nombre) return iniciarMensajeProgramado(userId, phone, texto, await loadState(phone));
+  if (!forzar && !mencionaMensajeAOtro(texto)) return null;
+  let detectado = null;
+  try { detectado = await entenderMensajeConHaiku(texto); }
+  catch (e) { console.error('[whatsapp] mensaje: Haiku falló:', e.message); }
+  console.log('[whatsapp] mensaje: Haiku dice es_mensaje=', !!detectado, 'forzar=', forzar);
+  if (!detectado) return forzar ? COMO_PEDIRLO : null;
+  return (await iniciarMensajeProgramado(userId, phone, texto, await loadState(phone), { detectado })) || (forzar ? COMO_PEDIRLO : null);
+}
+
 async function mensajeProgramado(userId, phone, texto) {
-  if (!detectarMensajeProgramado(texto)) return null;
-  const respuesta = await iniciarMensajeProgramado(userId, phone, texto, await loadState(phone));
+  const respuesta = await intentarMensajeProgramado(userId, phone, texto);
   if (respuesta) await guardarTurno(userId, phone, texto, respuesta);
   return respuesta;
 }
