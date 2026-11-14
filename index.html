@@ -1966,6 +1966,7 @@ select.form-inp option{background:var(--card2);}
     <div class="form-group"><label class="form-label" for="contacto-telefono">Número de WhatsApp</label>
       <input class="form-inp" id="contacto-telefono" type="tel" inputmode="tel" maxlength="24" placeholder="300 123 4567"/>
       <div class="nov-ayuda">Celular de Colombia con 10 dígitos, o con + y el código si es de otro país.</div></div>
+    <div id="contacto-estado" role="status" aria-live="polite" style="display:none;margin:-4px 0 12px;font-size:14px;font-weight:600;line-height:1.4"></div>
     <button type="button" class="btn-primary" id="contacto-guardar" onclick="guardarContacto()">Guardar</button>
     <button type="button" class="btn-secondary" onclick="hideModal('modal-contacto-form')">Cancelar</button>
   </div>
@@ -5942,8 +5943,55 @@ function abrirFormContacto(id){
   document.getElementById('contacto-telefono').value = c ? telefonoBonito(c.telefono) : '';
   document.getElementById('contacto-elegir').style.display = PUEDE_ELEGIR_CONTACTO ? '' : 'none';
   limpiarNumerosContacto();
+  estadoContacto('');
+  recordarTokenContactos();
   showModal('modal-contacto-form');
 }
+
+// ─── Por qué así ───
+// Al volver del selector de contactos de Android la página vuelve a quedar visible y la
+// librería de Supabase refresca la sesión; mientras tanto sus llamadas pueden quedarse
+// esperando sin error ni aviso. Por eso: el permiso de la sesión se toma al abrir el
+// formulario y el guardado va directo a la base, todo con límite de tiempo, y el resultado
+// queda escrito en el formulario (el aviso flotante dura 2 s y se pierde al volver).
+const CONTACTO_LIMITE_MS = 10000;
+const CONTACTO_ELIGIENDO = 'kontrol_eligiendo_contacto';
+let tokenContactos = null;
+let numerosElegibles = [];
+
+function recordarTokenContactos(){
+  try {
+    supa.auth.getSession()
+      .then(({ data }) => { tokenContactos = data?.session?.access_token || null; })
+      .catch(() => {});
+  } catch(e){}
+}
+const conLimite = (promesa, ms) => Promise.race([promesa, new Promise((_, no) => setTimeout(() => no(new Error('tiempo')), ms))]);
+
+// Mensaje dentro del formulario (queda a la vista) y, además, el aviso de siempre.
+function estadoContacto(texto, color){
+  const el = document.getElementById('contacto-estado');
+  el.textContent = texto || '';
+  el.style.color = color || 'var(--t2)';
+  el.style.display = texto ? '' : 'none';
+}
+function avisoContacto(texto, color){
+  estadoContacto(texto, color);
+  toast(texto, color);
+}
+
+// Espera a que la app vuelva a estar a la vista (y un momento más, para no chocar con el
+// refresco de la sesión) antes de guardar lo que trajo el selector.
+function esperarVisible(maxMs){
+  return new Promise(listo => {
+    const fin = () => { document.removeEventListener('visibilitychange', alVolver); setTimeout(listo, 400); };
+    const alVolver = () => { if(document.visibilityState === 'visible') fin(); };
+    if(document.visibilityState === 'visible') return fin();
+    document.addEventListener('visibilitychange', alVolver);
+    setTimeout(fin, maxMs);
+  });
+}
+
 // La respuesta de navigator.contacts.select() es un arreglo de contactos, y en cada uno
 // name y tel también son arreglos (pueden venir vacíos). → { nombre, numeros, otros }:
 // numeros = celulares ya limpios y sin repetir; otros = lo que no se pudo limpiar.
@@ -5962,34 +6010,42 @@ function leerContactoElegido(elegidos){
 }
 
 // "Elegir de mis contactos": trae nombre y número del teléfono y guarda de una vez.
-// Con varios números deja escoger; si algo falla, lo dice.
-let numerosElegibles = [];
+// Con varios números deja escoger; si algo falla, lo dice en el formulario.
 async function elegirDeMisContactos(){
   let elegidos;
+  // Si Android cierra Kontrol mientras se elige, al volver a abrir se sabe qué pasó.
+  try { sessionStorage.setItem(CONTACTO_ELIGIENDO, JSON.stringify({ at: Date.now(), id: contactoEditId })); } catch(e){}
+  estadoContacto('Elige el contacto en tu teléfono…');
   try {
     elegidos = await navigator.contacts.select(['name','tel'], { multiple:false });
   } catch(e){
     console.warn('[contactos] elegir:', e?.name, e?.message);
-    toast('❌ No pude abrir tus contactos. Escribe el número a mano.','var(--red)');
+    avisoContacto('❌ No pude abrir tus contactos. Escribe el nombre y el número a mano.','var(--red)');
     return;
+  } finally {
+    try { sessionStorage.removeItem(CONTACTO_ELIGIENDO); } catch(e){}
   }
   const r = leerContactoElegido(elegidos);
-  if(r.cancelado) return;
+  if(r.cancelado){ estadoContacto('No elegiste ningún contacto.'); return; }
   limpiarNumerosContacto();
   const inpNombre = document.getElementById('contacto-nombre');
   const inpTel = document.getElementById('contacto-telefono');
   if(r.nombre) inpNombre.value = r.nombre;
   if(!r.numeros.length){
     inpTel.value = r.otros[0] || '';
-    toast(r.otros.length
-      ? '⚠️ El número de ese contacto no parece un celular. Corrígelo y toca Guardar'
-      : '⚠️ Ese contacto no tiene número. Escríbelo y toca Guardar','var(--amber)');
+    avisoContacto(r.otros.length
+      ? '⚠️ El número de ese contacto no parece un celular. Corrígelo y toca Guardar.'
+      : '⚠️ Ese contacto no tiene número. Escríbelo y toca Guardar.','var(--amber)');
     return;
   }
-  if(r.numeros.length > 1){ pintarNumerosContacto(r.numeros); return; }
+  if(r.numeros.length > 1){
+    estadoContacto('');
+    pintarNumerosContacto(r.numeros);
+    return;
+  }
   inpTel.value = telefonoBonito(r.numeros[0]);
-  if(!inpNombre.value.trim()){ toast('⚠️ Ese contacto no tiene nombre. Escríbelo y toca Guardar','var(--amber)'); return; }
-  await guardarContacto();
+  if(!inpNombre.value.trim()){ avisoContacto('⚠️ Ese contacto no tiene nombre. Escríbelo y toca Guardar.','var(--amber)'); return; }
+  await guardarContacto({ desdeSelector:true });
 }
 function pintarNumerosContacto(numeros){
   numerosElegibles = numeros;
@@ -6003,7 +6059,7 @@ async function elegirNumeroContacto(i){
   if(!n) return;
   document.getElementById('contacto-telefono').value = telefonoBonito(n);
   limpiarNumerosContacto();
-  if(!document.getElementById('contacto-nombre').value.trim()){ toast('⚠️ Escribe el nombre y toca Guardar','var(--amber)'); return; }
+  if(!document.getElementById('contacto-nombre').value.trim()){ avisoContacto('⚠️ Escribe el nombre y toca Guardar.','var(--amber)'); return; }
   await guardarContacto();
 }
 function limpiarNumerosContacto(){
@@ -6013,36 +6069,75 @@ function limpiarNumerosContacto(){
   el.style.display = 'none';
 }
 
-async function guardarContacto(){
+// Escribe en la base. Con el permiso tomado al abrir el formulario va directo (sin pasar por
+// la sesión de la librería); si no hay permiso o venció, usa la librería. Todo con límite.
+async function escribirContacto(fila){
+  const uid = currentUser.id;
+  if(tokenContactos){
+    const url = contactoEditId
+      ? `${SUPA_URL}/rest/v1/contactos?id=eq.${encodeURIComponent(contactoEditId)}&user_id=eq.${encodeURIComponent(uid)}`
+      : `${SUPA_URL}/rest/v1/contactos`;
+    const r = await conLimite(fetch(url, {
+      method: contactoEditId ? 'PATCH' : 'POST',
+      headers: { apikey: SUPA_KEY, Authorization: `Bearer ${tokenContactos}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify(contactoEditId ? fila : { user_id: uid, ...fila })
+    }), CONTACTO_LIMITE_MS);
+    if(r.ok) return { error: null };
+    const cuerpo = await r.json().catch(() => ({}));
+    if(r.status !== 401) return { error: { code: cuerpo.code || String(r.status), message: cuerpo.message || `HTTP ${r.status}` } };
+    tokenContactos = null; // venció: se intenta con la librería
+  }
+  return conLimite(contactoEditId
+    ? supa.from('contactos').update(fila).eq('id', contactoEditId).eq('user_id', uid)
+    : supa.from('contactos').insert({ user_id: uid, ...fila }), CONTACTO_LIMITE_MS);
+}
+
+async function guardarContacto({ desdeSelector = false } = {}){
   const nombre = document.getElementById('contacto-nombre').value.replace(/\s+/g,' ').trim();
   const telefono = normalizarTelefono(document.getElementById('contacto-telefono').value);
-  if(!nombre){ toast('⚠️ Escribe el nombre','var(--amber)'); return; }
-  if(!telefono){ toast('⚠️ Ese número no se ve completo: celular de 10 dígitos o con + y el código del país','var(--amber)'); return; }
+  if(!nombre){ avisoContacto('⚠️ Escribe el nombre.','var(--amber)'); return; }
+  if(!telefono){ avisoContacto('⚠️ Ese número no se ve completo: celular de 10 dígitos o con + y el código del país.','var(--amber)'); return; }
+  if(!currentUser?.id){ avisoContacto('⚠️ Tu sesión no está lista. Recarga la página.','var(--amber)'); return; }
   const btn = document.getElementById('contacto-guardar');
   btn.disabled = true;
+  estadoContacto(`Guardando a ${nombre}…`);
   try {
-    if (!(await sesionLista())) { toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
-    const { error } = contactoEditId
-      ? await supa.from('contactos').update({ nombre, telefono }).eq('id', contactoEditId).eq('user_id', currentUser.id)
-      : await supa.from('contactos').insert({ user_id: currentUser.id, nombre, telefono });
+    if(desdeSelector) await esperarVisible(CONTACTO_LIMITE_MS);
+    const { error } = await escribirContacto({ nombre, telefono });
     if(error){
       console.warn('[contactos] guardar:', error.code, error.message);
-      toast(error.code === '23505' ? `⚠️ Ya tienes un contacto llamado ${nombre}. Cámbiale el nombre` : '❌ No se guardó: '+error.message,
-        error.code === '23505' ? 'var(--amber)' : 'var(--red)');
+      if(error.code === '23505') avisoContacto(`⚠️ Ya tienes un contacto llamado ${nombre}. Cámbiale el nombre y toca Guardar.`,'var(--amber)');
+      else avisoContacto('❌ No se guardó: '+error.message,'var(--red)');
       return;
     }
   } catch(e){
     console.warn('[contactos] guardar:', e?.message);
-    toast('❌ No se guardó. Revisa tu conexión e intenta otra vez','var(--red)');
+    avisoContacto(e?.message === 'tiempo'
+      ? '❌ No se guardó: la conexión tardó demasiado. Toca Guardar para intentar otra vez.'
+      : '❌ No se guardó. Revisa tu conexión y toca Guardar.','var(--red)');
     return;
   } finally {
     btn.disabled = false;
   }
+  estadoContacto('');
   hideModal('modal-contacto-form');
   toast(contactoEditId ? `✅ ${nombre} actualizado` : `✅ ${nombre} guardado en tus contactos`,'var(--green)');
   contactoEditId = null;
   pintarContactos();
 }
+
+// Android cerró Kontrol mientras se elegía un contacto (pasa en celulares con poca memoria):
+// al volver a abrir, se lleva al formulario y se explica.
+function revisarSelectorInterrumpido(){
+  let pendiente = null;
+  try { pendiente = JSON.parse(sessionStorage.getItem(CONTACTO_ELIGIENDO) || 'null'); sessionStorage.removeItem(CONTACTO_ELIGIENDO); } catch(e){}
+  if(!pendiente || Date.now() - (pendiente.at || 0) > 5 * 60 * 1000) return;
+  abrirContactos().then(() => {
+    abrirFormContacto(pendiente.id || undefined);
+    estadoContacto('Tu teléfono cerró Kontrol mientras elegías el contacto. Toca "Elegir de mis contactos" otra vez, o escribe el nombre y el número.','var(--amber)');
+  });
+}
+
 async function borrarContacto(id){
   const c = contactos.find(x => String(x.id) === String(id));
   if(!c || !(await uiConfirm(`¿Borrar a ${c.nombre}? Sus mensajes programados quedan sin número.`))) return;
@@ -6768,7 +6863,7 @@ async function onLogin(user) {
   // Esconder overlay cuando los datos reales lleguen. .finally para que se quite también si falla.
   syncPromise
     .catch(e => console.error('sync inicial falló:', e))
-    .finally(() => { if (loadingEl) loadingEl.style.display = 'none'; revisarNovedades(); });
+    .finally(() => { if (loadingEl) loadingEl.style.display = 'none'; revisarNovedades(); revisarSelectorInterrumpido(); });
 }
 
 // Una vez por día como máximo. No se espera: abrir la app no depende de esta escritura,
