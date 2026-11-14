@@ -1062,6 +1062,38 @@ select.form-inp option{background:var(--card2);}
 @media (prefers-reduced-motion:reduce){.nav,.lat-enc svg.i,.ntab .n{transition:none!important;}}
 /* La portada conserva su margen lateral */
 .lnd-wrap.lnd-sec,.lnd-wrap.lnd-hero{padding-left:22px;padding-right:22px;}
+/* Novedades: ventana "Esto es lo nuevo" y su sección en Admin */
+.nov-modal{display:flex;flex-direction:column;overflow:hidden;padding-bottom:calc(14px + var(--k-abajo));}
+.nov-hola{font:700 22px/1.15 'Syne',sans-serif;color:#fff;overflow-wrap:anywhere;}
+.nov-sub{font-size:15px;line-height:1.35;color:var(--t2);margin-top:5px;}
+.nov-lista{flex:1;min-height:0;overflow-y:auto;margin:16px 0 10px;-webkit-overflow-scrolling:touch;}
+.nov-lista::-webkit-scrollbar{display:none;}
+.nov-it{display:flex;align-items:flex-start;gap:12px;padding:12px;background:var(--card2);border:1px solid var(--bd);border-radius:16px;margin-bottom:8px;}
+.nov-ic{width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:rgba(139,92,246,0.18);color:#C4B5FD;}
+.nov-ic svg.i{width:22px;height:22px;}
+.nov-ic.c-agenda{background:rgba(56,123,255,0.18);color:#8FB4FF;}
+.nov-ic.c-pagos,.nov-ic.c-whatsapp{background:rgba(34,201,147,0.16);color:#5EE0B5;}
+.nov-ic.c-caja{background:rgba(242,184,75,0.17);color:#F6CD7E;}
+.nov-ic svg.rel,.nov-icono svg.rel{fill:currentColor;stroke:none;}
+.nov-tx{flex:1;min-width:0;}
+.nov-t{font-size:15.5px;font-weight:700;line-height:1.25;color:#fff;overflow-wrap:anywhere;}
+.nov-d{font-size:14px;line-height:1.38;color:var(--t2);margin-top:3px;overflow-wrap:anywhere;}
+.nov-pie{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:9px;}
+.nov-f{font-size:12.5px;color:var(--t3);}
+.nov-probar{flex-shrink:0;min-height:38px;padding:7px 16px;border-radius:12px;border:1px solid rgba(139,92,246,0.55);background:rgba(139,92,246,0.15);color:#E2D9FF;font:700 14px 'DM Sans',sans-serif;cursor:pointer;}
+.nov-probar:active{background:rgba(139,92,246,0.3);}
+.nov-mas{width:100%;min-height:44px;margin-top:2px;background:transparent;border:1px dashed var(--lin2);border-radius:14px;color:var(--t2);font:600 14.5px 'DM Sans',sans-serif;cursor:pointer;}
+.nov-modal .btn-primary{flex-shrink:0;margin-bottom:0;}
+.adm-nov{display:flex;align-items:flex-start;gap:11px;}
+.adm-nov-acc{display:flex;gap:8px;margin-top:10px;}
+.adm-nov-acc .btn-secondary{width:auto;flex:1;min-height:40px;padding:8px 10px;margin:0;font-size:14px;}
+.adm-nov-acc .bor{color:#FFB3B7;border-color:rgba(239,96,103,0.45);background:rgba(239,96,103,0.1);}
+.nov-iconos{display:grid;grid-template-columns:repeat(auto-fill,minmax(46px,1fr));gap:8px;}
+.nov-icono{height:46px;display:flex;align-items:center;justify-content:center;border-radius:12px;border:1px solid var(--lin2);background:var(--card2);color:var(--t2);cursor:pointer;}
+.nov-icono.on{border-color:var(--mor);background:rgba(139,92,246,0.2);color:#fff;box-shadow:0 0 0 1px var(--mor) inset;}
+.nov-cuenta{font-size:12.5px;color:var(--t3);text-align:right;margin-top:4px;}
+.nov-ayuda{font-size:12.5px;color:var(--t3);margin-top:5px;line-height:1.35;}
+.nov-prev-ttl{font-size:14px;font-weight:600;color:#DCE5F4;margin:4px 0 6px;}
 </style>
 </head>
 <body>
@@ -1544,6 +1576,13 @@ select.form-inp option{background:var(--card2);}
         </div>
 
         <div class="config-section">
+          <div class="config-section-ttl" style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span>Novedades</span>
+            <button type="button" class="btn-secondary" style="padding:6px 12px;font-size:14px;width:auto;min-height:40px;margin:0" onclick="abrirFormNovedad()">+ Agregar</button>
+          </div>
+          <div id="admin-novedades-list"><div style="font-size:12px;color:var(--t3)">Cargando…</div></div>
+        </div>
+
+        <div class="config-section">
           <div class="config-section-ttl">Usuarios</div>
           <div id="admin-users-list"><div style="font-size:12px;color:var(--t3)">Cargando…</div></div>
         </div>
@@ -1907,6 +1946,39 @@ select.form-inp option{background:var(--card2);}
 
 
 <!-- Nuevo Evento Agenda -->
+<!-- Novedades: sin cerrar al tocar afuera, para que "Entendido" las marque como vistas -->
+<div class="modal-overlay hidden" id="modal-novedades">
+  <div class="modal nov-modal" role="dialog" aria-labelledby="nov-hola">
+    <div class="nov-hola" id="nov-hola">Hola 👋</div>
+    <div class="nov-sub">Esto es lo nuevo desde la última vez que entraste</div>
+    <div class="nov-lista" id="nov-lista"></div>
+    <button type="button" class="btn-primary" onclick="cerrarNovedades()">Entendido</button>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-nov-form" onclick="closeModalOutside(event,'modal-nov-form')">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-ttl" id="nov-form-ttl">Nueva novedad</span><button type="button" class="modal-close" onclick="hideModal('modal-nov-form')">✕</button></div>
+    <div class="form-group"><label class="form-label" for="nov-form-titulo">Título</label><input class="form-inp" id="nov-form-titulo" maxlength="40" oninput="previaNovedad()"/></div>
+    <div class="form-group"><label class="form-label" for="nov-form-desc">Descripción (una línea)</label>
+      <textarea class="form-inp" id="nov-form-desc" maxlength="90" rows="3" style="resize:none;line-height:1.35" oninput="previaNovedad()"></textarea>
+      <div class="nov-cuenta" id="nov-form-cuenta">0 / 90</div></div>
+    <div class="form-group"><label class="form-label">Ícono</label><div class="nov-iconos" id="nov-form-iconos"></div></div>
+    <div class="form-group"><label class="form-label" for="nov-form-pantalla">Botón “Probar” lleva a</label>
+      <select class="form-inp" id="nov-form-pantalla" onchange="previaNovedad()">
+        <option value="inicio">Inicio</option><option value="agenda">Agenda</option><option value="listado">Listado</option>
+        <option value="pagos">Pagos</option><option value="caja">Caja fuerte</option><option value="config">Configuración</option>
+        <option value="whatsapp">WhatsApp (chat con el bot)</option>
+      </select></div>
+    <div class="form-group"><label class="form-label" for="nov-form-fecha">Fecha</label><input class="form-inp" id="nov-form-fecha" type="date" oninput="previaNovedad()"/>
+      <div class="nov-ayuda">Con una fecha futura sale ese día. Con una fecha pasada, quien ya vio las novedades no la verá.</div></div>
+    <div class="nov-prev-ttl">Así se verá</div>
+    <div id="nov-form-previa"></div>
+    <button type="button" class="btn-primary" id="nov-form-guardar" style="margin-top:14px" onclick="guardarNovedad()">Guardar</button>
+    <button type="button" class="btn-secondary" onclick="hideModal('modal-nov-form')">Cancelar</button>
+  </div>
+</div>
+
 <div class="modal-overlay hidden" id="modal-nuevo-evento" onclick="closeModalOutside(event,'modal-nuevo-evento')">
   <div class="modal">
     <div class="modal-hdr">
@@ -5743,6 +5815,185 @@ const ADMIN_USER_ID = 'bec85cec-8c85-460a-8c1e-31c6eb4e0eac';
 
 function esAdmin(){ return currentUser && currentUser.id === ADMIN_USER_ID; }
 
+// ════════════════════════════════════════
+// NOVEDADES — "Esto es lo nuevo" al abrir la app; el admin las maneja en su panel.
+// profiles.novedades_vistas_at = hasta qué publicada_at vio el usuario. Sin valor, cuenta
+// desde su registro: los nuevos no ven lo anterior.
+// ════════════════════════════════════════
+const NOV_PANTALLAS = { inicio:'Inicio', agenda:'Agenda', listado:'Listado', pagos:'Pagos', caja:'Caja fuerte', config:'Configuración', whatsapp:'WhatsApp' };
+const NOV_ICONOS = ['i-ia','i-home','i-cal','i-list','i-wal','i-cand','i-cam','i-recibo','i-bell','i-wa','i-bus','i-llave','i-user','i-gear'];
+const NOV_MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const NOV_VISIBLES = 5;
+const WA_BOT_URL = 'https://wa.me/14155238886';
+let novPendientes = [];
+let novAbiertas = false;
+let novAdmin = [];
+let novEditId = null;
+let novIconoSel = 'i-ia';
+
+function novIcono(nombre){
+  const ic = NOV_ICONOS.includes(nombre) ? nombre : 'i-ia';
+  return `<svg class="i${ic==='i-wa'?' rel':''}" aria-hidden="true"><use href="#${ic}"/></svg>`;
+}
+function novPantalla(p){ return NOV_PANTALLAS[p] ? p : 'inicio'; }
+function novDia(iso){ return new Date(iso).toLocaleDateString('en-CA',{ timeZone:'America/Bogota' }); }
+function novFecha(iso){
+  const [a,m,d] = novDia(iso).split('-').map(Number);
+  return `${d} ${NOV_MESES[m-1]}${a === Number(hoyColombia().slice(0,4)) ? '' : ' '+a}`;
+}
+function filaNovedad(n, probar){
+  const p = novPantalla(n.pantalla);
+  const boton = probar
+    ? `<button type="button" class="nov-probar" onclick="probarNovedad('${escAttr(String(n.id))}')">Probar</button>`
+    : '<span class="nov-probar" aria-hidden="true">Probar</span>';
+  return `<div class="nov-it">
+    <div class="nov-ic c-${p}">${novIcono(n.icono)}</div>
+    <div class="nov-tx">
+      <div class="nov-t">${escAttr(n.titulo)}</div>
+      <div class="nov-d">${escAttr(n.descripcion)}</div>
+      <div class="nov-pie"><span class="nov-f">${n.publicada_at ? novFecha(n.publicada_at) : ''}</span>${boton}</div>
+    </div>
+  </div>`;
+}
+
+// Al abrir la app: si hay novedades más nuevas que las vistas, sale la ventana.
+async function revisarNovedades(){
+  try {
+    if(!currentUser || !currentProfile) return;
+    const desde = currentProfile.novedades_vistas_at || currentProfile.created_at || null;
+    let q = supa.from('novedades').select('id, publicada_at, titulo, descripcion, icono, pantalla')
+      .lte('publicada_at', new Date().toISOString())
+      .order('publicada_at', { ascending:false }).limit(50);
+    if(desde) q = q.gt('publicada_at', desde);
+    const { data, error } = await q;
+    if(error){ console.warn('[novedades]', error.message); return; }
+    if(!data?.length) return;
+    novPendientes = data;
+    novAbiertas = false;
+    const nombre = String(currentProfile.nombre || '').trim().split(/\s+/)[0];
+    document.getElementById('nov-hola').textContent = nombre ? `Hola ${nombre} 👋` : 'Hola 👋';
+    pintarNovedades();
+    showModal('modal-novedades');
+  } catch(e){ console.warn('[novedades]', e?.message); }
+}
+function pintarNovedades(){
+  const ver = novAbiertas ? novPendientes : novPendientes.slice(0, NOV_VISIBLES);
+  const resto = novPendientes.length - ver.length;
+  document.getElementById('nov-lista').innerHTML = ver.map(n => filaNovedad(n, true)).join('') +
+    (resto > 0 ? `<button type="button" class="nov-mas" onclick="novAbiertas=true;pintarNovedades()">Ver todas (${resto} más)</button>` : '');
+}
+// Marca como vistas hasta la más nueva que se mostró. No se espera: si falla, salen otra vez.
+function marcarNovedadesVistas(){
+  if(!novPendientes.length || !currentUser) return;
+  const hasta = novPendientes[0].publicada_at;
+  novPendientes = [];
+  if(currentProfile) currentProfile.novedades_vistas_at = hasta;
+  supa.from('profiles').update({ novedades_vistas_at: hasta }).eq('id', currentUser.id)
+    .then(({ error })=>{ if(error) console.warn('[novedades] no se marcaron:', error.message); });
+}
+function cerrarNovedades(){
+  marcarNovedadesVistas();
+  hideModal('modal-novedades');
+}
+function probarNovedad(id){
+  const n = novPendientes.find(x => String(x.id) === String(id));
+  cerrarNovedades();
+  if(!n) return;
+  const p = novPantalla(n.pantalla);
+  if(p === 'whatsapp') window.open(WA_BOT_URL, '_blank', 'noopener');
+  else goTab(p);
+}
+
+// ─── Admin ───
+async function renderAdminNovedades(){
+  const el = document.getElementById('admin-novedades-list');
+  if(!el) return;
+  const { data, error } = await supa.from('novedades').select('*').order('publicada_at', { ascending:false });
+  if(error){ el.innerHTML = `<div style="font-size:12px;color:var(--red)">Error: ${escAttr(error.message)}</div>`; return; }
+  novAdmin = data || [];
+  if(!novAdmin.length){ el.innerHTML = '<div style="font-size:12px;color:var(--t3)">Sin novedades.</div>'; return; }
+  const ahora = Date.now();
+  el.innerHTML = novAdmin.map(n => {
+    const programada = new Date(n.publicada_at).getTime() > ahora ? ' · Programada' : '';
+    return `<div class="adm-u">
+      <div class="adm-nov"><div class="nov-ic c-${novPantalla(n.pantalla)}">${novIcono(n.icono)}</div>
+        <div class="nov-tx"><div class="nov-t">${escAttr(n.titulo)}</div><div class="nov-d">${escAttr(n.descripcion)}</div>
+        <div class="adm-s">${novFecha(n.publicada_at)} · Lleva a ${NOV_PANTALLAS[novPantalla(n.pantalla)]}${programada}</div></div></div>
+      <div class="adm-nov-acc">
+        <button type="button" class="btn-secondary" onclick="abrirFormNovedad('${escAttr(String(n.id))}')">Editar</button>
+        <button type="button" class="btn-secondary bor" onclick="borrarNovedad('${escAttr(String(n.id))}')">Borrar</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function abrirFormNovedad(id){
+  if(!esAdmin()) return;
+  const n = id ? novAdmin.find(x => String(x.id) === String(id)) : null;
+  novEditId = n ? n.id : null;
+  novIconoSel = n ? n.icono : 'i-ia';
+  document.getElementById('nov-form-ttl').textContent = n ? 'Editar novedad' : 'Nueva novedad';
+  document.getElementById('nov-form-titulo').value = n ? n.titulo : '';
+  document.getElementById('nov-form-desc').value = n ? n.descripcion : '';
+  document.getElementById('nov-form-pantalla').value = n ? novPantalla(n.pantalla) : 'inicio';
+  document.getElementById('nov-form-fecha').value = n ? novDia(n.publicada_at) : hoyColombia();
+  pintarIconosNovedad();
+  previaNovedad();
+  showModal('modal-nov-form');
+}
+function pintarIconosNovedad(){
+  document.getElementById('nov-form-iconos').innerHTML = NOV_ICONOS.map(ic =>
+    `<button type="button" class="nov-icono${ic===novIconoSel?' on':''}" aria-label="Ícono" aria-pressed="${ic===novIconoSel}" onclick="novIconoSel='${ic}';pintarIconosNovedad();previaNovedad()">${novIcono(ic)}</button>`).join('');
+}
+function previaNovedad(){
+  const desc = document.getElementById('nov-form-desc').value;
+  document.getElementById('nov-form-cuenta').textContent = `${desc.length} / 90`;
+  const fecha = document.getElementById('nov-form-fecha').value;
+  document.getElementById('nov-form-previa').innerHTML = filaNovedad({
+    titulo: document.getElementById('nov-form-titulo').value || 'Título',
+    descripcion: desc || 'Descripción de una línea.',
+    icono: novIconoSel,
+    pantalla: document.getElementById('nov-form-pantalla').value,
+    publicada_at: fecha ? `${fecha}T12:00:00-05:00` : null
+  }, false);
+}
+async function guardarNovedad(){
+  if(!esAdmin()) return;
+  const titulo = document.getElementById('nov-form-titulo').value.trim();
+  const descripcion = document.getElementById('nov-form-desc').value.replace(/\s+/g,' ').trim();
+  const pantalla = document.getElementById('nov-form-pantalla').value;
+  const fecha = document.getElementById('nov-form-fecha').value;
+  if(!titulo){ toast('⚠️ Escribe un título','var(--amber)'); return; }
+  if(!descripcion){ toast('⚠️ Escribe la descripción','var(--amber)'); return; }
+  if(!fecha){ toast('⚠️ Elige la fecha','var(--amber)'); return; }
+  const original = novEditId ? novAdmin.find(x => String(x.id) === String(novEditId)) : null;
+  // Mismo día: se conserva la hora original. Nueva con fecha de hoy: ahora mismo, para que
+  // la vean también quienes ya vieron las de hoy.
+  let publicada_at;
+  if(original && novDia(original.publicada_at) === fecha) publicada_at = original.publicada_at;
+  else if(!original && fecha === hoyColombia()) publicada_at = new Date().toISOString();
+  else publicada_at = new Date(`${fecha}T12:00:00-05:00`).toISOString();
+  const campos = { titulo, descripcion, icono: novIconoSel, pantalla, publicada_at };
+  const btn = document.getElementById('nov-form-guardar');
+  btn.disabled = true;
+  const { error } = original
+    ? await supa.from('novedades').update(campos).eq('id', original.id)
+    : await supa.from('novedades').insert(campos);
+  btn.disabled = false;
+  if(error){ toast('❌ Error: '+error.message,'var(--red)'); return; }
+  hideModal('modal-nov-form');
+  toast(original ? '✅ Novedad actualizada' : '✅ Novedad agregada','var(--green)');
+  renderAdminNovedades();
+}
+async function borrarNovedad(id){
+  if(!esAdmin()) return;
+  const n = novAdmin.find(x => String(x.id) === String(id));
+  if(!n || !(await uiConfirm(`¿Borrar la novedad "${n.titulo}"?`))) return;
+  const { error } = await supa.from('novedades').delete().eq('id', n.id);
+  if(error){ toast('❌ Error: '+error.message,'var(--red)'); return; }
+  toast('🗑 Novedad borrada','var(--t2)');
+  renderAdminNovedades();
+}
+
 function mostrarTabAdminSiCorresponde(){
   const btn = document.getElementById('tab-admin');
   if(!btn) return;
@@ -5751,6 +6002,7 @@ function mostrarTabAdminSiCorresponde(){
 
 async function renderAdmin(){
   if(!esAdmin()){ toast('Solo admin','var(--red)'); return; }
+  renderAdminNovedades();
 
   // Stats + listas en paralelo
   const [
@@ -6279,7 +6531,7 @@ async function onLogin(user) {
   // Esconder overlay cuando los datos reales lleguen. .finally para que se quite también si falla.
   syncPromise
     .catch(e => console.error('sync inicial falló:', e))
-    .finally(() => { if (loadingEl) loadingEl.style.display = 'none'; });
+    .finally(() => { if (loadingEl) loadingEl.style.display = 'none'; revisarNovedades(); });
 }
 
 // Una vez por día como máximo. No se espera: abrir la app no depende de esta escritura,
