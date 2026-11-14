@@ -10,7 +10,8 @@
     "probar-donde-compro": "node pruebas/probar-donde-compro.js",
     "probar-contactos-app": "node pruebas/probar-contactos-app.js",
     "probar-foto-intencion": "node pruebas/probar-foto-intencion.js",
-    "probar-mensaje-ia": "node pruebas/probar-mensaje-ia.js"
+    "probar-mensaje-ia": "node pruebas/probar-mensaje-ia.js",
+    "probar-whisper-prompt": "node pruebas/probar-whisper-prompt.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",

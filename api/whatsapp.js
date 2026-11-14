@@ -337,13 +337,18 @@ async function procesarConIA(userId, phone, message) {
 }
 
 // ─── Transcribir audio (Groq Whisper vía /api/transcribe) ──────
-async function transcribirAudio(buf, contentType) {
+// userId: para que Whisper reciba los nombres de sus contactos.
+async function transcribirAudio(buf, contentType, userId) {
   const url = `${baseUrl()}/api/transcribe`;
   let r, raw;
   try {
     r = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': contentType || 'audio/ogg', 'Authorization': `Bearer ${process.env.CRON_SECRET}` },
+      headers: {
+        'Content-Type': contentType || 'audio/ogg',
+        'Authorization': `Bearer ${process.env.CRON_SECRET}`,
+        ...(userId ? { 'x-kontrol-usuario': userId } : {})
+      },
       body: buf
     });
     raw = await r.text();
@@ -535,8 +540,9 @@ const adjuntarFactura = (userId, pagoId, ctx) => adjuntarFoto(userId, 'payments'
 // ─── Comprobante: ingreso, pago propio o duda. Siempre pregunta antes de guardar ───
 // Como la factura, mientras espera solo guarda la dirección de la foto en Twilio.
 const COMPROBANTE_ESPERA = 'comprobante_confirmar';
-const ME_ENTRO = /^(me\s+entr[oó]|entr[oó]|ingreso|es\s+(un\s+)?ingreso|me\s+(lo\s+)?pagaron|recib[ií]|a\s+m[ií])\b/i;
-const LO_PAGUE = /^(lo\s+pagu[eé]|pagu[eé]|es\s+(un\s+)?pago|pago|lo\s+pagu[eé]\s+yo)\b/i;
+// Sin \b al final: en JavaScript \b no funciona después de una tilde ("me entró" no pasaba).
+const ME_ENTRO = /^(me\s+entr[oó]|entr[oó]|ingreso|es\s+(un\s+)?ingreso|me\s+(lo\s+)?pagaron|recib[ií]|a\s+m[ií])(?![a-zñáéíóú])/i;
+const LO_PAGUE = /^(lo\s+pagu[eé]|pagu[eé]|es\s+(un\s+)?pago|pago|lo\s+pagu[eé]\s+yo)(?![a-zñáéíóú])/i;
 
 function resumenComprobante(c) {
   return [fmtPesos(c.valor), c.medio && NOMBRE_MEDIO_ING[c.medio], c.fecha && fmtDiaCorto(c.fecha)].filter(Boolean).join(' · ');
@@ -1003,7 +1009,7 @@ module.exports = async function handler(req, res) {
     let respuesta;
     if (numMedia > 0 && mediaUrl && mediaCt.startsWith('audio/')) {
       const buf = await fetchTwilioMedia(mediaUrl);
-      const texto = await transcribirAudio(buf, mediaCt);
+      const texto = await transcribirAudio(buf, mediaCt, usuario.id);
       if (!texto) {
         respuesta = 'No pude entender el audio, intenta de nuevo.';
       } else {

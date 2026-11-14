@@ -336,6 +336,51 @@ const HOY = '2026-11-14';
     await caso(`${si ? 'sí' : 'no'}: "${texto}"`, () => assert.strictEqual(F.niegaEnviarMensajes(texto), si));
   }
 
+  console.log('11. Nombres mal entendidos en un audio: "¿Te refieres a…?"');
+  const guardados = ['Johanny', 'Paola Gómez', 'Juan Pérez', 'Carlos', 'Jorge', 'Valentina'].map((nombre, id) => ({ id, nombre }));
+  for (const [dicho, esperado] of [
+    ['Yohany', ['Johanny']], ['Jhoany', ['Johanny']], ['Yojani', ['Johanny']], ['Johnny', ['Johanny']],
+    ['Karlos', ['Carlos']], ['Jorje', ['Jorge']], ['Paula', ['Paola Gómez']], ['Valentín', ['Valentina']],
+    ['Pedro', []], ['Sofía', []], ['Yúlzale', []], ['Al', []],
+  ]) {
+    await caso(`"${dicho}" → ${esperado.join(', ') || 'ninguno'}`, () => {
+      assert.deepStrictEqual(M.contactosParecidos(guardados, dicho).map(c => c.nombre), esperado);
+    });
+  }
+  const JOHANNY = { id: siguienteId++, user_id: U, nombre: 'Johanny', telefono: '+573150000000' };
+  tablas.contactos.push(JOHANNY);
+  await caso('"Yohany" → "¿Te refieres a Johanny?" → sí → mensaje a Johanny, sin pedir número', async () => {
+    tablas.whatsapp_state.length = 0;
+    const antes = tablas.contactos.length;
+    let r = await F.iniciarMensajeProgramado(U, TEL, 'a las 11:57 pm escríbele a Yohany: ya voy', null);
+    assert.strictEqual(r, '¿Te refieres a Johanny? Responde sí, o no si es otra persona.');
+    r = await responder('sí');
+    assert.match(r, /11:57 pm te aviso para escribirle a Johanny/);
+    assert.strictEqual(tablas.events.at(-1).contacto_id, JOHANNY.id);
+    assert.strictEqual(tablas.contactos.length, antes, 'no crea un contacto nuevo');
+  });
+  await caso('"no" quiere decir otra persona: pide el número de Yohany (no cancela)', async () => {
+    await F.iniciarMensajeProgramado(U, TEL, 'a las 11:57 pm escríbele a Yohany: ya voy', null);
+    const r = await responder('no');
+    assert.strictEqual(r, 'No tengo el número de Yohany. ¿Cuál es? Por ejemplo: 300 123 4567');
+  });
+  await caso('también si el nombre llega después ("¿A quién le escribo?")', async () => {
+    let r = await F.iniciarMensajeProgramado(U, TEL, 'x', null, { detectado: { nombre: '', texto: 'Hola', control: 'a las 11:56 pm' } });
+    assert.strictEqual(r, '¿A quién le escribo?');
+    r = await responder('Jhoany');
+    assert.match(r, /¿Te refieres a Johanny\?/);
+    r = await responder('1');
+    assert.match(r, /escribirle a Johanny/);
+  });
+  await caso('varios parecidos: se escoge con el número', async () => {
+    tablas.contactos.push({ id: siguienteId++, user_id: U, nombre: 'Johana', telefono: '+573160000000' });
+    let r = await F.iniciarMensajeProgramado(U, TEL, 'a las 11:55 pm escríbele a Yohanna: hola', null);
+    assert.match(r, /¿Te refieres a alguno de estos\?\n1\. Joh/);
+    assert.ok(r.includes('Johanny') && r.includes('Johana'));
+    r = await responder('cancelar');
+    assert.strictEqual(r, '👍 Listo, no programé nada.');
+  });
+
   console.log(fallas ? `\n${fallas} prueba(s) fallaron` : '\nTodo bien');
   process.exit(fallas ? 1 : 0);
 })();

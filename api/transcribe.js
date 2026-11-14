@@ -1,5 +1,8 @@
 // /api/transcribe.js — Transcripción de audio via Groq Whisper
+// El prompt lleva los nombres de los contactos del usuario y palabras de Kontrol, para que
+// Whisper escriba bien "Johanny" o "Nequi" (ver lib/whisper-prompt.js).
 import auth from '../lib/auth.js';
+import whisperPrompt from '../lib/whisper-prompt.js';
 
 export const config = {
   api: { bodyParser: false }
@@ -7,7 +10,8 @@ export const config = {
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
-  if (!(await auth.esSistemaOUsuario(req))) return res.status(401).json({ error: 'No autorizado' });
+  const quien = await auth.quienLlama(req);
+  if (!quien.ok) return res.status(401).json({ error: 'No autorizado' });
 
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'GROQ_API_KEY no configurada' });
@@ -36,6 +40,7 @@ export default async function handler(req, res) {
     // response_format=text → cuerpo crudo (sin parseo JSON), más rápido
     formData.append('response_format', 'text');
     formData.append('temperature', '0');
+    formData.append('prompt', await whisperPrompt.promptParaUsuario(quien.userId));
 
     const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
       method: 'POST',
