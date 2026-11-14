@@ -714,7 +714,7 @@ async function buscarDondeComprar(userId, p) {
   const opciones = DC.opcionesDeBusqueda(p);
   const origen = await ubicacionReciente(userId);
   if (!origen) {
-    await dejarPendiente(userId, opciones.consulta, '', { encabezado: opciones.encabezado, pie: opciones.pie, nada: opciones.nada });
+    await dejarPendiente(userId, opciones.consulta, '', { encabezado: opciones.encabezado, pie: opciones.pie, nada: opciones.nada, compra: opciones.compra });
     return DC.pedirUbicacion(p);
   }
   return buscarCerca(userId, origen, opciones);
