@@ -37,7 +37,7 @@ function sacarFuncion(nombre) {
   throw new Error(`función ${nombre} sin cerrar`);
 }
 const linea = re => { const m = html.match(re); if (!m) throw new Error('no está: ' + re); return m[0]; };
-const NOMBRES = ['normalizarTelefono', 'telefonoBonito', 'recordarTokenContactos', 'estadoContacto', 'avisoContacto',
+const NOMBRES = ['leerRegistroContactos', 'pintarRegistroContactos', 'registrarPasoContacto', 'borrarRegistroContactos', 'toqueFueraContacto', 'normalizarTelefono', 'telefonoBonito', 'recordarTokenContactos', 'estadoContacto', 'avisoContacto',
   'esperarVisible', 'leerContactoElegido', 'elegirDeMisContactos', 'pintarNumerosContacto', 'elegirNumeroContacto',
   'limpiarNumerosContacto', 'escribirContacto', 'guardarContacto', 'abrirFormContacto', 'revisarSelectorInterrumpido'];
 const codigo = [
@@ -46,6 +46,9 @@ const codigo = [
   'let tokenContactos = null; let numerosElegibles = []; let contactoEditId = null; let contactos = [];',
   'const PUEDE_ELEGIR_CONTACTO = true;',
   linea(/const conLimite = .*;/),
+  linea(/const REGISTRO_CONTACTOS = .*;/),
+  linea(/const ultimos4 = .*;/),
+  'let selectorPendiente = false;',
   ...NOMBRES.map(sacarFuncion),
   `return { ${NOMBRES.join(', ')}, editar: id => { contactoEditId = id; }, token: t => { tokenContactos = t; }, verToken: () => tokenContactos };`
 ].join('\n');
@@ -59,6 +62,8 @@ function montar({ elegidos, falla, sesion = 'token-bueno', rest = {}, cliente = 
     addEventListener: (ev, fn) => oyentes.add(fn), removeEventListener: (ev, fn) => oyentes.delete(fn)
   };
   const almacen = {};
+  const guardadoLocal = {};
+  const local = { setItem: (k, v) => { guardadoLocal[k] = v; }, getItem: k => guardadoLocal[k] ?? null, removeItem: k => { delete guardadoLocal[k]; } };
   const sesionStorage = { setItem: (k, v) => { almacen[k] = v; }, getItem: k => almacen[k] ?? null, removeItem: k => { delete almacen[k]; } };
   const avisos = [], guardados = [], ocultos = [], abiertos = [];
   const restLlamadas = [];
@@ -84,13 +89,14 @@ function montar({ elegidos, falla, sesion = 'token-bueno', rest = {}, cliente = 
     if (falla) throw falla;
     return elegidos;
   } } };
-  const f = new Function('document', 'navigator', 'supa', 'fetch', 'sessionStorage', 'toast', 'hideModal', 'showModal',
+  const f = new Function('document', 'navigator', 'supa', 'fetch', 'sessionStorage', 'localStorage', 'APP_VERSION', 'toast', 'hideModal', 'showModal',
     'pintarContactos', 'abrirContactos', 'escAttr', 'currentUser', 'SUPA_URL', 'SUPA_KEY', 'console', 'LIMITE', codigo)(
-    doc, nav, supa, fetchFalso, sesionStorage, (t) => avisos.push(t), id => ocultos.push(id), id => abiertos.push(id), () => {},
+    doc, nav, supa, fetchFalso, sesionStorage, local, '1a2b3c4d5e6f7a8b', (t) => avisos.push(t), id => ocultos.push(id), id => abiertos.push(id), () => {},
     async () => { abiertos.push('modal-contactos'); }, s => String(s).replace(/</g, '&lt;'), { id: 'u1' },
     'https://x.supabase.co', 'anon', { warn() {}, log() {} }, limite);
   const volver = () => { doc.visibilityState = 'visible'; [...oyentes].forEach(fn => fn()); };
-  return { f, el, avisos, guardados, ocultos, abiertos, restLlamadas, almacen, volver, doc };
+  const registro = () => JSON.parse(guardadoLocal.kontrol_registro_contactos || '[]').map(l => l.replace(/^\S+ · /, ''));
+  return { f, el, avisos, guardados, ocultos, abiertos, restLlamadas, almacen, volver, doc, registro };
 }
 const esperar = ms => new Promise(r => setTimeout(r, ms));
 async function abrirYElegir(t) { t.f.abrirFormContacto(); await esperar(0); return t.f.elegirDeMisContactos(); }
@@ -183,7 +189,7 @@ async function caso(nombre, fn) {
     ['contacto sin nombre', { elegidos: [{ name: [], tel: ['3001234567'] }] }, /no tiene nombre/],
     ['el selector falla', { falla: new Error('InvalidStateError') }, /No pude abrir tus contactos/],
     ['nombre repetido', { elegidos: [{ name: ['George'], tel: ['3001234567'] }], rest: { status: 409, cuerpo: { code: '23505', message: 'duplicate' } } }, /Ya tienes un contacto llamado George/],
-    ['canceló el selector', { elegidos: [] }, /No elegiste ningún contacto/],
+    ['canceló el selector', { elegidos: [] }, /No llegó ningún contacto desde tu teléfono/],
   ];
   for (const [nombre, opciones, aviso] of sinGuardar) {
     await caso(nombre, async () => {
@@ -212,6 +218,56 @@ async function caso(nombre, fn) {
     t.f.revisarSelectorInterrumpido();
     await esperar(0);
     assert.deepStrictEqual(t.abiertos, []);
+  });
+
+  console.log('5b. Registro paso a paso en pantalla');
+  await caso('un guardado completo deja cada paso, con la versión y sin el número completo', async () => {
+    const t = montar({ elegidos: [{ name: ['George'], tel: ['+57 300-123-4567'] }] });
+    await abrirYElegir(t);
+    assert.deepStrictEqual(t.registro(), [
+      'Toqué "Elegir de mis contactos" (versión 1a2b3c4d)',
+      'Abriendo la lista del teléfono…',
+      'La lista respondió: 1 contacto(s) · nombres: 1 · números: …4567',
+      'Datos listos: George · …4567',
+      'Guardando directo en la base…',
+      '✅ Guardado: George'
+    ]);
+    assert.ok(!JSON.stringify(t.registro()).includes('3001234567'), 'no guarda el número completo');
+    assert.match(t.el('contactos-registro').innerHTML, /Registro de "Elegir de mis contactos"/);
+    assert.strictEqual(t.el('contactos-registro').style.display, '');
+  });
+  await caso('la lista no entrega nada: lo dice en pantalla y en el registro', async () => {
+    const t = montar({ elegidos: [] });
+    await abrirYElegir(t);
+    assert.match(t.el('contacto-estado').textContent, /No llegó ningún contacto desde tu teléfono/);
+    assert.match(t.avisos.at(-1), /No llegó ningún contacto/);
+    assert.ok(t.registro().includes('La lista respondió: 0 contacto(s)'));
+  });
+  await caso('la lista devuelve algo raro (undefined): no se rompe y lo anota', async () => {
+    const t = montar({ elegidos: undefined });
+    await abrirYElegir(t);
+    assert.ok(t.registro().includes('La lista respondió algo inesperado: undefined'));
+    assert.match(t.el('contacto-estado').textContent, /No llegó ningún contacto/);
+  });
+  await caso('la lista falla: anota el nombre del error', async () => {
+    const e = new Error('Contacts Picker is already in use.'); e.name = 'InvalidStateError';
+    const t = montar({ falla: e });
+    await abrirYElegir(t);
+    assert.ok(t.registro().includes('❌ La lista del teléfono falló: InvalidStateError — Contacts Picker is already in use.'));
+    assert.match(t.el('contacto-estado').textContent, /InvalidStateError/);
+  });
+  await caso('un toque en el fondo NO cierra la ventana; se anota', async () => {
+    const t = montar();
+    t.f.toqueFueraContacto({ target: t.el('modal-contacto-form') });
+    assert.strictEqual(t.ocultos.length, 0);
+    assert.deepStrictEqual(t.registro(), ['Toque fuera de la ventana (no se cerró)']);
+  });
+  await caso('"Borrar registro" lo limpia', async () => {
+    const t = montar({ elegidos: [] });
+    await abrirYElegir(t);
+    t.f.borrarRegistroContactos();
+    assert.deepStrictEqual(t.registro(), []);
+    assert.strictEqual(t.el('contactos-registro').style.display, 'none');
   });
 
   console.log('6. Limpieza de números');

@@ -1094,6 +1094,12 @@ select.form-inp option{background:var(--card2);}
 .nov-cuenta{font-size:12.5px;color:var(--t3);text-align:right;margin-top:4px;}
 .nov-ayuda{font-size:12.5px;color:var(--t3);margin-top:5px;line-height:1.35;}
 .nov-prev-ttl{font-size:14px;font-weight:600;color:#DCE5F4;margin:4px 0 6px;}
+/* Registro paso a paso de "Elegir de mis contactos" (diagnóstico en el celular) */
+.registro-contactos{margin:12px 0 4px;padding:10px 12px;background:var(--card2);border:1px dashed var(--lin2);border-radius:12px;font-size:12.5px;line-height:1.45;color:var(--t2);}
+.registro-contactos b{display:block;color:#fff;font-size:13px;margin-bottom:4px;}
+.registro-contactos ol{margin:0;padding-left:18px;}
+.registro-contactos li{overflow-wrap:anywhere;}
+.registro-contactos button{margin-top:6px;background:none;border:none;color:var(--t3);font:600 12.5px 'DM Sans',sans-serif;text-decoration:underline;padding:4px 0;cursor:pointer;}
 </style>
 </head>
 <body>
@@ -1669,6 +1675,7 @@ select.form-inp option{background:var(--card2);}
       <button type="button" class="modal-close" onclick="hideModal('modal-perfil')" aria-label="Cerrar">✕</button>
     </div>
     <div class="pf-quien" id="perfil-correo"></div>
+    <div class="pf-quien" id="perfil-version" style="margin-top:-8px;font-size:13px;color:var(--t3)"></div>
     <button type="button" class="pf-f" onclick="hideModal('modal-perfil');abrirContactos()"><svg class="i " aria-hidden="true"><use href="#i-user"/></svg>Mis contactos</button>
     <button type="button" class="pf-f" onclick="hideModal('modal-perfil');goTab('config')"><svg class="i " aria-hidden="true"><use href="#i-gear"/></svg>Configuración</button>
     <button type="button" class="pf-f" id="perfil-admin" style="display:none" onclick="hideModal('modal-perfil');goTab('admin')"><svg class="i " aria-hidden="true"><use href="#i-gear"/></svg>Admin</button>
@@ -1954,10 +1961,13 @@ select.form-inp option{background:var(--card2);}
     <div class="nov-ayuda" style="margin:-8px 0 14px;font-size:14px">Para los mensajes programados: dile al bot "a las 6 escríbele a Paola: ya voy" y a esa hora te pasa su chat con el mensaje listo.</div>
     <div id="contactos-lista"></div>
     <button type="button" class="btn-primary" style="margin-top:6px" onclick="abrirFormContacto()">+ Agregar contacto</button>
+    <div class="registro-contactos" id="contactos-registro" style="display:none"></div>
   </div>
 </div>
 
-<div class="modal-overlay hidden" id="modal-contacto-form" onclick="closeModalOutside(event,'modal-contacto-form')">
+<!-- Sin cerrar al tocar afuera: al volver del selector de Android, el toque en "Listo" podía
+     caer en el fondo y cerrar la ventana. Se cierra con ✕ o Cancelar. -->
+<div class="modal-overlay hidden" id="modal-contacto-form" onclick="toqueFueraContacto(event)">
   <div class="modal">
     <div class="modal-hdr"><span class="modal-ttl" id="contacto-form-ttl">Nuevo contacto</span><button type="button" class="modal-close" onclick="hideModal('modal-contacto-form')" aria-label="Cerrar">✕</button></div>
     <button type="button" class="btn-secondary" id="contacto-elegir" style="display:none;margin-bottom:14px" onclick="elegirDeMisContactos()">📇 Elegir de mis contactos</button>
@@ -1967,6 +1977,7 @@ select.form-inp option{background:var(--card2);}
       <input class="form-inp" id="contacto-telefono" type="tel" inputmode="tel" maxlength="24" placeholder="300 123 4567"/>
       <div class="nov-ayuda">Celular de Colombia con 10 dígitos, o con + y el código si es de otro país.</div></div>
     <div id="contacto-estado" role="status" aria-live="polite" style="display:none;margin:-4px 0 12px;font-size:14px;font-weight:600;line-height:1.4"></div>
+    <div class="registro-contactos" id="contacto-registro" style="display:none"></div>
     <button type="button" class="btn-primary" id="contacto-guardar" onclick="guardarContacto()">Guardar</button>
     <button type="button" class="btn-secondary" onclick="hideModal('modal-contacto-form')">Cancelar</button>
   </div>
@@ -2463,6 +2474,8 @@ function abrirPerfil(){
   document.getElementById('perfil-nombre').textContent = nombre || 'Perfil';
   document.getElementById('perfil-correo').textContent = currentUser?.email || '';
   document.getElementById('perfil-admin').style.display = esAdmin() ? '' : 'none';
+  // Para confirmar que el celular tiene la versión publicada (primeros 8 caracteres de /version.json).
+  document.getElementById('perfil-version').textContent = `Versión ${APP_VERSION.startsWith('__') ? 'local' : APP_VERSION.slice(0, 8)}`;
   showModal('modal-perfil');
 }
 function pedirCerrarSesion(){
@@ -5915,6 +5928,7 @@ function telefonoBonito(tel){
 
 async function abrirContactos(){
   showModal('modal-contactos');
+  pintarRegistroContactos();
   await pintarContactos();
 }
 async function pintarContactos(){
@@ -5944,6 +5958,7 @@ function abrirFormContacto(id){
   document.getElementById('contacto-elegir').style.display = PUEDE_ELEGIR_CONTACTO ? '' : 'none';
   limpiarNumerosContacto();
   estadoContacto('');
+  pintarRegistroContactos();
   recordarTokenContactos();
   showModal('modal-contacto-form');
 }
@@ -6009,24 +6024,88 @@ function leerContactoElegido(elegidos){
   return { nombre, numeros, otros };
 }
 
+// ─── Registro paso a paso (diagnóstico en el celular) ───
+// Queda en localStorage: sobrevive aunque Android recargue o cierre Kontrol. Se ve en el
+// formulario y en Mis contactos. Los números se anotan solo con sus últimos 4 dígitos.
+const REGISTRO_CONTACTOS = 'kontrol_registro_contactos';
+let selectorPendiente = false;
+function leerRegistroContactos(){
+  try { return JSON.parse(localStorage.getItem(REGISTRO_CONTACTOS) || '[]'); } catch(e){ return []; }
+}
+function pintarRegistroContactos(){
+  const lista = leerRegistroContactos();
+  const html = lista.length
+    ? `<b>Registro de "Elegir de mis contactos"</b><ol>${lista.map(l => `<li>${escAttr(l)}</li>`).join('')}</ol><button type="button" onclick="borrarRegistroContactos()">Borrar registro</button>`
+    : '';
+  for(const id of ['contacto-registro', 'contactos-registro']){
+    const el = document.getElementById(id);
+    if(!el) continue;
+    el.innerHTML = html;
+    el.style.display = lista.length ? '' : 'none';
+  }
+}
+function registrarPasoContacto(texto){
+  const hora = new Date().toLocaleTimeString('es-CO', { hour12:false, timeZone:'America/Bogota' });
+  const lista = [...leerRegistroContactos(), `${hora} · ${texto}`].slice(-30);
+  try { localStorage.setItem(REGISTRO_CONTACTOS, JSON.stringify(lista)); } catch(e){}
+  console.log('[contactos]', texto);
+  pintarRegistroContactos();
+}
+function borrarRegistroContactos(){
+  try { localStorage.removeItem(REGISTRO_CONTACTOS); } catch(e){}
+  pintarRegistroContactos();
+}
+const ultimos4 = t => { const d = String(t || '').replace(/\D/g, ''); return d ? `…${d.slice(-4)}` : '(vacío)'; };
+
+// Un toque en el fondo de la ventana ya no la cierra (ver el comentario del HTML); se anota.
+function toqueFueraContacto(e){
+  if(e.target !== document.getElementById('modal-contacto-form')) return;
+  registrarPasoContacto(selectorPendiente ? 'Llegó un toque fuera de la ventana mientras se elegía (no se cerró)' : 'Toque fuera de la ventana (no se cerró)');
+}
+document.addEventListener('visibilitychange', () => {
+  if(!selectorPendiente) return;
+  registrarPasoContacto(document.visibilityState === 'visible' ? 'La app volvió a la vista' : 'La app quedó en segundo plano (lista del teléfono abierta)');
+  if(document.visibilityState === 'visible'){
+    setTimeout(() => {
+      if(selectorPendiente){
+        registrarPasoContacto('⚠️ La app volvió, pero la lista del teléfono no ha entregado nada');
+        estadoContacto('⚠️ Tu teléfono no entregó el contacto elegido. Mira el registro de abajo, o escribe el nombre y el número.','var(--amber)');
+      }
+    }, 4000);
+  }
+});
+window.addEventListener('pagehide', e => { if(selectorPendiente) registrarPasoContacto(`La página se ocultó (pagehide${e.persisted ? ', guardada en memoria' : ''})`); });
+window.addEventListener('pageshow', e => { if(e.persisted && leerRegistroContactos().length) registrarPasoContacto('La página volvió desde la memoria (pageshow)'); });
+
 // "Elegir de mis contactos": trae nombre y número del teléfono y guarda de una vez.
 // Con varios números deja escoger; si algo falla, lo dice en el formulario.
 async function elegirDeMisContactos(){
   let elegidos;
+  borrarRegistroContactos();
+  registrarPasoContacto(`Toqué "Elegir de mis contactos" (versión ${APP_VERSION.startsWith('__') ? 'local' : APP_VERSION.slice(0, 8)})`);
   // Si Android cierra Kontrol mientras se elige, al volver a abrir se sabe qué pasó.
   try { sessionStorage.setItem(CONTACTO_ELIGIENDO, JSON.stringify({ at: Date.now(), id: contactoEditId })); } catch(e){}
   estadoContacto('Elige el contacto en tu teléfono…');
+  selectorPendiente = true;
   try {
+    registrarPasoContacto('Abriendo la lista del teléfono…');
     elegidos = await navigator.contacts.select(['name','tel'], { multiple:false });
   } catch(e){
+    selectorPendiente = false;
     console.warn('[contactos] elegir:', e?.name, e?.message);
-    avisoContacto('❌ No pude abrir tus contactos. Escribe el nombre y el número a mano.','var(--red)');
+    registrarPasoContacto(`❌ La lista del teléfono falló: ${e?.name || 'Error'}${e?.message ? ' — ' + e.message : ''}`);
+    avisoContacto(`❌ No pude abrir tus contactos (${e?.name || 'error'}). Escribe el nombre y el número a mano.`,'var(--red)');
     return;
   } finally {
+    selectorPendiente = false;
     try { sessionStorage.removeItem(CONTACTO_ELIGIENDO); } catch(e){}
   }
+  const c0 = Array.isArray(elegidos) ? elegidos[0] : null;
+  registrarPasoContacto(Array.isArray(elegidos)
+    ? `La lista respondió: ${elegidos.length} contacto(s)` + (c0 ? ` · nombres: ${(c0.name || []).length} · números: ${(c0.tel || []).map(ultimos4).join(', ') || 'ninguno'}` : '')
+    : `La lista respondió algo inesperado: ${typeof elegidos}`);
   const r = leerContactoElegido(elegidos);
-  if(r.cancelado){ estadoContacto('No elegiste ningún contacto.'); return; }
+  if(r.cancelado){ avisoContacto('No llegó ningún contacto desde tu teléfono. Si sí elegiste uno, escribe el nombre y el número a mano.','var(--amber)'); return; }
   limpiarNumerosContacto();
   const inpNombre = document.getElementById('contacto-nombre');
   const inpTel = document.getElementById('contacto-telefono');
@@ -6060,7 +6139,7 @@ async function elegirNumeroContacto(i){
   document.getElementById('contacto-telefono').value = telefonoBonito(n);
   limpiarNumerosContacto();
   if(!document.getElementById('contacto-nombre').value.trim()){ avisoContacto('⚠️ Escribe el nombre y toca Guardar.','var(--amber)'); return; }
-  await guardarContacto();
+  await guardarContacto({ desdeSelector:true });
 }
 function limpiarNumerosContacto(){
   numerosElegibles = [];
@@ -6101,17 +6180,25 @@ async function guardarContacto({ desdeSelector = false } = {}){
   const btn = document.getElementById('contacto-guardar');
   btn.disabled = true;
   estadoContacto(`Guardando a ${nombre}…`);
+  const anotar = t => { if(desdeSelector) registrarPasoContacto(t); };
   try {
-    if(desdeSelector) await esperarVisible(CONTACTO_LIMITE_MS);
+    anotar(`Datos listos: ${nombre} · ${ultimos4(telefono)}`);
+    if(desdeSelector){
+      if(document.visibilityState !== 'visible') anotar('Esperando a que la app vuelva a la vista…');
+      await esperarVisible(CONTACTO_LIMITE_MS);
+    }
+    anotar(`Guardando ${tokenContactos ? 'directo en la base' : 'con la sesión de la app'}…`);
     const { error } = await escribirContacto({ nombre, telefono });
     if(error){
       console.warn('[contactos] guardar:', error.code, error.message);
+      anotar(`❌ La base respondió: ${error.code || ''} ${error.message || ''}`.trim());
       if(error.code === '23505') avisoContacto(`⚠️ Ya tienes un contacto llamado ${nombre}. Cámbiale el nombre y toca Guardar.`,'var(--amber)');
       else avisoContacto('❌ No se guardó: '+error.message,'var(--red)');
       return;
     }
   } catch(e){
     console.warn('[contactos] guardar:', e?.message);
+    anotar(e?.message === 'tiempo' ? '❌ La base no respondió en 10 segundos' : `❌ Error al guardar: ${e?.message || e}`);
     avisoContacto(e?.message === 'tiempo'
       ? '❌ No se guardó: la conexión tardó demasiado. Toca Guardar para intentar otra vez.'
       : '❌ No se guardó. Revisa tu conexión y toca Guardar.','var(--red)');
@@ -6119,6 +6206,7 @@ async function guardarContacto({ desdeSelector = false } = {}){
   } finally {
     btn.disabled = false;
   }
+  anotar(`✅ Guardado: ${nombre}`);
   estadoContacto('');
   hideModal('modal-contacto-form');
   toast(contactoEditId ? `✅ ${nombre} actualizado` : `✅ ${nombre} guardado en tus contactos`,'var(--green)');
@@ -6132,6 +6220,7 @@ function revisarSelectorInterrumpido(){
   let pendiente = null;
   try { pendiente = JSON.parse(sessionStorage.getItem(CONTACTO_ELIGIENDO) || 'null'); sessionStorage.removeItem(CONTACTO_ELIGIENDO); } catch(e){}
   if(!pendiente || Date.now() - (pendiente.at || 0) > 5 * 60 * 1000) return;
+  registrarPasoContacto("⚠️ Kontrol se volvió a abrir mientras se elegía el contacto (el teléfono lo cerró o lo recargó)");
   abrirContactos().then(() => {
     abrirFormContacto(pendiente.id || undefined);
     estadoContacto('Tu teléfono cerró Kontrol mientras elegías el contacto. Toca "Elegir de mis contactos" otra vez, o escribe el nombre y el número.','var(--amber)');
