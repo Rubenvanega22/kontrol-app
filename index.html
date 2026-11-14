@@ -1961,6 +1961,7 @@ select.form-inp option{background:var(--card2);}
   <div class="modal">
     <div class="modal-hdr"><span class="modal-ttl" id="contacto-form-ttl">Nuevo contacto</span><button type="button" class="modal-close" onclick="hideModal('modal-contacto-form')" aria-label="Cerrar">✕</button></div>
     <button type="button" class="btn-secondary" id="contacto-elegir" style="display:none;margin-bottom:14px" onclick="elegirDeMisContactos()">📇 Elegir de mis contactos</button>
+    <div id="contacto-numeros" style="display:none;margin-bottom:6px"></div>
     <div class="form-group"><label class="form-label" for="contacto-nombre">Nombre</label><input class="form-inp" id="contacto-nombre" maxlength="60" placeholder="Ej: Paola"/></div>
     <div class="form-group"><label class="form-label" for="contacto-telefono">Número de WhatsApp</label>
       <input class="form-inp" id="contacto-telefono" type="tel" inputmode="tel" maxlength="24" placeholder="300 123 4567"/>
@@ -5894,11 +5895,14 @@ let contactos = [];
 let contactoEditId = null;
 const PUEDE_ELEGIR_CONTACTO = typeof navigator !== 'undefined' && 'contacts' in navigator && 'ContactsManager' in window;
 
-// Igual que lib/mensaje-programado.js: "300 123 4567", "+57 300…", "573001234567", "+1 555…".
+// Igual que lib/mensaje-programado.js: "300 123 4567", "300-123-4567", "+57 300…", "(+57)…",
+// "0057 300…", "573001234567", "+1 555…". Android a veces mete marcas de dirección invisibles.
 function normalizarTelefono(texto){
-  const t = String(texto || '');
-  const d = t.replace(/\D/g, '');
-  if(/\+\s*\d/.test(t)) return d.length >= 8 && d.length <= 15 ? `+${d}` : null;
+  const t = String(texto || '').replace(/[‎‏‪-‮⁦-⁩]/g, '');
+  let d = t.replace(/\D/g, '');
+  let internacional = /\+\s*\d/.test(t);
+  if(!internacional && d.startsWith('00')){ d = d.slice(2); internacional = true; }
+  if(internacional) return d.length >= 8 && d.length <= 15 ? `+${d}` : null;
   if(d.length === 10 && d.startsWith('3')) return `+57${d}`;
   if(d.length === 12 && d.startsWith('573')) return `+${d}`;
   return null;
@@ -5937,41 +5941,105 @@ function abrirFormContacto(id){
   document.getElementById('contacto-nombre').value = c ? c.nombre : '';
   document.getElementById('contacto-telefono').value = c ? telefonoBonito(c.telefono) : '';
   document.getElementById('contacto-elegir').style.display = PUEDE_ELEGIR_CONTACTO ? '' : 'none';
+  limpiarNumerosContacto();
   showModal('modal-contacto-form');
 }
-async function elegirDeMisContactos(){
-  try {
-    const [elegido] = await navigator.contacts.select(['name','tel'], { multiple:false });
-    if(!elegido) return;
-    const nombre = (elegido.name || []).find(n => String(n).trim());
-    const tels = (elegido.tel || []).map(t => String(t));
-    const tel = tels.map(normalizarTelefono).find(Boolean);
-    if(nombre) document.getElementById('contacto-nombre').value = String(nombre).trim().slice(0, 60);
-    if(tel) document.getElementById('contacto-telefono').value = telefonoBonito(tel);
-    else if(tels.length) { document.getElementById('contacto-telefono').value = tels[0]; toast('⚠️ Revisa el número: no parece un celular completo','var(--amber)'); }
-    else toast('⚠️ Ese contacto no tiene número','var(--amber)');
-  } catch(e){
-    console.warn('[contactos] elegir:', e?.message);
+// La respuesta de navigator.contacts.select() es un arreglo de contactos, y en cada uno
+// name y tel también son arreglos (pueden venir vacíos). → { nombre, numeros, otros }:
+// numeros = celulares ya limpios y sin repetir; otros = lo que no se pudo limpiar.
+function leerContactoElegido(elegidos){
+  const c = Array.isArray(elegidos) ? elegidos[0] : null;
+  if(!c) return { cancelado:true };
+  const lista = v => (Array.isArray(v) ? v : v == null ? [] : [v]).map(x => String(x).trim()).filter(Boolean);
+  const nombre = (lista(c.name)[0] || '').replace(/\s+/g,' ').slice(0, 60);
+  const numeros = [], otros = [];
+  for(const t of lista(c.tel)){
+    const n = normalizarTelefono(t);
+    if(n){ if(!numeros.includes(n)) numeros.push(n); }
+    else if(!otros.includes(t)) otros.push(t);
   }
+  return { nombre, numeros, otros };
 }
+
+// "Elegir de mis contactos": trae nombre y número del teléfono y guarda de una vez.
+// Con varios números deja escoger; si algo falla, lo dice.
+let numerosElegibles = [];
+async function elegirDeMisContactos(){
+  let elegidos;
+  try {
+    elegidos = await navigator.contacts.select(['name','tel'], { multiple:false });
+  } catch(e){
+    console.warn('[contactos] elegir:', e?.name, e?.message);
+    toast('❌ No pude abrir tus contactos. Escribe el número a mano.','var(--red)');
+    return;
+  }
+  const r = leerContactoElegido(elegidos);
+  if(r.cancelado) return;
+  limpiarNumerosContacto();
+  const inpNombre = document.getElementById('contacto-nombre');
+  const inpTel = document.getElementById('contacto-telefono');
+  if(r.nombre) inpNombre.value = r.nombre;
+  if(!r.numeros.length){
+    inpTel.value = r.otros[0] || '';
+    toast(r.otros.length
+      ? '⚠️ El número de ese contacto no parece un celular. Corrígelo y toca Guardar'
+      : '⚠️ Ese contacto no tiene número. Escríbelo y toca Guardar','var(--amber)');
+    return;
+  }
+  if(r.numeros.length > 1){ pintarNumerosContacto(r.numeros); return; }
+  inpTel.value = telefonoBonito(r.numeros[0]);
+  if(!inpNombre.value.trim()){ toast('⚠️ Ese contacto no tiene nombre. Escríbelo y toca Guardar','var(--amber)'); return; }
+  await guardarContacto();
+}
+function pintarNumerosContacto(numeros){
+  numerosElegibles = numeros;
+  const el = document.getElementById('contacto-numeros');
+  el.innerHTML = '<div class="form-label">Tiene varios números. ¿Cuál es su WhatsApp?</div>' +
+    numeros.map((n, i) => `<button type="button" class="btn-secondary" onclick="elegirNumeroContacto(${i})">${escAttr(telefonoBonito(n))}</button>`).join('');
+  el.style.display = '';
+}
+async function elegirNumeroContacto(i){
+  const n = numerosElegibles[i];
+  if(!n) return;
+  document.getElementById('contacto-telefono').value = telefonoBonito(n);
+  limpiarNumerosContacto();
+  if(!document.getElementById('contacto-nombre').value.trim()){ toast('⚠️ Escribe el nombre y toca Guardar','var(--amber)'); return; }
+  await guardarContacto();
+}
+function limpiarNumerosContacto(){
+  numerosElegibles = [];
+  const el = document.getElementById('contacto-numeros');
+  el.innerHTML = '';
+  el.style.display = 'none';
+}
+
 async function guardarContacto(){
-  if (!(await sesionLista())) { toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
   const nombre = document.getElementById('contacto-nombre').value.replace(/\s+/g,' ').trim();
   const telefono = normalizarTelefono(document.getElementById('contacto-telefono').value);
   if(!nombre){ toast('⚠️ Escribe el nombre','var(--amber)'); return; }
-  if(!telefono){ toast('⚠️ Ese número no se ve completo','var(--amber)'); return; }
+  if(!telefono){ toast('⚠️ Ese número no se ve completo: celular de 10 dígitos o con + y el código del país','var(--amber)'); return; }
   const btn = document.getElementById('contacto-guardar');
   btn.disabled = true;
-  const { error } = contactoEditId
-    ? await supa.from('contactos').update({ nombre, telefono }).eq('id', contactoEditId).eq('user_id', currentUser.id)
-    : await supa.from('contactos').insert({ user_id: currentUser.id, nombre, telefono });
-  btn.disabled = false;
-  if(error){
-    toast(error.code === '23505' ? '⚠️ Ya tienes un contacto con ese nombre' : '❌ Error: '+error.message, error.code === '23505' ? 'var(--amber)' : 'var(--red)');
+  try {
+    if (!(await sesionLista())) { toast('⚠️ Sesión no lista. Recarga la página.','var(--amber)'); return; }
+    const { error } = contactoEditId
+      ? await supa.from('contactos').update({ nombre, telefono }).eq('id', contactoEditId).eq('user_id', currentUser.id)
+      : await supa.from('contactos').insert({ user_id: currentUser.id, nombre, telefono });
+    if(error){
+      console.warn('[contactos] guardar:', error.code, error.message);
+      toast(error.code === '23505' ? `⚠️ Ya tienes un contacto llamado ${nombre}. Cámbiale el nombre` : '❌ No se guardó: '+error.message,
+        error.code === '23505' ? 'var(--amber)' : 'var(--red)');
+      return;
+    }
+  } catch(e){
+    console.warn('[contactos] guardar:', e?.message);
+    toast('❌ No se guardó. Revisa tu conexión e intenta otra vez','var(--red)');
     return;
+  } finally {
+    btn.disabled = false;
   }
   hideModal('modal-contacto-form');
-  toast(contactoEditId ? '✅ Contacto actualizado' : '✅ Contacto guardado','var(--green)');
+  toast(contactoEditId ? `✅ ${nombre} actualizado` : `✅ ${nombre} guardado en tus contactos`,'var(--green)');
   contactoEditId = null;
   pintarContactos();
 }
