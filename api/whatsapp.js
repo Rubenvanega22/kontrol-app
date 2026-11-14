@@ -419,6 +419,15 @@ async function responderFoto(userId, phone, mediaUrl, mediaCt, caption) {
   // "¿Dónde compro esto?" va antes que listas y facturas: esa foto no se lee como ninguna.
   if (DC.detectarDondeCompro(caption)) return dondeComproConFoto(userId, phone, mediaUrl, mediaCt);
   const destino = destinoDelTexto(caption);
+  // Un texto que no es claramente de lista ni de factura ("sonde compro esto", "cuánto vale y
+  // quién lo vende"): Haiku decide la intención antes de leer la foto como factura o lista.
+  if (!destino && String(caption || '').trim() && !DC.textoEsDeListaOFactura(caption)) {
+    let intencion = 'otro';
+    try { intencion = await DC.intencionDeFoto(caption); }
+    catch (e) { console.error('[whatsapp] foto: intención falló:', e.message); }
+    console.log('[whatsapp] foto: intención del texto=', intencion);
+    if (intencion === 'comprar') return dondeComproConFoto(userId, phone, mediaUrl, mediaCt);
+  }
   let lista = null;
   // La lista se resuelve antes de leer: si hay que preguntar, no se gasta la lectura.
   if (destino) {

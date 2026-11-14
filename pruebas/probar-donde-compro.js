@@ -1,7 +1,7 @@
 // Pruebas de "¿dónde compro esto?" — se ejecuta con: npm run probar-donde-compro
 //
 // NO llama a Google, ni a Claude, ni a la base: Supabase y fetch van simulados.
-//   1. detectarDondeCompro: frases que sí son el pedido (con "esto" o con el producto).
+//   1. detectarDondeCompro: frases que sí son el pedido, también con errores ("sonde", "dnd").
 //   2. Frases que NO lo son: textos de fotos de listas y facturas, lugares cercanos…
 //   3. interpretarProducto: lo que responda Haiku (bien, no reconocido, raro, con markdown).
 //   4. Los intentos: "producto tienda", solo el producto y tiendas generales (Éxito…).
@@ -76,6 +76,10 @@ const reiniciar = () => { respuestas = {}; porDefecto = []; llamadas.length = 0;
     ['donde venden esto', null], ['¿En qué tienda venden esto?', null], ['donde se compra esto', null],
     ['dónde lo puedo comprar', null], ['Dónde encuentro esto.', null],
     ['dónde compro un taladro', 'taladro'], ['donde puedo conseguir una licuadora barata', 'licuadora'],
+    // Errores de escritura y de voz (prueba real fallida: "Sonde compro esto").
+    ['Sonde compro esto', null], ['sonde compro esto', null], ['onde compro esto', null], ['dnd lo venden', null],
+    ['dnde consigo esto', null], ['DONDE CONSIGO ESTO', null], ['Dónde lo consigo', null], ['dode conpro esto', null],
+    ['donde benden esto', null], ['donde encuentor esto', null], ['en q tienda venden esto', null], ['A dónde lo compro', null],
   ];
   for (const [frase, producto] of si) {
     await caso(frase, () => assert.deepStrictEqual(DC.detectarDondeCompro(frase), { producto }));
@@ -83,8 +87,16 @@ const reiniciar = () => { respuestas = {}; porDefecto = []; llamadas.length = 0;
 
   logOriginal('2. No es este pedido');
   const no = ['', 'a la lista de mercado', 'agrégalo a la lista del súper', 'factura de la luz', 'qué es esto',
-    'dónde queda la droguería', '¿dónde compraste eso?', 'guárdala', 'lista de compras'];
+    'dónde queda la droguería', '¿dónde compraste eso?', 'guárdala', 'lista de compras', 'el conde compro esto',
+    'dónde está', 'donde vendo esto', 'compro esto'];
   for (const frase of no) await caso(JSON.stringify(frase), () => assert.strictEqual(DC.detectarDondeCompro(frase), null));
+
+  logOriginal('2b. Texto de una foto que ya dice lista o factura (no se le pregunta a Haiku)');
+  for (const [frase, claro] of [['factura de la luz', true], ['guárdala', true], ['a la lista de mercado', true],
+    ['ya pagué el agua', true], ['comprobante nequi', true], ['Sonde compro esto', false], ['y esto quién lo vende?', false],
+    ['mira qué lindo', false], ['necesito uno igualito', false]]) {
+    await caso(`${JSON.stringify(frase)} → ${claro ? 'claro' : 'no claro'}`, () => assert.strictEqual(DC.textoEsDeListaOFactura(frase), claro));
+  }
 
   logOriginal('3. Lo que responde Haiku');
   await caso('respuesta completa', () => {

@@ -8,7 +8,8 @@
     "probar-busqueda-cerca": "node pruebas/probar-busqueda-cerca.js",
     "probar-mensaje-programado": "node pruebas/probar-mensaje-programado.js",
     "probar-donde-compro": "node pruebas/probar-donde-compro.js",
-    "probar-contactos-app": "node pruebas/probar-contactos-app.js"
+    "probar-contactos-app": "node pruebas/probar-contactos-app.js",
+    "probar-foto-intencion": "node pruebas/probar-foto-intencion.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
